@@ -1,7 +1,7 @@
 -- Define a helper to adjust background highlights (optional)
 local function ColorMyPencils()
-  vim.api.nvim_set_hl(0, "Normal", { bg = "#000000" })
-  vim.api.nvim_set_hl(0, "NormalFloat", { bg = "#000000" })
+  vim.api.nvim_set_hl(0, "Normal", { bg = "none" })
+  vim.api.nvim_set_hl(0, "NormalFloat", { bg = "none" })
 end
 
 return {
@@ -17,10 +17,6 @@ return {
       enable = {
         terminal = true,         -- Enable terminal colors
       },
-      highlight_groups = {
-        Normal = { bg = "#000000" },
-        NormalFloat = { bg = "#000000" },
-      },
       -- You can add further customization here if needed
     },
     config = function(_, opts)
@@ -33,3 +29,4 @@ return {
     end,
   },
 }
+

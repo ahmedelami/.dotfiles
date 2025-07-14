@@ -41,6 +41,9 @@ return {
                 "cssmodules_ls",
                 "sqls",
                 "tailwindcss",
+                "eslint",
+                "jsonls",
+                "texlab",
             },
             handlers = {
                 function(server_name)
