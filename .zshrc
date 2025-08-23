@@ -84,6 +84,7 @@ ZSH_THEME="robbyrussell"
 plugins=(git direnv)
 
 source $ZSH/oh-my-zsh.sh
+bindkey -v
 
 # User configuration
 
@@ -118,3 +119,30 @@ export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"
 # Created by `pipx` on 2025-02-17 21:28:04
 export PATH="$PATH:/Users/ahmedelamin/.local/bin"
 eval "$(direnv hook zsh)"
+
+# Created by `pipx` on 2025-03-17 22:44:20
+export PATH="$PATH:/Users/ahmed/.local/bin"
+
+. "$HOME/.local/bin/env"
+
+source $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+eval "$(fnm env --use-on-cd)"
+
+
+# Load Angular CLI autocompletion.
+source <(ng completion script)
+export PATH="/Applications/UTM.app/Contents/MacOS:$PATH"
+eval "$(zoxide init zsh)"
+
+
+# BEGIN opam configuration
+# This is useful if you're using opam as it adds:
+#   - the correct directories to the PATH
+#   - auto-completion for the opam binary
+# This section can be safely removed at any time if needed.
+[[ ! -r '/Users/ahmed/.opam/opam-init/init.zsh' ]] || source '/Users/ahmed/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
+# END opam configuration
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+export ANDROID_HOME=~/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+export PATH="$HOME/.local/bin:$PATH"

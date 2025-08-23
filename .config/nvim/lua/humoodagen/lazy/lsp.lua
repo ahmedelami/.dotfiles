@@ -44,6 +44,7 @@ return {
                 "eslint",
                 "jsonls",
                 "texlab",
+                "ocamllsp",
             },
             handlers = {
                 function(server_name)
