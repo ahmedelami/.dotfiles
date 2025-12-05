@@ -31,10 +31,10 @@ set -g status-left "[#{?session_group,#{session_group},#S}] "
 #### B. Session List Filtering (.tmux.conf)
 We override the standard `Ctrl+s` (choose-tree) command to hide the "Shadow Clones".
 ```tmux
-# Filter: Show session IF (Name == Group) OR (Group is empty)
+# Filter: Show session IF (Name == Group) OR (Group is empty/ungrouped)
 bind-key s choose-tree -s -f "#{||:#{==:#{session_name},#{session_group}},#{==:#{session_group},}}" -F "#{session_name}: #{session_windows} windows" -O name
 ```
-*Result:* The list only shows the "Leader" session (`wiredl`). All `wiredl-X` clones are hidden.
+*Result:* The list only shows the "Leader" session (`wiredl`). All `wiredl-X` clones are hidden. Standalone sessions like `mcintire` are still visible.
 
 ### 3. Context Awareness (.zshrc)
 When opening a new terminal (`Cmd+N`), the shell script determines which session to join using a **Most Recently Used (MRU)** strategy.
@@ -46,6 +46,14 @@ When opening a new terminal (`Cmd+N`), the shell script determines which session
 
 *Result:* If you are working in `wiredl`, `Cmd+N` opens `wiredl`. If you switch to `komputer` and type, `Cmd+N` opens `komputer`.
 
+## Keybindings (Shortcuts)
+
+| Shortcut | Action | Description |
+| :--- | :--- | :--- |
+| `Ctrl+b` `<` | **Move Left** | Swaps current window with the one to the left. |
+| `Ctrl+b` `>` | **Move Right** | Swaps current window with the one to the right. |
+| `Ctrl+b` `.` | **Swap #** | Prompts for a number. Swaps current window with that index. |
+
 ## Relevant Files
 - **`zsh/.zshrc`**: Contains the startup script for auto-grouping and MRU logic.
-- **`.tmux.conf`**: Contains the `status-left` masking and `bind s` list filtering.
+- **`.tmux.conf`**: Contains the `status-left` masking, `bind s` list filtering, and window shortcuts.
