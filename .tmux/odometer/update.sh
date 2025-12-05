@@ -54,8 +54,8 @@ if mkdir "$LOCK_DIR" 2>/dev/null; then
             STYLE="#[fg=colour${C_OFF},bold]"
         fi
     else
-        # LAG: Yellow
-        STYLE="#[fg=yellow,bold]"
+        # LAG: Treat as Idle (Red) to avoid flashing yellow
+        STYLE="#[fg=colour${C_OFF},bold]"
     fi
 
     echo "${STYLE}" > "$STATE_FILE"
