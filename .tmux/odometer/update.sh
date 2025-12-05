@@ -10,20 +10,18 @@ LOCK_DIR="$DIR/lock"
 # Configuration
 TIMEOUT_SECONDS=1
 
-# --- SIMPLE DOT STATUS ---
-# Active: Green Circle (Darker)
-# Using standard bullet point.
-ON="●"
-OFF="●"
+# --- TEXT COLOR STATUS ---
+# Active: Dark Green (28)
+C_ON="28"
+# Idle: Bright Red (196)
+C_OFF="196"
 
-# Colors
-C_ON="28"  # Dark Green
-C_OFF="196" # Bright Red
-
+# Initialize
 if [ ! -f "$TOTAL_FILE" ]; then echo "0" > "$TOTAL_FILE"; fi
 if [ ! -f "$LAST_RUN_FILE" ]; then date +%s > "$LAST_RUN_FILE"; fi
 if [ ! -f "$STATE_FILE" ]; then echo "" > "$STATE_FILE"; fi
 
+# Self-Heal Lock
 if [ -d "$LOCK_DIR" ]; then
     NOW=$(date +%s)
     LAST_MOD=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo "$NOW")
@@ -31,6 +29,7 @@ if [ -d "$LOCK_DIR" ]; then
     if [ "$AGE" -gt 3 ]; then rmdir "$LOCK_DIR" 2>/dev/null; fi
 fi
 
+# Update Logic
 if mkdir "$LOCK_DIR" 2>/dev/null; then
     trap 'rmdir "$LOCK_DIR"' EXIT
     NOW=$(date +%s)
@@ -47,26 +46,30 @@ if mkdir "$LOCK_DIR" 2>/dev/null; then
         if [ "$IDLE_TIME" -lt "$TIMEOUT_SECONDS" ]; then
             TOTAL=$((TOTAL + DELTA))
             echo "$TOTAL" > "$TOTAL_FILE"
-            ICON="#[fg=colour${C_ON},bg=default]${ON}"
+            
+            # ACTIVE: Set Color to Green
+            STYLE="#[fg=colour${C_ON},bold]"
         else
-            ICON="#[fg=colour${C_OFF},bg=default]${OFF}"
+            # IDLE: Set Color to Red
+            STYLE="#[fg=colour${C_OFF},bold]"
         fi
     else
-        ICON="#[fg=yellow]?"
+        # LAG: Yellow
+        STYLE="#[fg=yellow,bold]"
     fi
 
-    echo "${ICON}" > "$STATE_FILE"
+    echo "${STYLE}" > "$STATE_FILE"
     echo "$NOW" > "$LAST_RUN_FILE"
 fi
 
 TOTAL=$(cat "$TOTAL_FILE")
-DISPLAY_ICON=$(cat "$STATE_FILE")
+STYLE=$(cat "$STATE_FILE")
 
 HOURS=$((TOTAL / 3600))
 REMAINDER=$((TOTAL % 3600))
 MINUTES=$((REMAINDER / 60))
 SECONDS=$((REMAINDER % 60))
 
-# Remove padding so time doesn't shift.
-# Just append the icon with one space.
-printf "#[fg=black,bold]%dh %dm %ds %s " "$HOURS" "$MINUTES" "$SECONDS" "$DISPLAY_ICON"
+# Print the Time directly in the calculated color.
+# Note the trailing space.
+printf "%s%dh %dm %ds " "$STYLE" "$HOURS" "$MINUTES" "$SECONDS"
