@@ -1,6 +1,9 @@
 export PATH="/opt/homebrew/bin:$PATH"
 
 if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
+  # Load the safety wrapper first so manual calls are also protected
+  source "$HOME/.tmux_safety_wrapper.zsh"
+
   # "Focus Follows Mouse" Logic:
   # 1. Find the session with the MOST RECENT activity (where you were just typing).
   # 2. Create a grouped session with THAT specific session.
@@ -10,7 +13,8 @@ if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] &&
 
   if [ -n "$base_session" ]; then
     # Create a grouped session linked to your most active project
-    exec tmux new-session -t "$base_session"
+    # Set 'destroy-unattached on' so this clone self-destructs when the terminal closes
+    exec tmux new-session -t "$base_session" \; set-option destroy-unattached on
   else
     # No sessions exist? Create a fresh one.
     exec tmux new-session
