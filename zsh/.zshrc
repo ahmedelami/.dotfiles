@@ -13,8 +13,8 @@ if command -v tmux &> /dev/null && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] &&
 
   if [ -n "$base_session" ]; then
     # Create a grouped session linked to your most active project
-    # Set 'destroy-unattached on' so this clone self-destructs when the terminal closes
-    exec tmux new-session -t "$base_session" \; set-option destroy-unattached on
+    # Use Smart Clone script to get a clean name (e.g. wiredl-1) and auto-destruct
+    exec "$HOME/.tmux/scripts/new_smart_clone.sh" "$base_session"
   else
     # No sessions exist? Create a fresh one.
     exec tmux new-session
@@ -102,6 +102,73 @@ plugins=(git direnv)
 
 source $ZSH/oh-my-zsh.sh
 bindkey -v
+# Reduce ESC delay when switching vi modes.
+export KEYTIMEOUT=1
+typeset -g _TMUX_VIM_MODE=""
+
+# Tmux VIM mode indicator (prompt-only)
+_vim_cursor_set() {
+  # Force steady block cursor; color is set by Ghostty config.
+  if [[ -n $TMUX ]]; then
+    # Passthrough to outer terminal via tmux
+    printf '\ePtmux;\e\e[?12l\e\\'
+    printf '\ePtmux;\e\e[2 q\e\\'
+  else
+    printf '\e[?12l'
+    printf '\e[2 q'
+  fi
+}
+
+_tmux_vim_mode_update() {
+  [[ -n $TMUX ]] || return
+  local mode
+  if [[ ${KEYMAP-} == visual ]] || (( ${REGION_ACTIVE:-0} )); then
+    mode="VIM:VISUAL"
+  elif [[ ${KEYMAP-} == vicmd ]]; then
+    mode="VIM:NORMAL"
+  else
+    mode="VIM:INSERT"
+  fi
+  [[ $mode == ${_TMUX_VIM_MODE-} ]] && return
+  _TMUX_VIM_MODE=$mode
+
+  # Update status variable first, then cursor LAST
+  tmux set-option -p @vim_mode "$mode"
+  # Status bar auto-updates via status-interval, no refresh needed
+  _vim_cursor_set
+}
+
+_tmux_vim_mode_clear() {
+  [[ -n $TMUX ]] || return
+  _TMUX_VIM_MODE=""
+  tmux set-option -p @vim_mode ""
+}
+
+zle -N zle-keymap-select _tmux_vim_mode_update
+_tmux_vim_line_init() {
+  zle -K viins
+  _tmux_vim_mode_update
+}
+zle -N zle-line-init _tmux_vim_line_init
+
+autoload -U add-zsh-hook
+autoload -Uz add-zle-hook-widget
+add-zsh-hook preexec _tmux_vim_mode_clear
+add-zsh-hook precmd _tmux_vim_mode_update
+
+_tmux_vim_wrap_widget() {
+  local widget=$1
+  local fn="_tmux_vim_wrap_${widget//-/_}"
+  eval "
+    ${fn}() {
+      zle .${widget}
+      _tmux_vim_mode_update
+    }
+  "
+  zle -N ${widget} ${fn}
+}
+_tmux_vim_wrap_widget visual-mode
+_tmux_vim_wrap_widget visual-line-mode
 
 # macOS BSD ls colors - light mode optimized
 export CLICOLOR=1
@@ -187,3 +254,29 @@ export PATH="/Users/ahmedelamin/.antigravity/antigravity/bin:$PATH"
 
 [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
 [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code-insiders --locate-shell-integration-path zsh)"
+
+# --- GEMINI AUTO-CONFIG START ---
+# Automatically creates VS Code settings for Homebrew Node when entering a repo project
+autoload -U add-zsh-hook
+function gemini_auto_repo_config() {
+    # Trigger only if in 'repos' path and package.json exists
+    if [[ "$PWD" == *"/repos/"* ]] && [[ -f "package.json" ]]; then
+         local s_file=".vscode/settings.json"
+         if [[ ! -f "$s_file" ]]; then
+             mkdir -p .vscode
+             cat > "$s_file" <<JSON
+{
+    "svelte.language-server.runtime": "/opt/homebrew/bin/node",
+    "eslint.runtime": "/opt/homebrew/bin/node",
+    "prettier.nodePath": "/opt/homebrew/bin/node"
+}
+JSON
+             echo "✨ Auto-configured VS Code settings for External Drive."
+         fi
+    fi
+}
+add-zsh-hook chpwd gemini_auto_repo_config
+# --- GEMINI AUTO-CONFIG END ---
+
+# Check on startup too (for VS Code Integrated Terminal)
+gemini_auto_repo_config

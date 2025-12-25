@@ -27,6 +27,66 @@ return {
             vim.lsp.protocol.make_client_capabilities(),
             cmp_lsp.default_capabilities())
 
+        -- -------------------------------------------------------
+        -- on_attach: best-practice per-buffer setup for LSP attach
+        -- only enable documentHighlight if the server supports it
+        -- -------------------------------------------------------
+        local function on_attach(client, bufnr)
+            -- LSP key mappings (buffer-local)
+            local opts = { buffer = bufnr, remap = false }
+
+            -- Go to definition (the classic gd!)
+            vim.keymap.set("n", "gd", function() vim.lsp.buf.definition() end, opts)
+
+            -- Go to declaration
+            vim.keymap.set("n", "gD", function() vim.lsp.buf.declaration() end, opts)
+
+            -- Show hover information
+            vim.keymap.set("n", "K", function() vim.lsp.buf.hover() end, opts)
+
+            -- Go to implementation
+            vim.keymap.set("n", "gi", function() vim.lsp.buf.implementation() end, opts)
+
+            -- Show signature help
+            vim.keymap.set("n", "<C-h>", function() vim.lsp.buf.signature_help() end, opts)
+
+            -- Rename symbol
+            vim.keymap.set("n", "<leader>rn", function() vim.lsp.buf.rename() end, opts)
+
+            -- Code actions
+            vim.keymap.set("n", "<leader>ca", function() vim.lsp.buf.code_action() end, opts)
+
+            -- Find references
+            vim.keymap.set("n", "gr", function() vim.lsp.buf.references() end, opts)
+
+            -- Show diagnostics in floating window
+            vim.keymap.set("n", "<leader>d", function() vim.diagnostic.open_float() end, opts)
+
+            -- Go to next/previous diagnostic
+            vim.keymap.set("n", "[d", function() vim.diagnostic.goto_next() end, opts)
+            vim.keymap.set("n", "]d", function() vim.diagnostic.goto_prev() end, opts)
+
+            -- Go to file under cursor (great for import paths!)
+            vim.keymap.set("n", "gf", "<cmd>edit <cfile><cr>", opts)
+
+            if client.server_capabilities and client.server_capabilities.documentHighlightProvider then
+                local grp = vim.api.nvim_create_augroup('LspDocHighlight_' .. bufnr, { clear = true })
+                vim.api.nvim_create_autocmd({'CursorHold','CursorHoldI'}, {
+                    group = grp,
+                    buffer = bufnr,
+                    callback = vim.lsp.buf.document_highlight,
+                    desc = 'LSP: document highlight (buffer-local)',
+                })
+                vim.api.nvim_create_autocmd({'CursorMoved','CursorMovedI','BufLeave'}, {
+                    group = grp,
+                    buffer = bufnr,
+                    callback = vim.lsp.buf.clear_references,
+                    desc = 'LSP: clear highlights (buffer-local)',
+                })
+            end
+        end
+        -- -------------------------------------------------------
+
         require("fidget").setup({})
         require("mason").setup()
         require("mason-lspconfig").setup({
@@ -38,18 +98,22 @@ return {
                 "pylsp",
                 "clangd",
                 "html",
+                "cssls",         -- added cssls so plain .css files have a server
                 "cssmodules_ls",
                 "sqls",
                 "tailwindcss",
-                "eslint",
+                -- "eslint",
                 "jsonls",
                 "texlab",
                 "ocamllsp",
+                "svelte",
             },
             handlers = {
+                -- default handler for all servers: apply capabilities + on_attach
                 function(server_name)
                     require("lspconfig")[server_name].setup {
-                        capabilities = capabilities
+                        capabilities = capabilities,
+                        on_attach = on_attach,
                     }
                 end,
 
@@ -61,11 +125,11 @@ return {
                     -- your lua_ls config
                 end,
 
-                -- ADD/EDIT THIS PART:
                 ["pylsp"] = function()
                     local lspconfig = require("lspconfig")
                     lspconfig.pylsp.setup({
                         capabilities = capabilities,
+                        on_attach = on_attach,
                         settings = {
                             pylsp = {
                                 plugins = {
@@ -82,15 +146,18 @@ return {
         })
 
         -- Manual config for djlsp since mason-lspconfig doesn't support it.
-        require("lspconfig").djlsp.setup({
-            cmd = { "djlsp" },
-            capabilities = capabilities,
-            -- init_options = {
-            --     django_settings_module = "<your.settings.module>",
-            --     docker_compose_file = "docker_compose.yml",
-            --     docker_compose_service = "django",
-            -- }
-        })
+        if vim.fn.executable("djlsp") == 1 then
+            require("lspconfig").djlsp.setup({
+                cmd = { "djlsp" },
+                capabilities = capabilities,
+                on_attach = on_attach,
+                -- init_options = {
+                --     django_settings_module = "<your.settings.module>",
+                --     docker_compose_file = "docker_compose.yml",
+                --     docker_compose_service = "django",
+                -- }
+            })
+        end
 
         local cmp_select = { behavior = cmp.SelectBehavior.Select }
 
@@ -116,6 +183,15 @@ return {
 
         vim.diagnostic.config({
             -- update_in_insert = true,
+            -- ========================================
+            -- true = show diagnostics, false = hide diagnostics
+            -- ========================================
+            virtual_text = false,  -- Show/hide inline error text
+            signs = false,         -- Show/hide error signs in gutter
+            underline = false,     -- Show/hide error underlines
+            -- ========================================
+            -- End diagnostic display settings
+            -- ========================================
             float = {
                 focusable = false,
                 style = "minimal",
@@ -125,5 +201,12 @@ return {
                 prefix = "",
             },
         })
+
+        -- ========================================
+        -- LSP Document Highlighting (moved to on_attach)
+        -- The previous global CursorHold autocmds were removed.
+        -- Document highlighting is now set per-buffer in `on_attach`
+        -- ========================================
     end
 }
+

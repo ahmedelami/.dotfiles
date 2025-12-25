@@ -1,0 +1,51 @@
+{
+  "rules" : [
+    {
+      "manipulators" : [
+        {
+          "from" : {
+            "key_code" : "1",
+            "modifiers" : {
+              "optional" : [
+                "any"
+              ]
+            }
+          },
+          "type" : "basic",
+          "conditions" : [
+            {
+              "identifiers" : [
+                {
+                  "vendor_id" : 5426
+                },
+                {
+                  "vendor_id" : 5758
+                },
+                {
+                  "vendor_id" : 1678
+                }
+              ],
+              "type" : "device_if"
+            }
+          ],
+          "to" : [
+            {
+              "key_code" : "a",
+              "modifiers" : [
+                "left_command"
+              ]
+            },
+            {
+              "key_code" : "c",
+              "modifiers" : [
+                "left_command"
+              ]
+            }
+          ]
+        }
+      ],
+      "description" : "Naga Button 1"
+    }
+  ],
+  "title" : "Naga Controller Rules"
+}

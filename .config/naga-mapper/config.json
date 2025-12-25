@@ -1,0 +1,55 @@
+{
+  "activeProfile" : "default",
+  "profiles" : {
+    "default" : {
+      "buttons" : {
+        "1" : [
+          {
+            "key" : "a",
+            "modifiers" : [
+              "command"
+            ],
+            "repeatCount" : 1,
+            "type" : "keyCombo"
+          },
+          {
+            "milliseconds" : 60,
+            "type" : "delay"
+          },
+          {
+            "key" : "c",
+            "modifiers" : [
+              "command"
+            ],
+            "repeatCount" : 1,
+            "type" : "keyCombo"
+          }
+        ],
+        "2" : [
+          {
+            "key" : "v",
+            "modifiers" : [
+              "command"
+            ],
+            "repeatCount" : 1,
+            "type" : "keyCombo"
+          }
+        ],
+        "3" : [
+          {
+            "button" : "left",
+            "count" : 2,
+            "type" : "mouseClick"
+          }
+        ],
+        "4" : [
+          {
+            "button" : "left",
+            "count" : 3,
+            "type" : "mouseClick"
+          }
+        ]
+      }
+    }
+  }
+}

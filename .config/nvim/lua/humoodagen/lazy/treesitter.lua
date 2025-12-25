@@ -49,6 +49,10 @@ return {
                 -- Instead of true it can also be a list of languages
                 additional_vim_regex_highlighting = { "markdown" },
             },
+
+            matchup = {
+                enable = true,  -- Enable vim-matchup integration
+            },
         })
 
         local treesitter_parser_config = require("nvim-treesitter.parsers").get_parser_configs()

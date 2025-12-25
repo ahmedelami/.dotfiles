@@ -11,6 +11,8 @@ vim.opt.expandtab = true
 vim.opt.smartindent = true
 
 vim.opt.wrap = false
+vim.opt.linebreak = true
+vim.opt.breakindent = true
 
 vim.opt.swapfile = false
 vim.opt.backup = false
@@ -26,7 +28,14 @@ vim.opt.scrolloff = 8
 vim.opt.signcolumn = "yes"
 vim.opt.isfname:append("@-@")
 
-vim.opt.updatetime = 50
+vim.opt.updatetime = 50  -- Back to original value
 
 vim.opt.colorcolumn = "80"
 
+
+-- Automatically reload files when they change on disk
+vim.opt.autoread = true
+vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "CursorHoldI", "FocusGained" }, {
+    command = "if mode() != 'c' | checktime | endif",
+    pattern = { "*" },
+})

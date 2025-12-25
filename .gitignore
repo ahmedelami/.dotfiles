@@ -1,0 +1,2 @@
+# Ignore private GitHub auth tokens
+.config/gh/hosts.yml

@@ -1,0 +1,32 @@
+{
+  "providers": [
+    {
+      "id": "subswarm-local",
+      "name": "SubSwarm Local",
+      "type": "openai",
+      "base_url": "http://localhost:3000/v1",
+      "api_key": "sk-dummy-key",
+      "models": [
+        {
+          "id": "claude-local"
+        },
+        {
+          "id": "gemini-local"
+        },
+        {
+          "id": "auggie-local"
+        },
+        {
+          "id": "codex-local"
+        }
+      ]
+    }
+  ],
+  "default_model": "claude-local",
+  "models": {
+    "large": {
+      "model": "claude-local",
+      "provider": "subswarm-local"
+    }
+  }
+}

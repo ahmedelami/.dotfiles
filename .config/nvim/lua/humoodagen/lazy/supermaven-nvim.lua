@@ -1,16 +1,15 @@
+-- lua/plugins/supermaven.lua
 return {
-    "supermaven-inc/supermaven-nvim",
-    enabled = false,
-    event = "InsertEnter",
-    cmd = {
-        "SupermavenUseFree",
-        "SupermavenUsePro",
-    },
-    opts = {
-        keymaps = {
-            accept_suggestion = nil, -- handled by nvim-cmp / blink.cmp
-        },
-        disable_inline_completion = vim.g.ai_cmp,
-        ignore_filetypes = { "bigfile", "snacks_input", "snacks_notif" },
-    },
+  "supermaven-inc/supermaven-nvim",
+  event = "InsertEnter",         -- or: lazy = false
+  cmd = { "SupermavenStart","SupermavenStop","SupermavenRestart","SupermavenToggle",
+          "SupermavenStatus","SupermavenUseFree","SupermavenUsePro",
+          "SupermavenLogout","SupermavenShowLog","SupermavenClearLog" },
+  config = function()
+    require("supermaven-nvim").setup({
+      disable_inline_completion = true,
+      ignore_filetypes = { "bigfile", "snacks_input", "snacks_notif" },
+    })
+  end,
 }
+
