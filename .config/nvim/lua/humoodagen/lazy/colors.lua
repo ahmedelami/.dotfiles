@@ -31,7 +31,7 @@ return {
 
           -- GitSigns overrides
           GitSignsAdd = { fg = "#1a7f37" }, -- Solid Green
-          GitSignsChange = { fg = "#9a6700" }, -- Solid Orange/Yellow
+          GitSignsChange = { fg = "#cf222e" }, -- Solid Red (Changed from brown)
           GitSignsDelete = { fg = "#cf222e" }, -- Solid Red
           GitSignsTopdelete = { fg = "#cf222e" }, -- Solid Red
           GitSignsChangedelete = { fg = "#cf222e" }, -- Solid Red
