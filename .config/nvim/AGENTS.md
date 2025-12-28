@@ -49,16 +49,6 @@ No automated test suite is currently set up. Validate changes by:
 - **Background:** Transparent background is enabled.
 - **NvimTree:** Uses bold blue highlights for folders to ensure high visibility.
 
-## AI & Assistance
-
-- **Plugin:** `avante.nvim` is installed to provide Cursor-like AI editing and chat.
-- **Model:** Configured to use **Gemini 3 Flash** (`gemini-3-flash-preview`).
-- **Provider:** Using the Google Gemini API with keys stored in `.zshrc`.
-- **Keybindings:**
-  - `<leader>aa`: Open Avante sidebar.
-  - `<leader>at`: Toggle Avante sidebar.
-  - `<leader>ae`: Edit selected code blocks.
-
 ## Security & Configuration Tips
 
 - Plugin sources are pulled via `lazy.nvim`; keep `lazy-lock.json` updated when changing plugins.
