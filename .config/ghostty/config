@@ -1,0 +1,87 @@
+# Ghostty Configuration
+
+# Theme: High Contrast Black on White
+foreground = #000000
+background = #ffffff
+cursor-color = #000000
+selection-background = #d6d6d6
+selection-foreground = #000000
+
+# Font
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 16.7
+
+# Window (Borderless Setup)
+window-decoration = false
+macos-titlebar-style = hidden
+window-padding-x = 0
+window-padding-y = 0
+confirm-close-surface = false
+window-save-state = always
+
+# Hide Native Tabs (We use Tmux for tabs)
+window-show-tab-bar = never
+
+# Isolated Panes: Use a dedicated launcher script for perfect persistence
+command = /bin/zsh -l -c "/Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh"
+
+# Keybindings (Bridging to Tmux)
+# Using CTRL instead of CMD for terminal-level actions to avoid macOS conflicts
+
+# CTRL+T sends Prefix + t (New Tmux Window/Tab)
+keybind = ctrl+t=text:\x02t
+# CTRL+W kills the entire Ghostty pane (and the tmux session with it)
+keybind = ctrl+w=close_surface
+
+# CTRL+SHIFT+W kills the entire Ghostty pane (and the tmux session with it)
+keybind = ctrl+shift+w=close_surface
+
+# CTRL+; and CTRL+' for Ghostty-level Splits (Isolated Tmux sessions)
+keybind = ctrl+semicolon=new_split:right
+keybind = ctrl+apostrophe=new_split:down
+keybind = ctrl+z=toggle_split_zoom
+
+# Navigation between Ghostty Panes
+keybind = ctrl+h=goto_split:left
+keybind = ctrl+j=goto_split:down
+keybind = ctrl+k=goto_split:up
+keybind = ctrl+l=goto_split:right
+
+# Resizing Ghostty Panes
+keybind = ctrl+shift+h=resize_split:left,120
+keybind = ctrl+shift+j=resize_split:down,120
+keybind = ctrl+shift+k=resize_split:up,120
+keybind = ctrl+shift+l=resize_split:right,120
+
+# Switch Tmux Windows (Tabs) within the focused pane
+# Explicitly unbind native Ghostty goto_tab to prevent conflicts
+keybind = super+1=unbind
+keybind = super+2=unbind
+keybind = super+3=unbind
+keybind = super+4=unbind
+keybind = super+5=unbind
+keybind = super+6=unbind
+keybind = super+7=unbind
+keybind = super+8=unbind
+keybind = super+9=unbind
+
+keybind = super+1=text:\x021
+keybind = super+2=text:\x022
+keybind = super+3=text:\x023
+keybind = super+4=text:\x024
+keybind = super+5=text:\x025
+keybind = super+6=text:\x026
+keybind = super+7=text:\x027
+keybind = super+8=text:\x028
+keybind = super+9=text:\x029
+
+# Clear screen is handled globally by Tmux using CTRL+/ (C-_)
+# keybind = ctrl+slash=clear_screen
+# keybind = ctrl+underscore=clear_screen
+# keybind = ctrl+shift+slash=clear_screen
+
+# Mouse
+mouse-hide-while-typing = true
+
+# Unfocused state (make inactive panes dimmer)
+unfocused-split-opacity = 0.6

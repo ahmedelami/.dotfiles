@@ -1,0 +1,9 @@
+# Ignore private GitHub auth tokens
+.config/gh/hosts.yml
+
+# Personal Secrets
+.zsh_secrets
+secrets.zsh
+.env
+*.key
+*.pem
