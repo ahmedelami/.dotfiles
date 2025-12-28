@@ -28,6 +28,13 @@ return {
           NvimTreeNormal = { bg = "NONE" },
           NvimTreeNormalNC = { bg = "NONE" },
           NvimTreeWinSeparator = { fg = "#dbdbdb", bg = "NONE" },
+
+          -- GitSigns overrides
+          GitSignsAdd = { fg = "#1a7f37" }, -- Solid Green
+          GitSignsChange = { fg = "#9a6700" }, -- Solid Orange/Yellow
+          GitSignsDelete = { fg = "#cf222e" }, -- Solid Red
+          GitSignsTopdelete = { fg = "#cf222e" }, -- Solid Red
+          GitSignsChangedelete = { fg = "#cf222e" }, -- Solid Red
         }
       })
       vim.cmd.colorscheme("vscode")
