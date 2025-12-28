@@ -56,16 +56,17 @@ return {
       require("notify").dismiss({ silent = true, pending = true })
     end, { desc = "Dismiss All Notifications" })
 
-    vim.keymap.set({ "n", "i", "s" }, "<c-f>", function()
-      if not require("noice.util").scroll(4) then
-        return "<c-f>"
+    local scroll_modes = { "n", "i", "s" }
+    vim.keymap.set(scroll_modes, "<M-f>", function()
+      if not require("noice.lsp").scroll(4) then
+        return "<M-f>"
       end
-    end, { silent = true, expr = true, desc = "Scroll Forward" })
+    end, { silent = true, expr = true, desc = "Noice Scroll Forward" })
 
-    vim.keymap.set({ "n", "i", "s" }, "<c-b>", function()
-      if not require("noice.util").scroll(-4) then
-        return "<c-b>"
+    vim.keymap.set(scroll_modes, "<M-b>", function()
+      if not require("noice.lsp").scroll(-4) then
+        return "<M-b>"
       end
-    end, { silent = true, expr = true, desc = "Scroll Backward" })
+    end, { silent = true, expr = true, desc = "Noice Scroll Backward" })
   end,
 }
