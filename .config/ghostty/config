@@ -30,11 +30,16 @@ command = /bin/zsh -l -c "/Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh"
 
 # CTRL+T sends Prefix + t (New Tmux Window/Tab)
 keybind = ctrl+t=text:\x02t
-# CTRL+W kills the entire Ghostty pane (and the tmux session with it)
-keybind = ctrl+w=close_surface
+# CTRL+W is unbound so it can delete words in the shell/readline
+keybind = ctrl+w=unbind
+# CTRL+Q kills the entire Ghostty pane (and the tmux session with it)
+keybind = ctrl+q=close_surface
 
 # CTRL+SHIFT+W kills the entire Ghostty pane (and the tmux session with it)
 keybind = ctrl+shift+w=close_surface
+
+# CTRL+D closes the Ghostty surface (undoable via CMD+Z)
+keybind = ctrl+d=close_surface
 
 # CTRL+; and CTRL+' for Ghostty-level Splits (Isolated Tmux sessions)
 keybind = ctrl+semicolon=new_split:right
@@ -42,16 +47,17 @@ keybind = ctrl+apostrophe=new_split:down
 keybind = ctrl+z=toggle_split_zoom
 
 # Navigation between Ghostty Panes
-keybind = ctrl+h=goto_split:left
-keybind = ctrl+j=goto_split:down
-keybind = ctrl+k=goto_split:up
-keybind = ctrl+l=goto_split:right
+# Note: macOS Cmd+H hides apps by default; remap "Hide Ghostty" in System Settings
+keybind = super+h=goto_split:left
+keybind = super+j=goto_split:down
+keybind = super+k=goto_split:up
+keybind = super+l=goto_split:right
 
 # Resizing Ghostty Panes
-keybind = ctrl+shift+h=resize_split:left,120
-keybind = ctrl+shift+j=resize_split:down,120
-keybind = ctrl+shift+k=resize_split:up,120
-keybind = ctrl+shift+l=resize_split:right,120
+keybind = super+shift+h=resize_split:left,120
+keybind = super+shift+j=resize_split:down,120
+keybind = super+shift+k=resize_split:up,120
+keybind = super+shift+l=resize_split:right,120
 
 # Switch Tmux Windows (Tabs) within the focused pane
 # Explicitly unbind native Ghostty goto_tab to prevent conflicts
@@ -74,6 +80,11 @@ keybind = super+6=text:\x026
 keybind = super+7=text:\x027
 keybind = super+8=text:\x028
 keybind = super+9=text:\x029
+
+# Undo last close (tab/split/window)
+keybind = super+z=undo
+keybind = super+shift+z=redo
+
 
 # Clear screen is handled globally by Tmux using CTRL+/ (C-_)
 # keybind = ctrl+slash=clear_screen

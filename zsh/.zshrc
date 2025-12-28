@@ -1,4 +1,4 @@
-alias n="nvim ."
+alias n="nvim"
 
 export PATH="/opt/homebrew/bin:$PATH"
 
@@ -291,7 +291,7 @@ export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 # Neovim Aliases
-alias n="nvim ."
+alias n="nvim"
 alias nv="nvim"
 
 # API Keys (Sourced from local secrets file - DO NOT PUSH)

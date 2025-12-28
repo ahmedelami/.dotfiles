@@ -8,6 +8,7 @@ return {
     config = function()
         local function on_attach(bufnr)
             local api = require('nvim-tree.api')
+            local Input = require("nui.input")
 
             local function opts(desc)
                 return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
@@ -53,6 +54,68 @@ return {
             vim.keymap.set('n', 'H', api.tree.toggle_hidden_filter, opts('[System] Toggle Hidden (Dotfiles)'))
             vim.keymap.set('n', 'I', api.tree.toggle_gitignore_filter, opts('[System] Toggle Git Ignore'))
             vim.keymap.set('n', '?', api.tree.toggle_help, opts('[System] Show Help'))
+
+            local function inline_create()
+                local node = api.tree.get_node_under_cursor()
+                if not node then
+                    return
+                end
+
+                local base_dir = node.absolute_path
+                if node.type ~= "directory" then
+                    base_dir = (node.parent and node.parent.absolute_path) or vim.fn.fnamemodify(base_dir, ":h")
+                end
+
+                local rel_base = vim.fn.fnamemodify(base_dir, ":.")
+                if rel_base == "" then
+                    rel_base = base_dir
+                end
+
+                local path_sep = package.config:sub(1, 1)
+                local prompt = rel_base
+                if prompt:sub(-1) ~= path_sep then
+                    prompt = prompt .. path_sep
+                end
+
+                local input = Input({
+                    relative = "cursor",
+                    position = { row = 1, col = 0 },
+                    size = { width = math.min(80, math.max(24, #prompt + 10)) },
+                    border = { style = "rounded", text = { top = "New", top_align = "left" } },
+                    win_options = { winblend = 0 },
+                }, {
+                    prompt = prompt,
+                    on_submit = function(value)
+                        if not value or vim.fn.trim(value) == "" then
+                            return
+                        end
+
+                        local target = value
+                        if target:sub(1, 1) ~= path_sep and not target:match("^%a:[/\\]") then
+                            target = base_dir .. path_sep .. target
+                        end
+
+                        local is_dir = target:sub(-1) == path_sep
+                        local dir_path = is_dir and target or vim.fn.fnamemodify(target, ":h")
+                        if dir_path ~= "" then
+                            vim.fn.mkdir(dir_path, "p")
+                        end
+                        if not is_dir then
+                            local ok, fd = pcall(vim.loop.fs_open, target, "w", 420)
+                            if ok and type(fd) == "number" then
+                                vim.loop.fs_close(fd)
+                            end
+                        end
+
+                        api.tree.reload()
+                        api.tree.find_file({ buf = target, open = true, focus = true })
+                    end,
+                })
+
+                input:mount()
+            end
+
+            vim.keymap.set('n', 'i', inline_create, opts('[File] Inline Create'))
         end
 
         require("nvim-tree").setup({

@@ -48,7 +48,7 @@ return {
             vim.keymap.set("n", "gi", function() vim.lsp.buf.implementation() end, opts)
 
             -- Show signature help
-            vim.keymap.set("n", "<C-h>", function() vim.lsp.buf.signature_help() end, opts)
+            vim.keymap.set("n", "<leader>sh", function() vim.lsp.buf.signature_help() end, opts)
 
             -- Rename symbol
             vim.keymap.set("n", "<leader>rn", function() vim.lsp.buf.rename() end, opts)
@@ -231,4 +231,3 @@ return {
         -- ========================================
     end
 }
-

@@ -26,6 +26,10 @@ vim.opt.undofile = true
 vim.opt.hlsearch = false
 vim.opt.incsearch = true
 
+vim.opt.wildmenu = true
+vim.opt.wildmode = "longest:full,full"
+vim.opt.wildoptions = "pum"
+
 vim.opt.shortmess:append("I")
 
 -- Silence deprecation warnings (stops the tailwind-tools/lspconfig flash)

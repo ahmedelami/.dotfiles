@@ -25,15 +25,17 @@ This setup is optimized for extreme performance and true isolation. Every Ghostt
 ### Panes (Ghostty Splits)
 - `CTRL + ;`: Split Pane **Right** (new isolated Tmux session).
 - `CTRL + '`: Split Pane **Down** (new isolated Tmux session).
-- `CTRL + H/J/K/L`: Switch focus between Ghostty Panes.
-- `CTRL + SHIFT + H/J/K/L`: Resize current Pane.
+- `CMD + H/J/K/L`: Switch focus between Ghostty Panes (macOS hide shortcut must be remapped).
+- `CMD + SHIFT + H/J/K/L`: Resize current Pane.
 - `CTRL + Z`: Toggle Pane Zoom.
-- `CTRL + D`: Kill **Entire Pane** (Kills Tmux session and closes the split).
+- `CTRL + D`: Close **Ghostty Pane** (undoable with `CMD + Z`).
 - `CTRL + SHIFT + W`: Kill **Entire Pane**.
 
 ### General
 - `CMD + N`: New Ghostty Window (starts a fresh session).
 - `CTRL + /`: Clear Screen (clears buffer and redraws prompt).
+- `CMD + Z`: Undo close (reopen last closed tab/split/window).
+- `CMD + SHIFT + Z`: Redo close.
 
 ## Design Philosophy
 
