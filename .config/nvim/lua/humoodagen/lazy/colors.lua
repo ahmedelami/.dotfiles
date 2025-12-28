@@ -35,6 +35,16 @@ return {
           GitSignsDelete = { fg = "#cf222e" }, -- Solid Red
           GitSignsTopdelete = { fg = "#cf222e" }, -- Solid Red
           GitSignsChangedelete = { fg = "#cf222e" }, -- Solid Red
+
+          -- VS Code style word-level diff and line number highlights
+          GitSignsAddNr = { fg = "#1a7f37", bold = true },
+          GitSignsChangeNr = { fg = "#cf222e", bold = true },
+          GitSignsDeleteNr = { fg = "#cf222e", bold = true },
+
+          -- Word highlights (the specific characters that changed within a line)
+          GitSignsAddInline = { bg = "#acf2bd" },    -- Light green background
+          GitSignsChangeInline = { bg = "#fdb8c0" }, -- Light red background
+          GitSignsDeleteInline = { bg = "#fdb8c0" }, -- Light red background
         }
       })
       vim.cmd.colorscheme("vscode")

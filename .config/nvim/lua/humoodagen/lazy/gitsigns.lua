@@ -10,6 +10,10 @@ return {
         changedelete = { text = "▎" },
         untracked = { text = "▎" },
       },
+      numhl = true,      -- Highlight line numbers
+      linehl = false,    -- Don't highlight entire line (too noisy with transparency)
+      word_diff = true, -- Highlight changed words (like VS Code)
+      current_line_blame = false,
       on_attach = function(bufnr)
         local gs = package.loaded.gitsigns
 
