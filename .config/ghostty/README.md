@@ -21,12 +21,16 @@ This setup is optimized for extreme performance and true isolation. Every Ghostt
 - `CTRL + T`: New Tab (Tmux window).
 - `CTRL + W`: Close current Tab (Tmux window).
 - `CMD + 1..9`: Switch to Tab index 1..9.
+- `CMD + R`: Toggle Neovim right terminal (pass-through).
+- `CMD + B`: Toggle Neovim bottom terminal (pass-through).
+- `CMD + D`: Toggle Neovim bottom terminal (pass-through).
 
 ### Panes (Ghostty Splits)
 - `CMD + ;`: Split Pane **Right** (new isolated Tmux session).
 - `CMD + '`: Split Pane **Down** (new isolated Tmux session).
-- `CMD + H/J/K/L`: Switch focus between Ghostty Panes (macOS hide shortcut must be remapped).
-- `CMD + SHIFT + H/J/K/L`: Resize current Pane.
+- `CMD + H/J/K/L`: Focus Neovim panels/splits (pass-through).
+- `CMD + SHIFT + H/J/K/L`: Resize Neovim splits (pass-through).
+- `CMD + SHIFT + Up/Down`: Resize Neovim splits (pass-through).
 - `CTRL + Z`: Toggle Pane Zoom.
 - `CTRL + D`: Close **Ghostty Pane** (undoable with `CMD + Z`).
 - `CTRL + SHIFT + W`: Kill **Entire Pane**.
@@ -39,9 +43,11 @@ This setup is optimized for extreme performance and true isolation. Every Ghostt
 
 ## Neovim Cmd Key Passthrough
 
-Some macOS Cmd shortcuts never reach terminal apps. This setup forces `CMD + S` / `CMD + X` into the terminal so Neovim can toggle its terminals.
+Some macOS Cmd shortcuts never reach terminal apps. This setup forces `CMD + R` / `CMD + B` / `CMD + D` into the terminal so Neovim can toggle its terminals.
 
-- Ghostty attempts to send F15/F16 (`\x1b[28~` / `\x1b[29~`) via `super+s` and `super+x`.
+- Ghostty sends F15/F16 (`\x1b[28~` / `\x1b[29~`) via `super+r` and `super+b`.
+- Ghostty sends `CMD+H/J/K/L` as `\x1b[18;3~`..`\x1b[21;3~` for Neovim focus.
+- Ghostty sends xterm-style Shift+Function sequences (`\x1b[18;2~`..`\x1b[24;2~`) via `super+shift+h/j/k/l` and `super+shift+up/down`.
 - On macOS, Ghostty may still emit Shift+F5/Shift+F7 (`^[[15;2~` / `^[[17;2~`). Neovim has fallbacks for these in `~/.config/nvim/lua/humoodagen/lazy/toggleterm.lua`.
 - Verify what Ghostty sends with `cat -v`, then press the keys.
 - If the sequences change, update the Neovim mappings to match.

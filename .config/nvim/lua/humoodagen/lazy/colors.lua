@@ -28,6 +28,9 @@ return {
           NvimTreeNormal = { bg = "NONE" },
           NvimTreeNormalNC = { bg = "NONE" },
           NvimTreeWinSeparator = { fg = "#dbdbdb", bg = "NONE" },
+          WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
+          VertSplit = { fg = "#dbdbdb", bg = "NONE" },
+          WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
 
           -- GitSigns overrides
           GitSignsAdd = { fg = "#1a7f37" }, -- Solid Green

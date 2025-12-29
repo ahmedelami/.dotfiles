@@ -103,7 +103,8 @@ ZSH_THEME="robbyrussell-light"
 plugins=(git direnv)
 
 source $ZSH/oh-my-zsh.sh
-bindkey -v
+# bindkey -v
+bindkey -e
 # Reduce ESC delay when switching vi modes.
 export KEYTIMEOUT=1
 typeset -g _TMUX_VIM_MODE=""
@@ -298,3 +299,8 @@ alias nv="nvim"
 if [ -f "$HOME/.zsh_secrets" ]; then
     source "$HOME/.zsh_secrets"
 fi
+
+# Switchb field lookup helper
+alias fieldfind="/Volumes/t7/repos/work/switchb/analytics-dash/scripts/find-field.sh"
+alias ff="/Volumes/t7/repos/work/switchb/analytics-dash/scripts/find-field.sh"
+export PATH="$(brew --prefix postgresql@16)/bin:$PATH"

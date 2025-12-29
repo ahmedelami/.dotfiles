@@ -37,6 +37,20 @@ vim.g.deprecation_warnings = false
 
 vim.opt.termguicolors = true
 
+vim.opt.fillchars:append({
+    horiz = "-",
+    horizup = "+",
+    horizdown = "+",
+    verthoriz = "+",
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "toggleterm",
+    callback = function()
+        vim.opt_local.statusline = " "
+    end,
+})
+
 vim.opt.scrolloff = 8
 vim.opt.signcolumn = "yes"
 vim.opt.isfname:append("@-@")

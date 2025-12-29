@@ -55,6 +55,50 @@ local function resize_window_any_mode(cmd)
     end)
 end
 
+local function current_toggleterm_direction()
+    local buf = vim.api.nvim_get_current_buf()
+    local term_id = vim.b[buf].toggle_number
+    if not term_id then
+        return nil
+    end
+
+    local ok, term_module = pcall(require, "toggleterm.terminal")
+    if not ok then
+        return nil
+    end
+
+    local term = term_module.get(term_id, true)
+    return term and term.direction or nil
+end
+
+local function resize_for_axis(axis, cmd)
+    local term_direction = current_toggleterm_direction()
+    if term_direction == "vertical" and axis == "horizontal" then
+        return
+    end
+    if term_direction == "horizontal" and axis == "vertical" then
+        return
+    end
+
+    resize_window_any_mode(cmd)
+end
+
+local function resize_left()
+    resize_for_axis("vertical", "vertical resize -5")
+end
+
+local function resize_right()
+    resize_for_axis("vertical", "vertical resize +5")
+end
+
+local function resize_down()
+    resize_for_axis("horizontal", "resize +2")
+end
+
+local function resize_up()
+    resize_for_axis("horizontal", "resize -2")
+end
+
 local all_modes = { "n", "i", "v", "x", "s", "o", "t", "c" }
 vim.keymap.set(all_modes, "<C-f>", "<C-e>", { desc = "Ctrl-E default" })
 vim.keymap.set(all_modes, "<C-e>", toggle_nvim_tree_any_mode, { desc = "Toggle NvimTree" })
@@ -70,6 +114,54 @@ end, { desc = "Resize split down" })
 vim.keymap.set(all_modes, "<C-S-k>", function()
     resize_window_any_mode("resize -2")
 end, { desc = "Resize split up" })
+vim.keymap.set(all_modes, "<F19>", function()
+    resize_left()
+end, { desc = "Resize split left (Cmd+Shift+H)" })
+vim.keymap.set(all_modes, "<F20>", function()
+    resize_down()
+end, { desc = "Resize split down (Cmd+Shift+J)" })
+vim.keymap.set(all_modes, "<F21>", function()
+    resize_up()
+end, { desc = "Resize split up (Cmd+Shift+K)" })
+vim.keymap.set(all_modes, "<F22>", function()
+    resize_right()
+end, { desc = "Resize split right (Cmd+Shift+L)" })
+vim.keymap.set(all_modes, "<F23>", function()
+    resize_up()
+end, { desc = "Resize split up (Cmd+Shift+Up)" })
+vim.keymap.set(all_modes, "<F24>", function()
+    resize_down()
+end, { desc = "Resize split down (Cmd+Shift+Down)" })
+vim.keymap.set(all_modes, "<S-F9>", function()
+    resize_left()
+end, { desc = "Resize split left (Cmd+Shift+H ghostty)" })
+vim.keymap.set(all_modes, "<S-F10>", function()
+    resize_down()
+end, { desc = "Resize split down (Cmd+Shift+J ghostty)" })
+vim.keymap.set(all_modes, "<F11>", function()
+    resize_up()
+end, { desc = "Resize split up (Cmd+Shift+K ghostty)" })
+vim.keymap.set(all_modes, "<F12>", function()
+    resize_right()
+end, { desc = "Resize split right (Cmd+Shift+L ghostty)" })
+
+local esc = "\x1b"
+vim.keymap.set(all_modes, esc .. "[33~", resize_left, { desc = "Resize split left (Cmd+Shift+H raw)" })
+vim.keymap.set(all_modes, esc .. "[34~", resize_down, { desc = "Resize split down (Cmd+Shift+J raw)" })
+vim.keymap.set(all_modes, esc .. "[35~", resize_up, { desc = "Resize split up (Cmd+Shift+K raw)" })
+vim.keymap.set(all_modes, esc .. "[36~", resize_right, { desc = "Resize split right (Cmd+Shift+L raw)" })
+vim.keymap.set(all_modes, esc .. "[37~", resize_up, { desc = "Resize split up (Cmd+Shift+Up raw)" })
+vim.keymap.set(all_modes, esc .. "[38~", resize_down, { desc = "Resize split down (Cmd+Shift+Down raw)" })
+vim.keymap.set(all_modes, "<S-Left>", resize_left, { desc = "Resize split left (Cmd+Shift+H)" })
+vim.keymap.set(all_modes, "<S-Down>", resize_down, { desc = "Resize split down (Cmd+Shift+J)" })
+vim.keymap.set(all_modes, "<S-Up>", resize_up, { desc = "Resize split up (Cmd+Shift+K)" })
+vim.keymap.set(all_modes, "<S-Right>", resize_right, { desc = "Resize split right (Cmd+Shift+L)" })
+vim.keymap.set(all_modes, esc .. "[18;2~", resize_left, { desc = "Resize split left (Cmd+Shift+H xterm)" })
+vim.keymap.set(all_modes, esc .. "[19;2~", resize_down, { desc = "Resize split down (Cmd+Shift+J xterm)" })
+vim.keymap.set(all_modes, esc .. "[20;2~", resize_left, { desc = "Resize split left (Cmd+Shift+H xterm)" })
+vim.keymap.set(all_modes, esc .. "[21;2~", resize_down, { desc = "Resize split down (Cmd+Shift+J xterm)" })
+vim.keymap.set(all_modes, esc .. "[23;2~", resize_up, { desc = "Resize split up (Cmd+Shift+Up xterm)" })
+vim.keymap.set(all_modes, esc .. "[24;2~", resize_down, { desc = "Resize split down (Cmd+Shift+Down xterm)" })
 
 -- Set the width of a hard tabstop
 vim.opt.tabstop = 4

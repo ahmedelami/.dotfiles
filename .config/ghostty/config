@@ -17,7 +17,7 @@ macos-titlebar-style = hidden
 window-padding-x = 0
 window-padding-y = 0
 confirm-close-surface = false
-window-save-state = always
+window-save-state = never
 
 # Hide Native Tabs (We use Tmux for tabs)
 window-show-tab-bar = never
@@ -38,32 +38,44 @@ keybind = ctrl+q=close_surface
 # CTRL+SHIFT+W kills the entire Ghostty pane (and the tmux session with it)
 keybind = ctrl+shift+w=close_surface
 
-# Pass CMD+S/CMD+X through to the terminal as F15/F16 for Neovim
-keybind = super+s=unbind
-keybind = super+x=unbind
-keybind = super+s=text:\x1b[28~
-keybind = super+x=text:\x1b[29~
+# Cmd+D toggles Neovim bottom terminal (same as Cmd+B); disable split default.
+keybind = super+d=unbind
+keybind = super+d=text:\x1b[29~
+keybind = super+shift+d=unbind
+
+# Pass CMD+R/CMD+B through to the terminal as F15/F16 for Neovim
+keybind = super+r=unbind
+keybind = super+b=unbind
+keybind = super+r=text:\x1b[28~
+keybind = super+b=text:\x1b[29~
+
+# Pass CMD+H/J/K/L through for Neovim focus
+keybind = super+h=unbind
+keybind = super+j=unbind
+keybind = super+k=unbind
+keybind = super+l=unbind
+keybind = super+h=text:\x1b[18;3~
+keybind = super+j=text:\x1b[19;3~
+keybind = super+k=text:\x1b[20;3~
+keybind = super+l=text:\x1b[21;3~
+
+# Pass CMD+SHIFT+H/J/K/L and CMD+SHIFT+Up/Down through for Neovim split resizing
+keybind = super+shift+h=unbind
+keybind = super+shift+j=unbind
+keybind = super+shift+k=unbind
+keybind = super+shift+l=unbind
+keybind = super+shift+up=unbind
+keybind = super+shift+down=unbind
+keybind = super+shift+h=text:\x1b[18;2~
+keybind = super+shift+j=text:\x1b[19;2~
+keybind = super+shift+k=text:\x1b[20;2~
+keybind = super+shift+l=text:\x1b[21;2~
+keybind = super+shift+up=text:\x1b[23;2~
+keybind = super+shift+down=text:\x1b[24;2~
 
 # CTRL+D closes the Ghostty surface (undoable via CMD+Z)
 keybind = ctrl+d=close_surface
 
-# CMD+; and CMD+' for Ghostty-level Splits (Isolated Tmux sessions)
-keybind = cmd+semicolon=new_split:right
-keybind = cmd+apostrophe=new_split:down
-keybind = ctrl+z=toggle_split_zoom
-
-# Navigation between Ghostty Panes
-# Note: macOS Cmd+H hides apps by default; remap "Hide Ghostty" in System Settings
-keybind = cmd+h=goto_split:left
-keybind = cmd+j=goto_split:down
-keybind = cmd+k=goto_split:up
-keybind = cmd+l=goto_split:right
-
-# Resizing Ghostty Panes
-keybind = cmd+shift+h=resize_split:left,120
-keybind = cmd+shift+j=resize_split:down,120
-keybind = cmd+shift+k=resize_split:up,120
-keybind = cmd+shift+l=resize_split:right,120
 
 # Switch Tmux Windows (Tabs) within the focused pane
 # Explicitly unbind native Ghostty goto_tab to prevent conflicts
