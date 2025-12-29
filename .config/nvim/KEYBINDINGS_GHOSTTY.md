@@ -29,6 +29,8 @@ Because Neovim translates the sequence, the working fix was to map **both**
 the raw sequence **and** the translated keycodes. See:
 `~/.dotfiles/.config/nvim/lua/humoodagen/remap.lua`.
 
+NvimTree undo behavior is documented in `~/.dotfiles/.config/nvim/NVIM_TREE_UNDO.md`.
+
 ### Cmd+D / Cmd+R (toggle terminals)
 
 These have appeared as Shift+Function key sequences in Ghostty:
