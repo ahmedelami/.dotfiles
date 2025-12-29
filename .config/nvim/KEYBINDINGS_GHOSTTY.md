@@ -27,7 +27,7 @@ Neovim (`:lua print(vim.fn.keytrans(vim.fn.getcharstr()))`):
 
 Because Neovim translates the sequence, the working fix was to map **both**
 the raw sequence **and** the translated keycodes. See:
-`~/.dotfiles/.config/nvim/lua/humoodagen/lazy/toggleterm.lua`.
+`~/.dotfiles/.config/nvim/lua/humoodagen/remap.lua`.
 
 ### Cmd+D / Cmd+R (toggle terminals)
 

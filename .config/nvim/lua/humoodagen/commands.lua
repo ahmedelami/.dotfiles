@@ -107,6 +107,4 @@ local function cmdline_new_or_execute()
     return termcodes("<CR>")
 end
 
-vim.keymap.set("c", "<CR>", cmdline_new_or_execute, { expr = true })
-
 return M

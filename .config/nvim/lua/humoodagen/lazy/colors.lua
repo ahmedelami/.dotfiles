@@ -32,6 +32,11 @@ return {
           VertSplit = { fg = "#dbdbdb", bg = "NONE" },
           WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
 
+          CursorNormal = { fg = "#ffffff", bg = "#f28c28" },
+          CursorInsert = { fg = "#ffffff", bg = "#000000" },
+          CursorVisual = { fg = "#ffffff", bg = "#7a4cff" },
+          CursorReplace = { fg = "#ffffff", bg = "#cf222e" },
+
           -- GitSigns overrides
           GitSignsAdd = { fg = "#1a7f37" }, -- Solid Green
           GitSignsChange = { fg = "#cf222e" }, -- Solid Red (Changed from brown)

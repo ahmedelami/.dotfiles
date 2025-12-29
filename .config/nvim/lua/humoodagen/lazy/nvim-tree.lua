@@ -18,6 +18,9 @@ return {
             vim.keymap.set('n', 'l', api.node.open.edit, opts('[Nav] Open/Expand'))
             vim.keymap.set('n', 'h', function()
                 local node = api.tree.get_node_under_cursor()
+                if not node then
+                    return
+                end
                 if node.type == 'directory' and node.open then
                     api.node.open.edit()
                 else
@@ -184,6 +187,49 @@ return {
             },
         })
 
+        local function is_main_edit_win(win)
+            if not (win and vim.api.nvim_win_is_valid(win)) then
+                return false
+            end
+
+            local buf = vim.api.nvim_win_get_buf(win)
+            local buftype = vim.bo[buf].buftype
+            local filetype = vim.bo[buf].filetype
+            if filetype == "NvimTree" or filetype == "toggleterm" then
+                return false
+            end
+            if buftype == "terminal" or buftype == "nofile" or buftype == "help" then
+                return false
+            end
+            local cfg = vim.api.nvim_win_get_config(win)
+            if cfg.relative ~= "" then
+                return false
+            end
+            return true
+        end
+
+        local function ensure_main_edit_win()
+            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                if is_main_edit_win(win) then
+                    return
+                end
+            end
+
+            local view = require("nvim-tree.view")
+            local tree_win = view.get_winnr()
+            if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+                return
+            end
+
+            vim.api.nvim_set_current_win(tree_win)
+            vim.cmd("vsplit")
+            local new_win = vim.api.nvim_get_current_win()
+            vim.cmd("enew")
+            if vim.api.nvim_win_is_valid(tree_win) then
+                vim.api.nvim_set_current_win(tree_win)
+            end
+        end
+
         vim.keymap.set("n", "<leader>pe", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle NvimTree" })
         vim.keymap.set("n", "<leader>pv", "<cmd>NvimTreeFindFileToggle<CR>", { desc = "NvimTree Find File" })
 
@@ -206,8 +252,13 @@ return {
 
             -- open the tree
             require("nvim-tree.api").tree.open()
+            ensure_main_edit_win()
         end
 
         vim.api.nvim_create_autocmd({ "VimEnter" }, { callback = open_nvim_tree })
+        vim.api.nvim_create_autocmd("FileType", {
+            pattern = "NvimTree",
+            callback = ensure_main_edit_win,
+        })
     end,
 }

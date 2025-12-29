@@ -1,11 +1,21 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
-vim.opt.guicursor = ""
+vim.opt.guicursor = table.concat({
+    "n-v-c:block-CursorNormal",
+    "i-ci:block-CursorInsert",
+    "r-cr:block-CursorReplace",
+    "o:block-CursorNormal",
+    "v-ve:block-CursorVisual",
+    "sm:block-CursorNormal",
+    "t:block-CursorInsert",
+}, ",")
 
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.cursorline = true
+vim.opt.splitright = true
+vim.opt.splitbelow = true
 
 vim.opt.tabstop = 4
 vim.opt.softtabstop = 4
@@ -31,6 +41,9 @@ vim.opt.wildmode = "longest:full,full"
 vim.opt.wildoptions = "pum"
 
 vim.opt.shortmess:append("I")
+
+vim.opt.cmdheight = 0
+vim.opt.laststatus = 0
 
 -- Silence deprecation warnings (stops the tailwind-tools/lspconfig flash)
 vim.g.deprecation_warnings = false

@@ -54,7 +54,7 @@ return {
             local buf = vim.api.nvim_win_get_buf(win)
             local buftype = vim.bo[buf].buftype
             local filetype = vim.bo[buf].filetype
-            if buftype == "terminal" or filetype == "toggleterm" then
+            if buftype == "terminal" or filetype == "toggleterm" or filetype == "NvimTree" then
                 return false
             end
             local cfg = vim.api.nvim_win_get_config(win)
@@ -303,23 +303,12 @@ return {
             toggle_terminal(right_term, { prefer_main = true })
         end, { desc = "Toggle right terminal (Cmd+R)" })
 
-        local esc = "\x1b"
-        vim.keymap.set(all_modes, "<D-h>", focus_left, { desc = "Focus left (Cmd+H)" })
-        vim.keymap.set(all_modes, "<D-j>", focus_down, { desc = "Focus down (Cmd+J)" })
-        vim.keymap.set(all_modes, "<D-k>", focus_up, { desc = "Focus up (Cmd+K)" })
-        vim.keymap.set(all_modes, "<D-l>", focus_right, { desc = "Focus right (Cmd+L)" })
-        vim.keymap.set(all_modes, "<F55>", focus_left, { desc = "Focus left (Cmd+H ghostty)" })
-        vim.keymap.set(all_modes, "<F56>", focus_down, { desc = "Focus down (Cmd+J ghostty)" })
-        vim.keymap.set(all_modes, "<F57>", focus_up, { desc = "Focus up (Cmd+K ghostty)" })
-        vim.keymap.set(all_modes, "<F58>", focus_right, { desc = "Focus right (Cmd+L ghostty)" })
-        vim.keymap.set(all_modes, esc .. "[18;3~", focus_left, { desc = "Focus left (Cmd+H ghostty)" })
-        vim.keymap.set(all_modes, esc .. "[19;3~", focus_down, { desc = "Focus down (Cmd+J ghostty)" })
-        vim.keymap.set(all_modes, esc .. "[20;3~", focus_up, { desc = "Focus up (Cmd+K ghostty)" })
-        vim.keymap.set(all_modes, esc .. "[21;3~", focus_right, { desc = "Focus right (Cmd+L ghostty)" })
-        vim.keymap.set(all_modes, esc .. "[18;9~", focus_left, { desc = "Focus left (Cmd+H ghostty fallback)" })
-        vim.keymap.set(all_modes, esc .. "[19;9~", focus_down, { desc = "Focus down (Cmd+J ghostty fallback)" })
-        vim.keymap.set(all_modes, esc .. "[20;9~", focus_up, { desc = "Focus up (Cmd+K ghostty fallback)" })
-        vim.keymap.set(all_modes, esc .. "[21;9~", focus_right, { desc = "Focus right (Cmd+L ghostty fallback)" })
+        _G.ToggletermNav = {
+            focus_left = focus_left,
+            focus_down = focus_down,
+            focus_up = focus_up,
+            focus_right = focus_right,
+        }
 
         vim.api.nvim_create_autocmd("FileType", {
             pattern = "toggleterm",

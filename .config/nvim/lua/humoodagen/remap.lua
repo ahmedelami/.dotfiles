@@ -146,6 +146,54 @@ vim.keymap.set(all_modes, "<F12>", function()
 end, { desc = "Resize split right (Cmd+Shift+L ghostty)" })
 
 local esc = "\x1b"
+
+local function call_toggleterm_nav(action)
+    local nav = _G.ToggletermNav
+    if not nav then
+        local ok_lazy, lazy = pcall(require, "lazy")
+        if ok_lazy then
+            lazy.load({ plugins = { "toggleterm.nvim" } })
+        end
+        nav = _G.ToggletermNav
+    end
+    if nav and nav[action] then
+        nav[action]()
+    end
+end
+
+local nav_modes = { "n", "i", "v", "x", "s", "o", "c" }
+local nav_terminal_mode = { "t" }
+
+local function map_nav(lhs, action, desc)
+    vim.keymap.set(nav_modes, lhs, function()
+        call_toggleterm_nav(action)
+    end, { desc = desc })
+
+    vim.keymap.set(nav_terminal_mode, lhs, function()
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+        vim.schedule(function()
+            call_toggleterm_nav(action)
+        end)
+    end, { desc = desc })
+end
+
+map_nav("<D-h>", "focus_left", "Focus left (Cmd+H)")
+map_nav("<D-j>", "focus_down", "Focus down (Cmd+J)")
+map_nav("<D-k>", "focus_up", "Focus up (Cmd+K)")
+map_nav("<D-l>", "focus_right", "Focus right (Cmd+L)")
+map_nav("<F55>", "focus_left", "Focus left (Cmd+H ghostty)")
+map_nav("<F56>", "focus_down", "Focus down (Cmd+J ghostty)")
+map_nav("<F57>", "focus_up", "Focus up (Cmd+K ghostty)")
+map_nav("<F58>", "focus_right", "Focus right (Cmd+L ghostty)")
+map_nav(esc .. "[18;3~", "focus_left", "Focus left (Cmd+H ghostty raw)")
+map_nav(esc .. "[19;3~", "focus_down", "Focus down (Cmd+J ghostty raw)")
+map_nav(esc .. "[20;3~", "focus_up", "Focus up (Cmd+K ghostty raw)")
+map_nav(esc .. "[21;3~", "focus_right", "Focus right (Cmd+L ghostty raw)")
+map_nav(esc .. "[18;9~", "focus_left", "Focus left (Cmd+H ghostty fallback)")
+map_nav(esc .. "[19;9~", "focus_down", "Focus down (Cmd+J ghostty fallback)")
+map_nav(esc .. "[20;9~", "focus_up", "Focus up (Cmd+K ghostty fallback)")
+map_nav(esc .. "[21;9~", "focus_right", "Focus right (Cmd+L ghostty fallback)")
+
 vim.keymap.set(all_modes, esc .. "[33~", resize_left, { desc = "Resize split left (Cmd+Shift+H raw)" })
 vim.keymap.set(all_modes, esc .. "[34~", resize_down, { desc = "Resize split down (Cmd+Shift+J raw)" })
 vim.keymap.set(all_modes, esc .. "[35~", resize_up, { desc = "Resize split up (Cmd+Shift+K raw)" })
