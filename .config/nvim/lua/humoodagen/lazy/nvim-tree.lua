@@ -155,7 +155,7 @@ return {
                 timeout = 400,
             },
             view = {
-                width = 30,
+                width = "15%",
             },
             renderer = {
                 group_empty = true,
@@ -259,6 +259,11 @@ return {
             vim.cmd("enew")
             if vim.api.nvim_win_is_valid(tree_win) then
                 vim.api.nvim_set_current_win(tree_win)
+            end
+
+            local ok_api, api = pcall(require, "nvim-tree.api")
+            if ok_api then
+                api.tree.resize()
             end
         end
 

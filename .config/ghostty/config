@@ -30,6 +30,9 @@ command = /bin/zsh -l -c "/Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh"
 
 # CTRL+T sends Prefix + t (New Tmux Window/Tab)
 keybind = ctrl+t=text:\x02t
+# CMD+T sends Prefix + t so Neovim can open terminal tabs
+keybind = super+t=unbind
+keybind = super+t=text:\x02t
 # CTRL+W is unbound so it can delete words in the shell/readline
 keybind = ctrl+w=unbind
 # CTRL+Q kills the entire Ghostty pane (and the tmux session with it)
@@ -38,16 +41,14 @@ keybind = ctrl+q=close_surface
 # CTRL+SHIFT+W kills the entire Ghostty pane (and the tmux session with it)
 keybind = ctrl+shift+w=close_surface
 
-# Cmd+D toggles Neovim bottom terminal (same as Cmd+B); disable split default.
+# Cmd+D toggles Neovim bottom terminal; disable split default.
 keybind = super+d=unbind
-keybind = super+d=text:\x1b[29~
+keybind = super+d=text:\x1b[19;2~
 keybind = super+shift+d=unbind
 
-# Pass CMD+R/CMD+B through to the terminal as F15/F16 for Neovim
-keybind = super+r=unbind
+# Cmd+B / Cmd+R are intentionally unused (pane toggles are Cmd+Shift+H/J/K/L).
 keybind = super+b=unbind
-keybind = super+r=text:\x1b[28~
-keybind = super+b=text:\x1b[29~
+keybind = super+r=unbind
 
 # Pass CMD+H/J/K/L through for Neovim focus
 keybind = super+h=unbind
@@ -59,7 +60,7 @@ keybind = super+j=text:\x1b[19;3~
 keybind = super+k=text:\x1b[20;3~
 keybind = super+l=text:\x1b[21;3~
 
-# Pass CMD+SHIFT+H/J/K/L and CMD+SHIFT+Up/Down through for Neovim split resizing
+# Pass CMD+SHIFT+H/J/K/L through for Neovim pane toggles
 keybind = super+shift+h=unbind
 keybind = super+shift+j=unbind
 keybind = super+shift+k=unbind
@@ -73,8 +74,18 @@ keybind = super+shift+l=text:\x1b[21;2~
 keybind = super+shift+up=text:\x1b[23;2~
 keybind = super+shift+down=text:\x1b[24;2~
 
-# CTRL+D closes the Ghostty surface (undoable via CMD+Z)
-keybind = ctrl+d=close_surface
+# Pass CMD+CTRL+H/J/K/L through for Neovim split resizing
+keybind = super+ctrl+h=unbind
+keybind = super+ctrl+j=unbind
+keybind = super+ctrl+k=unbind
+keybind = super+ctrl+l=unbind
+keybind = super+ctrl+h=text:\x1b[18;5~
+keybind = super+ctrl+j=text:\x1b[19;5~
+keybind = super+ctrl+k=text:\x1b[20;5~
+keybind = super+ctrl+l=text:\x1b[21;5~
+
+# CTRL+D should be passed through so shells/Neovim can handle it (e.g. exit).
+keybind = ctrl+d=text:\x04
 
 
 # Switch Tmux Windows (Tabs) within the focused pane

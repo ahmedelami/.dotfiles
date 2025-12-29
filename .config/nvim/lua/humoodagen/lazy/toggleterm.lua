@@ -20,8 +20,222 @@ return {
         local term_module = require("toggleterm.terminal")
         local ui = require("toggleterm.ui")
         local Terminal = term_module.Terminal
-        local bottom_term = Terminal:new({ direction = "horizontal", hidden = true })
-        local right_term = Terminal:new({ direction = "vertical", hidden = true })
+        local term_sets = {
+            horizontal = { terms = {}, current = 1 },
+            vertical = { terms = {}, current = 1 },
+        }
+        local base_laststatus = vim.o.laststatus
+        local base_statusline = vim.go.statusline
+
+        local function restore_term_mode(term)
+            local buf = vim.api.nvim_get_current_buf()
+            if vim.bo[buf].filetype ~= "toggleterm" then
+                return
+            end
+
+            local desired = vim.b[buf].humoodagen_term_mode
+            if type(desired) ~= "string" or desired == "" then
+                desired = "t"
+            end
+
+            local want_job = desired:sub(1, 1) == "t"
+            local mode = vim.api.nvim_get_mode().mode
+            if want_job then
+                if mode ~= "t" then
+                    vim.schedule(function()
+                        vim.cmd("startinsert")
+                    end)
+                end
+                return
+            end
+
+            if mode == "t" then
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+            end
+        end
+
+        local function set_toggleterm_status_hl()
+            vim.api.nvim_set_hl(0, "HumoodagenToggletermTabActive", { fg = "#ffffff", bg = "#005eff", bold = true })
+            vim.api.nvim_set_hl(0, "HumoodagenToggletermTabInactive", { fg = "#000000", bg = "#d6d6d6", bold = true })
+        end
+
+        set_toggleterm_status_hl()
+        vim.api.nvim_create_autocmd("ColorScheme", {
+            callback = function()
+                set_toggleterm_status_hl()
+            end,
+        })
+
+        local function any_toggleterm_window()
+            for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+                for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+                    local buf = vim.api.nvim_win_get_buf(win)
+                    if vim.bo[buf].filetype == "toggleterm" then
+                        return true
+                    end
+                end
+            end
+            return false
+        end
+
+        local function update_laststatus()
+            local buf = vim.api.nvim_get_current_buf()
+            local is_toggleterm = vim.bo[buf].filetype == "toggleterm"
+            if is_toggleterm or any_toggleterm_window() then
+                vim.o.laststatus = 2
+                vim.go.statusline = " "
+            else
+                vim.o.laststatus = base_laststatus
+                vim.go.statusline = base_statusline
+            end
+        end
+
+        local function ensure_term_set(direction)
+            local set = term_sets[direction]
+            if not set then
+                set = { terms = {}, current = 1 }
+                term_sets[direction] = set
+            end
+            return set
+        end
+
+        local function remove_term_from_set(term)
+            if not term or not term.direction then
+                return
+            end
+
+            local set = term_sets[term.direction]
+            if not set then
+                return
+            end
+
+            for idx, t in ipairs(set.terms) do
+                if t == term or (t.id and term.id and t.id == term.id) then
+                    table.remove(set.terms, idx)
+                    if set.current > idx then
+                        set.current = set.current - 1
+                    elseif set.current == idx then
+                        if #set.terms == 0 then
+                            set.current = 1
+                        elseif idx > #set.terms then
+                            set.current = #set.terms
+                        else
+                            set.current = idx
+                        end
+                    end
+                    return
+                end
+            end
+        end
+
+        local open_or_focus_term = nil
+
+        local function attach_tab_lifecycle(term)
+            if not term or term.__humoodagen_tab_lifecycle then
+                return term
+            end
+
+            term.__humoodagen_tab_lifecycle = true
+            local prev_on_exit = term.on_exit
+
+            term.on_exit = function(t, job, exit_code, name)
+                local was_current = t.bufnr and vim.api.nvim_get_current_buf() == t.bufnr
+                local direction = t.direction
+
+                if prev_on_exit then
+                    pcall(prev_on_exit, t, job, exit_code, name)
+                end
+
+                vim.schedule(function()
+                    remove_term_from_set(t)
+                    local set = direction and term_sets[direction] or nil
+                    if was_current and set and #set.terms > 0 and open_or_focus_term then
+                        local next_term = set.terms[set.current] or set.terms[1]
+                        if next_term then
+                            open_or_focus_term(next_term)
+                        end
+                    end
+                    vim.cmd("redrawstatus")
+                    update_laststatus()
+                end)
+            end
+
+            return term
+        end
+
+        local function create_term(direction)
+            return attach_tab_lifecycle(Terminal:new({ direction = direction, hidden = true }))
+        end
+
+        local function ensure_first_term(direction)
+            local set = ensure_term_set(direction)
+            if #set.terms == 0 then
+                table.insert(set.terms, create_term(direction))
+                set.current = 1
+            end
+            return set
+        end
+
+        local function current_term(direction)
+            local set = ensure_first_term(direction)
+            local index = set.current or 1
+            if index < 1 then
+                index = 1
+            end
+            if index > #set.terms then
+                index = #set.terms
+            end
+            set.current = index
+            return set.terms[index]
+        end
+
+        local function new_term_tab_for_direction(direction)
+            local set = ensure_first_term(direction)
+            local term = create_term(direction)
+            table.insert(set.terms, term)
+            set.current = #set.terms
+            return term
+        end
+
+        local function term_tab_at(direction, index)
+            local set = ensure_first_term(direction)
+            if not index or index < 1 or index > #set.terms then
+                return nil
+            end
+            set.current = index
+            return set.terms[index]
+        end
+
+        local function current_toggleterm()
+            local buf = vim.api.nvim_get_current_buf()
+            if vim.bo[buf].filetype ~= "toggleterm" then
+                return nil
+            end
+            local term_id = vim.b[buf].toggle_number
+            if not term_id then
+                return nil
+            end
+            return term_module.get(term_id, true)
+        end
+
+        local function sync_current_term_from_buf()
+            local term = current_toggleterm()
+            if not term or not term.direction then
+                return
+            end
+
+            attach_tab_lifecycle(term)
+            local set = ensure_term_set(term.direction)
+            for idx, t in ipairs(set.terms) do
+                if t == term or (t.id and term.id and t.id == term.id) then
+                    set.current = idx
+                    return
+                end
+            end
+
+            table.insert(set.terms, term)
+            set.current = #set.terms
+        end
 
         local function with_directional_open_windows(direction, fn)
             local original = ui.find_open_windows
@@ -77,12 +291,21 @@ return {
             end,
         })
 
-        vim.api.nvim_create_autocmd("BufEnter", {
+        vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
             group = nav_group,
             callback = function()
                 local buf = vim.api.nvim_get_current_buf()
                 if vim.bo[buf].filetype == "toggleterm" then
-                    vim.cmd("startinsert")
+                    sync_current_term_from_buf()
+                    vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
+                    vim.opt_local.winbar = ""
+                    vim.schedule(update_laststatus)
+                    local stored = vim.b[buf].humoodagen_term_mode
+                    if type(stored) ~= "string" or stored == "" then
+                        vim.b[buf].humoodagen_term_mode = "t"
+                    end
+                    local term = current_toggleterm()
+                    restore_term_mode(term)
                 end
             end,
         })
@@ -96,9 +319,77 @@ return {
             return nil
         end
 
+        local function find_tree_win()
+            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                local buf = vim.api.nvim_win_get_buf(win)
+                if vim.bo[buf].filetype == "NvimTree" then
+                    return win
+                end
+            end
+            return nil
+        end
+
+        local function ensure_main_win()
+            local existing = find_main_win()
+            if existing and vim.api.nvim_win_is_valid(existing) then
+                last_main_win = existing
+                return existing
+            end
+
+            local wins = vim.api.nvim_tabpage_list_wins(0)
+            if #wins == 0 then
+                return nil
+            end
+
+            local anchor = find_tree_win() or wins[1]
+            if anchor and vim.api.nvim_win_is_valid(anchor) then
+                vim.api.nvim_set_current_win(anchor)
+            end
+
+            vim.cmd("vsplit")
+            vim.cmd("enew")
+            local new_win = vim.api.nvim_get_current_win()
+            last_main_win = new_win
+            return new_win
+        end
+
+        local function safe_close_term(term)
+            if not term or not term.is_open or not term:is_open() then
+                return
+            end
+
+            local origin_tab = vim.api.nvim_get_current_tabpage()
+            local origin_win = vim.api.nvim_get_current_win()
+            ui.set_origin_window()
+
+            local win = term.window
+            if win and vim.api.nvim_win_is_valid(win) then
+                local tab = vim.api.nvim_win_get_tabpage(win)
+                local wins = vim.api.nvim_tabpage_list_wins(tab)
+                if #wins <= 1 then
+                    vim.api.nvim_set_current_tabpage(tab)
+                    vim.api.nvim_set_current_win(win)
+                    vim.cmd("vsplit")
+                    vim.cmd("enew")
+                    last_main_win = vim.api.nvim_get_current_win()
+                    vim.api.nvim_set_current_tabpage(origin_tab)
+                    if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+                        vim.api.nvim_set_current_win(origin_win)
+                    end
+                end
+            end
+
+            pcall(function()
+                term:close()
+            end)
+        end
+
         local function open_horizontal_in_main(term)
             local size = ui._resolve_size(ui.get_size(nil, term.direction), term)
             local target_win = find_main_win()
+            if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
+                target_win = ensure_main_win()
+            end
             if target_win and vim.api.nvim_win_is_valid(target_win) then
                 vim.api.nvim_set_current_win(target_win)
             end
@@ -126,8 +417,17 @@ return {
 
         local function toggle_bottom_terminal(term)
             if term:is_open() then
-                term:close()
+                safe_close_term(term)
                 return
+            end
+
+            local set = term_sets[term.direction]
+            if set then
+                for _, other in pairs(set.terms) do
+                    if other ~= term and other:is_open() then
+                        safe_close_term(other)
+                    end
+                end
             end
 
             open_horizontal_in_main(term)
@@ -142,16 +442,32 @@ return {
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
             end
 
-            local target_win = nil
-            if opts and opts.prefer_main then
-                target_win = find_main_win()
-            end
+            local should_open = not term:is_open()
 
             vim.schedule(function()
-                if target_win and vim.api.nvim_win_is_valid(target_win) then
-                    vim.api.nvim_set_current_win(target_win)
+                if opts and opts.prefer_main then
+                    local target = last_main_win
+                    if not (target and vim.api.nvim_win_is_valid(target) and is_main_win(target)) then
+                        target = find_main_win()
+                    end
+                    if not (target and vim.api.nvim_win_is_valid(target)) then
+                        target = ensure_main_win()
+                    end
+                    if target and vim.api.nvim_win_is_valid(target) then
+                        vim.api.nvim_set_current_win(target)
+                    end
                 end
                 local direction = term.direction
+                if should_open then
+                    local set = term_sets[direction]
+                    if set then
+                        for _, other in pairs(set.terms) do
+                            if other ~= term and other:is_open() then
+                                safe_close_term(other)
+                            end
+                        end
+                    end
+                end
                 if direction then
                     with_directional_open_windows(direction, function()
                         term:toggle()
@@ -165,12 +481,30 @@ return {
         local function run_in_normal(fn)
             local mode = vim.api.nvim_get_mode().mode
             local mode_prefix = mode:sub(1, 1)
+            local was_term_job = mode_prefix == "t"
             if mode_prefix == "t" then
+                local buf = vim.api.nvim_get_current_buf()
+                if vim.bo[buf].filetype == "toggleterm" then
+                    vim.b[buf].humoodagen_term_mode = "t"
+                end
+                vim.g.humoodagen_suppress_toggleterm_mode_capture = (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
             elseif mode_prefix == "c" then
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
             end
-            vim.schedule(fn)
+            vim.schedule(function()
+                local ok, err = pcall(fn)
+                if was_term_job then
+                    local buf = vim.api.nvim_get_current_buf()
+                    if vim.bo[buf].filetype == "toggleterm" then
+                        vim.cmd("startinsert")
+                    end
+                    vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
+                end
+                if not ok then
+                    error(err)
+                end
+            end)
         end
 
         local function focus_main_win()
@@ -186,13 +520,19 @@ return {
                 return true
             end
 
+            target = ensure_main_win()
+            if target and vim.api.nvim_win_is_valid(target) then
+                vim.api.nvim_set_current_win(target)
+                return true
+            end
+
             return false
         end
 
         local function focus_term_window(term)
             if term.window and vim.api.nvim_win_is_valid(term.window) then
                 vim.api.nvim_set_current_win(term.window)
-                vim.cmd("startinsert")
+                restore_term_mode(term)
                 return true
             end
 
@@ -200,7 +540,7 @@ return {
                 for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
                     if vim.api.nvim_win_get_buf(win) == term.bufnr then
                         vim.api.nvim_set_current_win(win)
-                        vim.cmd("startinsert")
+                        restore_term_mode(term)
                         return true
                     end
                 end
@@ -209,112 +549,342 @@ return {
             return false
         end
 
+        open_or_focus_term = function(term)
+            if focus_term_window(term) then
+                vim.cmd("redrawstatus")
+                return
+            end
+
+            local set = term_sets[term.direction]
+            if set then
+                for _, other in pairs(set.terms) do
+                    if other ~= term and other:is_open() then
+                        safe_close_term(other)
+                    end
+                end
+            end
+
+            if term.direction == "horizontal" then
+                open_horizontal_in_main(term)
+            elseif term.direction == "vertical" then
+                focus_main_win()
+
+                with_directional_open_windows("vertical", function()
+                    term:open()
+                end)
+            else
+                term:open()
+            end
+
+            restore_term_mode(term)
+            vim.cmd("redrawstatus")
+        end
+
         local function open_or_focus_bottom()
             run_in_normal(function()
-                if focus_term_window(bottom_term) then
-                    return
-                end
-
-                open_horizontal_in_main(bottom_term)
-                vim.cmd("startinsert")
+                open_or_focus_term(current_term("horizontal"))
             end)
         end
 
         local function open_or_focus_right()
             run_in_normal(function()
-                if focus_term_window(right_term) then
+                open_or_focus_term(current_term("vertical"))
+            end)
+        end
+
+        local function new_term_tab()
+            run_in_normal(function()
+                local term = current_toggleterm()
+                if not term or not term.direction then
+                    return
+                end
+                local new_term = new_term_tab_for_direction(term.direction)
+                open_or_focus_term(new_term)
+                vim.cmd("redrawstatus")
+            end)
+        end
+
+        local function switch_term_tab(index)
+            run_in_normal(function()
+                local term = current_toggleterm()
+                if not term or not term.direction then
+                    return
+                end
+                local target = term_tab_at(term.direction, index)
+                if not target then
+                    return
+                end
+                open_or_focus_term(target)
+                vim.cmd("redrawstatus")
+            end)
+        end
+
+        local main_only_state = nil
+
+        local function any_term_open(direction)
+            local set = term_sets[direction]
+            if not set then
+                return false
+            end
+            for _, t in ipairs(set.terms) do
+                if t and t:is_open() then
+                    return true
+                end
+            end
+            return false
+        end
+
+        local function close_terms(direction)
+            local set = term_sets[direction]
+            if not set then
+                return
+            end
+            for _, t in ipairs(set.terms) do
+                if t and t:is_open() then
+                    safe_close_term(t)
+                end
+            end
+        end
+
+        local function toggle_main_only()
+            run_in_normal(function()
+                focus_main_win()
+                local ok_tree, tree = pcall(require, "nvim-tree.api")
+                local tree_visible = ok_tree and tree.tree.is_visible() or false
+                local bottom_open = any_term_open("horizontal")
+                local right_open = any_term_open("vertical")
+
+                if not main_only_state then
+                    main_only_state = {
+                        tree = tree_visible,
+                        bottom = bottom_open,
+                        right = right_open,
+                    }
+
+                    if ok_tree and tree_visible then
+                        tree.tree.close()
+                    end
+                    close_terms("horizontal")
+                    close_terms("vertical")
+                    focus_main_win()
+                    vim.cmd("redrawstatus")
                     return
                 end
 
-                local target = last_main_win
-                if not (target and vim.api.nvim_win_is_valid(target)) then
-                    target = find_main_win()
+                local state = main_only_state
+                main_only_state = nil
+
+                if ok_tree and state.tree then
+                    tree.tree.open({ focus = false })
                 end
-                if target and vim.api.nvim_win_is_valid(target) then
-                    vim.api.nvim_set_current_win(target)
+                if state.bottom then
+                    toggle_bottom_terminal(current_term("horizontal"))
                 end
+                if state.right then
+                    toggle_terminal(current_term("vertical"), { prefer_main = true })
+                end
+
+                focus_main_win()
+                vim.cmd("redrawstatus")
+            end)
+        end
+
+        _G.HumoodagenPanes = {
+            jump_bottom = open_or_focus_bottom,
+            jump_right = open_or_focus_right,
+            jump_main = function()
+                run_in_normal(function()
+                    focus_main_win()
+                end)
+            end,
+            toggle_bottom = function()
+                local origin_win = vim.api.nvim_get_current_win()
+                local origin_mode = vim.api.nvim_get_mode().mode
+
+                local term = current_term("horizontal")
+                local opening = not term:is_open()
+                toggle_bottom_terminal(term)
+
+                if opening then
+                    if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+                        vim.api.nvim_set_current_win(origin_win)
+                        if origin_mode:sub(1, 1) == "i" then
+                            local buf = vim.api.nvim_win_get_buf(origin_win)
+                            if vim.bo[buf].buftype == "" and vim.bo[buf].filetype ~= "NvimTree" and vim.bo[buf].filetype ~= "toggleterm" then
+                                vim.cmd("startinsert")
+                            end
+                        end
+                    else
+                        focus_main_win()
+                    end
+                end
+            end,
+            toggle_right = function()
+                local origin_win = vim.api.nvim_get_current_win()
+                local origin_mode = vim.api.nvim_get_mode().mode
+
+                local term = current_term("vertical")
+                if term:is_open() then
+                    local closing_current = term.window and origin_win and term.window == origin_win
+                    safe_close_term(term)
+                    if closing_current then
+                        focus_main_win()
+                    end
+                    vim.cmd("redrawstatus")
+                    return
+                end
+
+                local set = term_sets[term.direction]
+                if set then
+                    for _, other in ipairs(set.terms) do
+                        if other ~= term and other:is_open() then
+                            safe_close_term(other)
+                        end
+                    end
+                end
+
+                focus_main_win()
 
                 with_directional_open_windows("vertical", function()
-                    right_term:open()
+                    term:open()
                 end)
-                vim.cmd("startinsert")
-            end)
-        end
 
-        local function focus_left()
-            run_in_normal(function()
-                local win = vim.api.nvim_get_current_win()
-                if is_main_win(win) then
-                    vim.cmd("wincmd h")
+                if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+                    vim.api.nvim_set_current_win(origin_win)
+                    if origin_mode:sub(1, 1) == "i" then
+                        local buf = vim.api.nvim_win_get_buf(origin_win)
+                        if vim.bo[buf].buftype == "" and vim.bo[buf].filetype ~= "NvimTree" and vim.bo[buf].filetype ~= "toggleterm" then
+                            vim.cmd("startinsert")
+                        end
+                    end
                 else
                     focus_main_win()
                 end
-            end)
-        end
 
-        local function focus_right()
-            open_or_focus_right()
-        end
-
-        local function focus_down()
-            open_or_focus_bottom()
-        end
-
-        local function focus_up()
-            run_in_normal(function()
-                local win = vim.api.nvim_get_current_win()
-                if is_main_win(win) then
-                    vim.cmd("wincmd k")
-                else
-                    focus_main_win()
-                end
-            end)
-        end
-
-        local all_modes = { "n", "i", "v", "x", "s", "o", "t", "c" }
-        vim.keymap.set(all_modes, "<F14>", function()
-            toggle_bottom_terminal(bottom_term)
-        end, { desc = "Toggle bottom terminal" })
-        vim.keymap.set(all_modes, "<F13>", function()
-            toggle_terminal(right_term, { prefer_main = true })
-        end, { desc = "Toggle right terminal" })
-        vim.keymap.set(all_modes, "<F16>", function()
-            toggle_bottom_terminal(bottom_term)
-        end, { desc = "Toggle bottom terminal (Cmd+B)" })
-        vim.keymap.set(all_modes, "<F15>", function()
-            toggle_terminal(right_term, { prefer_main = true })
-        end, { desc = "Toggle right terminal (Cmd+R)" })
-        vim.keymap.set(all_modes, "<S-F7>", function()
-            toggle_bottom_terminal(bottom_term)
-        end, { desc = "Toggle bottom terminal (Cmd+B fallback)" })
-        vim.keymap.set(all_modes, "<S-F5>", function()
-            toggle_terminal(right_term, { prefer_main = true })
-        end, { desc = "Toggle right terminal (Cmd+R fallback)" })
-        vim.keymap.set(all_modes, "<F18>", function()
-            toggle_bottom_terminal(bottom_term)
-        end, { desc = "Toggle bottom terminal (Cmd+B fallback)" })
-        vim.keymap.set(all_modes, "<F17>", function()
-            toggle_terminal(right_term, { prefer_main = true })
-        end, { desc = "Toggle right terminal (Cmd+R fallback)" })
-        vim.keymap.set(all_modes, "<S-F4>", function()
-            toggle_bottom_terminal(bottom_term)
-        end, { desc = "Toggle bottom terminal (Cmd+B)" })
-        vim.keymap.set(all_modes, "<S-F3>", function()
-            toggle_terminal(right_term, { prefer_main = true })
-        end, { desc = "Toggle right terminal (Cmd+R)" })
-
-        _G.ToggletermNav = {
-            focus_left = focus_left,
-            focus_down = focus_down,
-            focus_up = focus_up,
-            focus_right = focus_right,
+                vim.cmd("redrawstatus")
+            end,
+            toggle_main_only = toggle_main_only,
         }
+
+        local function term_for_win(winid)
+            if not winid or winid == 0 then
+                winid = vim.api.nvim_get_current_win()
+            end
+            if not vim.api.nvim_win_is_valid(winid) then
+                return nil
+            end
+            local buf = vim.api.nvim_win_get_buf(winid)
+            if vim.bo[buf].filetype ~= "toggleterm" then
+                return nil
+            end
+            local term_id = vim.b[buf].toggle_number
+            if not term_id then
+                return nil
+            end
+            return term_module.get(term_id, true)
+        end
+
+        _G.HumoodagenToggletermStatusline = function()
+            local term = term_for_win(vim.g.statusline_winid)
+            if not term or not term.direction then
+                return ""
+            end
+
+            attach_tab_lifecycle(term)
+            local set = ensure_term_set(term.direction)
+
+            local current = nil
+            for idx, t in ipairs(set.terms) do
+                if t == term or (t.id and term.id and t.id == term.id) then
+                    current = idx
+                    break
+                end
+            end
+            if not current then
+                table.insert(set.terms, term)
+                current = #set.terms
+            end
+
+            set.current = current
+            local total = #set.terms
+            if total == 0 then
+                return ""
+            end
+
+            local inactive_hl = "%#HumoodagenToggletermTabInactive#"
+            local active_hl = "%#HumoodagenToggletermTabActive#"
+            local reset_hl = "%*"
+
+            local parts = { inactive_hl }
+            for i = 1, total do
+                if i == current then
+                    table.insert(parts, active_hl)
+                    table.insert(parts, tostring(i))
+                    table.insert(parts, inactive_hl)
+                else
+                    table.insert(parts, tostring(i))
+                end
+
+                if i < total then
+                    table.insert(parts, "|")
+                end
+            end
+
+            table.insert(parts, reset_hl)
+            return table.concat(parts)
+        end
+
+        local function set_term_tab_keymaps(buf)
+            local opts = { buffer = buf, silent = true }
+            vim.keymap.set("t", "<Esc>", function()
+                -- If we have pending input (like the rest of a Cmd sequence), don't set 'nt'.
+                -- This prevents Cmd+keys (which send Esc+...) from flipping the mode.
+                local has_pending = vim.fn.getchar(1) ~= 0
+                if not has_pending and (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) == 0 then
+                    vim.b[buf].humoodagen_term_mode = "nt"
+                end
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+            end, vim.tbl_extend("force", opts, { desc = "Terminal normal mode (Esc)" }))
+            vim.keymap.set("t", "<C-[>", function()
+                local has_pending = vim.fn.getchar(1) ~= 0
+                if not has_pending and (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) == 0 then
+                    vim.b[buf].humoodagen_term_mode = "nt"
+                end
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+            end, vim.tbl_extend("force", opts, { desc = "Terminal normal mode (Ctrl-[)" }))
+            vim.keymap.set("n", "i", function()
+                vim.b[buf].humoodagen_term_mode = "t"
+                vim.cmd("startinsert")
+            end, vim.tbl_extend("force", opts, { desc = "Terminal insert mode (i)" }))
+            vim.keymap.set("n", "a", function()
+                vim.b[buf].humoodagen_term_mode = "t"
+                vim.cmd("startinsert")
+            end, vim.tbl_extend("force", opts, { desc = "Terminal insert mode (a)" }))
+            vim.keymap.set({ "t", "n" }, "<C-b>t", new_term_tab, vim.tbl_extend("force", opts, { desc = "Toggleterm new tab" }))
+            vim.keymap.set({ "t", "n" }, "<D-t>", new_term_tab, vim.tbl_extend("force", opts, { desc = "Toggleterm new tab (Cmd+T)" }))
+            for i = 1, 9 do
+                vim.keymap.set({ "t", "n" }, "<C-b>" .. i, function()
+                    switch_term_tab(i)
+                end, vim.tbl_extend("force", opts, { desc = "Toggleterm tab " .. i }))
+                vim.keymap.set({ "t", "n" }, "<D-" .. i .. ">", function()
+                    switch_term_tab(i)
+                end, vim.tbl_extend("force", opts, { desc = "Toggleterm tab " .. i .. " (Cmd+" .. i .. ")" }))
+            end
+        end
 
         vim.api.nvim_create_autocmd("FileType", {
             pattern = "toggleterm",
-            callback = function()
-                vim.opt_local.statusline = " "
+            callback = function(args)
+                vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
                 vim.opt_local.winbar = ""
+                set_term_tab_keymaps(args.buf)
+                vim.schedule(update_laststatus)
+            end,
+        })
+
+        vim.api.nvim_create_autocmd({ "WinClosed", "BufWinEnter", "BufWinLeave", "TabEnter" }, {
+            callback = function()
+                update_laststatus()
             end,
         })
     end,

@@ -47,6 +47,117 @@ autocmd({"BufWritePre"}, {
     command = [[%s/\s\+$//e]],
 })
 
+local pane_mode_group = augroup("HumoodagenPaneModeRestore", { clear = true })
+
+local function pane_mode_table()
+    if type(vim.g.humoodagen_pane_mode) ~= "table" then
+        vim.g.humoodagen_pane_mode = {}
+    end
+
+    local t = vim.g.humoodagen_pane_mode
+    if type(t.tree) ~= "string" then
+        t.tree = "n"
+    end
+    if type(t.main) ~= "string" then
+        t.main = "n"
+    end
+    if type(t.bottom) ~= "string" then
+        t.bottom = "t"
+    end
+    if type(t.right) ~= "string" then
+        t.right = "t"
+    end
+    return t
+end
+
+local function is_main_buf(buf)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+        return false
+    end
+
+    if vim.bo[buf].buftype ~= "" then
+        return false
+    end
+
+    local ft = vim.bo[buf].filetype
+    if ft == "NvimTree" or ft == "toggleterm" then
+        return false
+    end
+
+    return true
+end
+
+autocmd("InsertEnter", {
+    group = pane_mode_group,
+    callback = function()
+        local buf = vim.api.nvim_get_current_buf()
+        if not is_main_buf(buf) then
+            return
+        end
+
+        pane_mode_table().main = vim.api.nvim_get_mode().mode
+    end,
+})
+
+autocmd("ModeChanged", {
+    group = pane_mode_group,
+    callback = function()
+        local buf = vim.api.nvim_get_current_buf()
+        if not is_main_buf(buf) then
+            return
+        end
+
+        local new_mode = vim.v.event and vim.v.event.new_mode or vim.api.nvim_get_mode().mode
+        if type(new_mode) ~= "string" or new_mode == "" then
+            return
+        end
+
+        local first = new_mode:sub(1, 1)
+        if first == "v" or new_mode == "V" or new_mode == "\022" then
+            pane_mode_table().main = new_mode
+        end
+    end,
+})
+
+autocmd("WinEnter", {
+    group = pane_mode_group,
+    callback = function()
+        local win = vim.api.nvim_get_current_win()
+        local buf = vim.api.nvim_get_current_buf()
+        if not is_main_buf(buf) then
+            return
+        end
+
+        local desired = pane_mode_table().main or "n"
+        local first = desired:sub(1, 1)
+
+        vim.schedule(function()
+            if not vim.api.nvim_win_is_valid(win) then
+                return
+            end
+            if vim.api.nvim_get_current_win() ~= win then
+                return
+            end
+            if not is_main_buf(vim.api.nvim_get_current_buf()) then
+                return
+            end
+            if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "n" then
+                return
+            end
+
+            if first == "i" then
+                vim.cmd("startinsert")
+                return
+            end
+
+            if first == "v" or desired == "V" or desired == "\022" then
+                vim.cmd("normal! gv")
+                return
+            end
+        end)
+    end,
+})
+
 -- autocmd('BufEnter', {
 --     group = ThePrimeagenGroup,
 --     callback = function()

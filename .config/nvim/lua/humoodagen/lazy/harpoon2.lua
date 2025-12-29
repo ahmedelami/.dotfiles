@@ -15,8 +15,10 @@ return {
 
         -- Quick navigation to specific Harpoon slots
         vim.keymap.set("n", "<leader>1", function() harpoon:list():select(1) end)
+        vim.keymap.set("n", "<leader>2", function() harpoon:list():select(2) end)
+        vim.keymap.set("n", "<leader>3", function() harpoon:list():select(3) end)
+        vim.keymap.set("n", "<leader>4", function() harpoon:list():select(4) end)
         vim.keymap.set("n", "<C-j>", function() harpoon:list():select(2) end)
-        vim.keymap.set("n", "<C-k>", function() harpoon:list():select(3) end)
         vim.keymap.set("n", "<C-l>", function() harpoon:list():select(4) end)
 
         -- Replace slots in the Harpoon list

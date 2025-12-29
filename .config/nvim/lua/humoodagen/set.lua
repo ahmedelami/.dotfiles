@@ -57,12 +57,7 @@ vim.opt.fillchars:append({
     verthoriz = "+",
 })
 
-vim.api.nvim_create_autocmd("FileType", {
-    pattern = "toggleterm",
-    callback = function()
-        vim.opt_local.statusline = " "
-    end,
-})
+
 
 vim.opt.scrolloff = 8
 vim.opt.signcolumn = "yes"
@@ -71,6 +66,10 @@ vim.opt.isfname:append("@-@")
 vim.opt.updatetime = 50  -- Back to original value
 
 vim.opt.colorcolumn = "80"
+
+-- Make Escape responsive, but still long enough to reliably parse Ghostty's
+-- Cmd-based escape sequences (they start with ESC, so too-low values break).
+vim.opt.ttimeoutlen = 100
 
 
 -- Automatically reload files when they change on disk
