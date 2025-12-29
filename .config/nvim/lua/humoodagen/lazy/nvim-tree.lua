@@ -9,6 +9,7 @@ return {
         local function on_attach(bufnr)
             local api = require('nvim-tree.api')
             local Input = require("nui.input")
+            local undo = require("humoodagen.nvim_tree_undo")
 
             local function opts(desc)
                 return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
@@ -35,16 +36,23 @@ return {
             vim.keymap.set('n', 'a', api.fs.create, opts('[File] Create'))
             vim.keymap.set('n', 'x', function()
                 local node = api.tree.get_node_under_cursor()
-                if node.name == '..' then return end
-                
+                if not node or node.name == '..' then return end
+
                 local answer = vim.fn.confirm("Trash " .. node.name .. "?", "&yes\n&no", 2)
                 if answer == 1 then
-                    api.fs.trash(node)
+                    if not undo.trash(node) then
+                        api.fs.trash(node)
+                    else
+                        api.tree.reload()
+                    end
                 end
             end, opts('[File] Trash'))
             vim.keymap.set('n', 'r', api.fs.rename, opts('[File] Rename'))
             vim.keymap.set('n', 'c', api.fs.copy.node, opts('[File] Copy'))
             vim.keymap.set('n', 'p', api.fs.paste, opts('[File] Paste'))
+            vim.keymap.set('n', 'u', function()
+                undo.undo_last()
+            end, opts('[Undo] Last Action'))
 
             -- [Mark] Bulk Operations Group
             vim.keymap.set('n', 'm', api.marks.toggle, opts('[Mark] Toggle Selection'))
@@ -109,6 +117,12 @@ return {
                                 vim.loop.fs_close(fd)
                             end
                         end
+
+                        local record_path = target
+                        if record_path:sub(-1) == path_sep then
+                            record_path = record_path:sub(1, -2)
+                        end
+                        undo.record_create(record_path)
 
                         api.tree.reload()
                         api.tree.find_file({ buf = target, open = true, focus = true })
@@ -186,6 +200,24 @@ return {
                 dotfiles = false,
             },
         })
+
+        local undo = require("humoodagen.nvim_tree_undo")
+        local events = require("nvim-tree.events")
+        events.subscribe(events.Event.FileCreated, function(payload)
+            if payload and payload.fname then
+                undo.record_create(payload.fname)
+            end
+        end)
+        events.subscribe(events.Event.FolderCreated, function(payload)
+            if payload and payload.folder_name then
+                undo.record_create(payload.folder_name)
+            end
+        end)
+        events.subscribe(events.Event.NodeRenamed, function(payload)
+            if payload and payload.old_name and payload.new_name then
+                undo.record_rename(payload.old_name, payload.new_name)
+            end
+        end)
 
         local function is_main_edit_win(win)
             if not (win and vim.api.nvim_win_is_valid(win)) then
