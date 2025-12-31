@@ -396,6 +396,7 @@ vim.api.nvim_create_autocmd("FileType", {
                 save_current_pane_mode()
             end
 
+            local origin_win = vim.api.nvim_get_current_win()
             local origin_buf = vim.api.nvim_get_current_buf()
             local origin_mode = vim.api.nvim_get_mode().mode
             if origin_mode:sub(1, 1) == "t" then
@@ -426,7 +427,7 @@ vim.api.nvim_create_autocmd("FileType", {
 
                     local map = vim.fn.maparg("<C-k>", "n", false, true)
                     if map and type(map.callback) == "function" then
-                        map.callback()
+                        map.callback({ origin_win = origin_win, origin_buf = origin_buf })
                         return
                     end
 
