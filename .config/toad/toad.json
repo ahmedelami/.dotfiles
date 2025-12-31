@@ -1,0 +1,13 @@
+{
+    "anon_id": "f5bec75c-84ad-4890-9339-3ff70e69b1d4", 
+    "launcher": {
+        "agents": "openai.com"
+    }, 
+    "ui": {
+        "theme": "catppuccin-latte", 
+        "compact-input": false
+    }, 
+    "agent": {
+        "thoughts": true
+    }
+}
