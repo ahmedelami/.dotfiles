@@ -51,24 +51,68 @@ return {
                 commands.create_path(query)
             end
 
-            local function jump_back_to_origin()
-                if origin_win and vim.api.nvim_win_is_valid(origin_win) then
-                    vim.api.nvim_set_current_win(origin_win)
+            local function restore_origin_term_mode(target_win)
+                if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
                     return
                 end
 
-                if origin_buf and vim.api.nvim_buf_is_valid(origin_buf) then
+                local buf = vim.api.nvim_win_get_buf(target_win)
+                if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                    return
+                end
+                if vim.bo[buf].filetype ~= "toggleterm" then
+                    return
+                end
+
+                local desired = vim.b[buf].humoodagen_term_mode
+                if type(desired) ~= "string" or desired == "" then
+                    desired = "t"
+                end
+                if desired:sub(1, 1) ~= "t" then
+                    return
+                end
+
+                vim.defer_fn(function()
+                    if not vim.api.nvim_win_is_valid(target_win) then
+                        return
+                    end
+                    if vim.api.nvim_get_current_win() ~= target_win then
+                        return
+                    end
+
+                    local cur_buf = vim.api.nvim_win_get_buf(target_win)
+                    if vim.bo[cur_buf].filetype ~= "toggleterm" then
+                        return
+                    end
+                    if vim.api.nvim_get_mode().mode ~= "t" then
+                        vim.cmd("startinsert")
+                    end
+                end, 10)
+            end
+
+            local function jump_back_to_origin()
+                local target_win = nil
+                if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+                    target_win = origin_win
+                elseif origin_buf and vim.api.nvim_buf_is_valid(origin_buf) then
                     for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
                         if vim.api.nvim_win_get_buf(win) == origin_buf then
-                            vim.api.nvim_set_current_win(win)
-                            return
+                            target_win = win
+                            break
                         end
                     end
                 end
+
+                if not target_win then
+                    return
+                end
+
+                vim.api.nvim_set_current_win(target_win)
+                restore_origin_term_mode(target_win)
             end
 
             local function abort_and_restore()
-                vim.schedule(jump_back_to_origin)
+                vim.defer_fn(jump_back_to_origin, 10)
             end
 
             local file_actions = vim.tbl_extend("force", {}, default_actions, {
