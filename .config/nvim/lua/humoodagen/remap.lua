@@ -425,6 +425,11 @@ vim.api.nvim_create_autocmd("FileType", {
                         lazy.load({ plugins = { "fzf-lua" } })
                     end
 
+                    if type(_G.HumoodagenFindFilesOrCreate) == "function" then
+                        _G.HumoodagenFindFilesOrCreate({ origin_win = origin_win, origin_buf = origin_buf })
+                        return
+                    end
+
                     local map = vim.fn.maparg("<C-k>", "n", false, true)
                     if map and type(map.callback) == "function" then
                         map.callback({ origin_win = origin_win, origin_buf = origin_buf })

@@ -74,7 +74,7 @@ return {
             local file_actions = vim.tbl_extend("force", {}, default_actions, {
                 ["enter"] = accept_or_create,
                 ["tab"] = accept_or_create,
-                ["_humoodagen_abort"] = abort_and_restore,
+                ["ctrl-k"] = abort_and_restore,
             })
 
             fzf.files({
@@ -85,7 +85,6 @@ return {
                 prompt = "",
                 keymap = {
                     fzf = {
-                        ["ctrl-k"] = "print(_humoodagen_abort)+abort",
                         ["right"] = "transform-query:python3 -c 'import sys; q=sys.argv[1] if len(sys.argv)>1 else \"\"; s=sys.argv[2] if len(sys.argv)>2 else \"\"; o=sys.stdout; if not s: o.write(q); raise SystemExit; if not q: i=s.find(\"/\"); o.write(s if i==-1 else s[:i+1]); raise SystemExit; if not s.startswith(q): o.write(q); raise SystemExit; rest=s[len(q):]; i=rest.find(\"/\"); o.write(s if i==-1 else s[:len(q)+i+1])' {q} {-1}",
                     },
                 },
@@ -100,6 +99,8 @@ return {
                 },
             })
         end
+
+        _G.HumoodagenFindFilesOrCreate = find_files_or_create
 
         vim.keymap.set({ "n", "v", "x" }, "<C-k>", function(ctx)
             local mode = vim.api.nvim_get_mode().mode
