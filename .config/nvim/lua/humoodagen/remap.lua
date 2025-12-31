@@ -349,6 +349,103 @@ vim.keymap.set(all_modes, "<C-S-l>", resize_right, { desc = "Resize split right"
 vim.keymap.set(all_modes, "<C-S-j>", resize_down, { desc = "Resize split down" })
 vim.keymap.set(all_modes, "<C-S-k>", resize_up, { desc = "Resize split up" })
 
+local function find_main_win()
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local cfg = vim.api.nvim_win_get_config(win)
+        if cfg.relative == "" then
+            local buf = vim.api.nvim_win_get_buf(win)
+            if vim.bo[buf].buftype == "" then
+                local ft = vim.bo[buf].filetype
+                if ft ~= "NvimTree" and ft ~= "toggleterm" then
+                    return win
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function ensure_main_win()
+    local win = find_main_win()
+    if win and vim.api.nvim_win_is_valid(win) then
+        return win
+    end
+
+    local wins = vim.api.nvim_tabpage_list_wins(0)
+    if #wins == 0 then
+        return nil
+    end
+
+    local anchor = wins[1]
+    if anchor and vim.api.nvim_win_is_valid(anchor) then
+        vim.api.nvim_set_current_win(anchor)
+    end
+
+    vim.cmd("vsplit")
+    vim.cmd("enew")
+    return vim.api.nvim_get_current_win()
+end
+
+local ctrl_k_toggleterm_group = vim.api.nvim_create_augroup("HumoodagenToggletermCtrlK", { clear = true })
+vim.api.nvim_create_autocmd("FileType", {
+    group = ctrl_k_toggleterm_group,
+    pattern = "toggleterm",
+    callback = function(event)
+        vim.keymap.set({ "t", "n" }, "<C-k>", function()
+            if save_current_pane_mode then
+                save_current_pane_mode()
+            end
+
+            local origin_buf = vim.api.nvim_get_current_buf()
+            local origin_mode = vim.api.nvim_get_mode().mode
+            if origin_mode:sub(1, 1) == "t" then
+                vim.b[origin_buf].humoodagen_term_mode = "t"
+            else
+                vim.b[origin_buf].humoodagen_term_mode = "nt"
+            end
+
+            local suppressed = false
+            if origin_mode:sub(1, 1) == "t" then
+                vim.g.humoodagen_suppress_toggleterm_mode_capture =
+                    (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
+                suppressed = true
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+            end
+
+            vim.schedule(function()
+                local ok, err = pcall(function()
+                    local main_win = ensure_main_win()
+                    if main_win and vim.api.nvim_win_is_valid(main_win) then
+                        vim.api.nvim_set_current_win(main_win)
+                    end
+
+                    local ok_lazy, lazy = pcall(require, "lazy")
+                    if ok_lazy then
+                        lazy.load({ plugins = { "fzf-lua" } })
+                    end
+
+                    local map = vim.fn.maparg("<C-k>", "n", false, true)
+                    if map and type(map.callback) == "function" then
+                        map.callback()
+                        return
+                    end
+
+                    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-k>", true, false, true), "m", false)
+                end)
+
+                if suppressed then
+                    vim.g.humoodagen_suppress_toggleterm_mode_capture =
+                        math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
+                end
+
+                if not ok then
+                    error(err)
+                end
+            end)
+        end, { buffer = event.buf, nowait = true, silent = true, desc = "Find/create files (cwd) (Ctrl+K)" })
+    end,
+})
+
 local esc = "\x1b"
 
 local function call_toggleterm_action(action)

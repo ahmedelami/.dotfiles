@@ -58,6 +58,7 @@ return {
 
                 commands.create_path(query)
             end
+
             local file_actions = vim.tbl_extend("force", {}, default_actions, {
                 ["enter"] = accept_or_create,
                 ["tab"] = accept_or_create,
@@ -87,6 +88,17 @@ return {
             })
         end
 
-        vim.keymap.set("n", "<C-k>", find_files_or_create, { desc = "Find/create files (cwd)" })
+        vim.keymap.set({ "n", "v", "x" }, "<C-k>", function()
+            local mode = vim.api.nvim_get_mode().mode
+            local first = mode:sub(1, 1)
+            if first == "v" or mode == "V" or mode == "\022" then
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", false)
+                vim.schedule(function()
+                    find_files_or_create()
+                end)
+                return
+            end
+            find_files_or_create()
+        end, { desc = "Find/create files (cwd)" })
     end,
 }
