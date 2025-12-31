@@ -150,7 +150,7 @@ return {
             local mode = vim.api.nvim_get_mode().mode
             local first = mode:sub(1, 1)
             if first == "v" or mode == "V" or mode == "\022" then
-                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", false)
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "nx", false)
                 vim.schedule(function()
                     find_files_or_create(ctx)
                 end)
