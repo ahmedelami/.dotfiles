@@ -178,6 +178,22 @@ local function jump_or_toggle_filetree_any_mode()
     focus_nvim_tree_any_mode()
 end
 
+vim.keymap.set("n", "h", function()
+    local buf = vim.api.nvim_get_current_buf()
+    if vim.bo[buf].buftype == "" then
+        local ft = vim.bo[buf].filetype
+        if ft ~= "NvimTree" and ft ~= "toggleterm" then
+            local _, col = unpack(vim.api.nvim_win_get_cursor(0))
+            if col == 0 and vim.v.count == 0 then
+                jump_or_toggle_filetree_any_mode()
+                return
+            end
+        end
+    end
+
+    vim.cmd("normal! " .. vim.v.count1 .. "h")
+end, { silent = true, desc = "Smart left: cursor-left or filetree" })
+
 local function resize_window_any_mode(cmd_or_fn)
     local mode = vim.api.nvim_get_mode().mode
     local mode_prefix = mode:sub(1, 1)

@@ -158,6 +158,35 @@ autocmd("WinEnter", {
     end,
 })
 
+local tmux_state_group = augroup("HumoodagenTmuxState", { clear = true })
+
+local function tmux_set_pane_option(args)
+    if not (vim.env.TMUX and vim.env.TMUX_PANE) then
+        return
+    end
+
+    local cmd = { "tmux", "set-option", "-p", "-t", vim.env.TMUX_PANE }
+    for _, part in ipairs(args) do
+        table.insert(cmd, part)
+    end
+
+    pcall(vim.fn.jobstart, cmd, { detach = true })
+end
+
+autocmd("VimEnter", {
+    group = tmux_state_group,
+    callback = function()
+        tmux_set_pane_option({ "@pane_is_nvim", "1" })
+    end,
+})
+
+autocmd("VimLeavePre", {
+    group = tmux_state_group,
+    callback = function()
+        tmux_set_pane_option({ "-u", "@pane_is_nvim" })
+    end,
+})
+
 -- autocmd('BufEnter', {
 --     group = ThePrimeagenGroup,
 --     callback = function()

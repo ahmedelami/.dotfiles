@@ -85,11 +85,15 @@ All of the above are mapped (raw + translated) in:
 
 ### Cmd+T / Cmd+1..9 (toggleterm tabs)
 
-Ghostty maps `Cmd+T` to `\x02t` and `Cmd+1..9` to `\x021`..`\x029`. Neovim uses
-those sequences (`<C-b>t` / `<C-b>1..9`) inside toggleterm buffers to create and
-switch terminal tabs independently for bottom and right terminals.
+Ghostty maps `Cmd+T` to `\x02t` and `Cmd+1..9` to `\x02\x31`..`\x02\x39`. Neovim
+uses those sequences (`<C-b>t` / `<C-b>1..9`) inside toggleterm buffers to
+create and switch terminal tabs independently for bottom and right terminals.
 This requires tmux to pass these keys through when the pane runs `nvim`
 (see `~/.tmux.conf`).
+
+Tmux uses a per-pane flag (`@pane_is_nvim`) set by Neovim on `VimEnter` to keep
+the passthrough working even when a toggleterm child process (e.g. `zsh`) is the
+foreground job in that tmux pane (see `~/.config/nvim/lua/humoodagen/init.lua`).
 
 ## Other keybindings (Neovim-only)
 

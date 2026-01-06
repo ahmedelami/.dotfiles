@@ -1,51 +1,45 @@
 return {
   {
-    "Mofiqul/vscode.nvim",
-    name = "vscode",
+    "catppuccin/nvim",
+    name = "catppuccin",
     priority = 1000,
+    lazy = false,
     config = function()
-      require("vscode").setup({
-        style = 'light',
-        transparent = true,
-        italic_comments = true,
-        underline_links = true,
-        disable_nvimtree_bg = true,
-        color_overrides = {
-          -- Ensure the background stays transparent for the whole UI
-          bg = "NONE",
-        },
-        group_overrides = {
-          -- Fix the 'style' error by using 'bold = true'
-          -- And ensure the tree stays high-contrast blue/black
-          NvimTreeFolderName = { fg = "#005eff", bold = true },
-          NvimTreeOpenedFolderName = { fg = "#005eff", bold = true },
-          NvimTreeEmptyFolderName = { fg = "#005eff", bold = true },
-          NvimTreeFolderIcon = { fg = "#005eff", bold = true },
-          NvimTreeFolderArrowOpen = { fg = "#005eff", bold = true },
-          NvimTreeFolderArrowClosed = { fg = "#005eff", bold = true },
-          
-          -- Ensure NvimTree normal state is also transparent/neutral
-          NvimTreeNormal = { bg = "NONE" },
-          NvimTreeNormalNC = { bg = "NONE" },
-          NvimTreeWinSeparator = { fg = "#dbdbdb", bg = "NONE" },
-          WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
-          VertSplit = { fg = "#dbdbdb", bg = "NONE" },
-          WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
+      vim.o.background = "light"
 
-          CursorNormal = { fg = "#ffffff", bg = "#f28c28" },
-          CursorInsert = { fg = "#ffffff", bg = "#000000" },
-          CursorVisual = { fg = "#ffffff", bg = "#7a4cff" },
-          CursorReplace = { fg = "#ffffff", bg = "#cf222e" },
+      require("catppuccin").setup({
+        flavour = "latte",
+        transparent_background = true,
+        custom_highlights = function(_)
+          return {
+            NvimTreeFolderName = { fg = "#005eff", bold = true },
+            NvimTreeOpenedFolderName = { fg = "#005eff", bold = true },
+            NvimTreeEmptyFolderName = { fg = "#005eff", bold = true },
+            NvimTreeFolderIcon = { fg = "#005eff", bold = true },
+            NvimTreeFolderArrowOpen = { fg = "#005eff", bold = true },
+            NvimTreeFolderArrowClosed = { fg = "#005eff", bold = true },
 
-          -- GitSigns overrides
-          GitSignsAdd = { fg = "#1a7f37" }, -- Solid Green
-          GitSignsChange = { fg = "#cf222e" }, -- Solid Red (Changed from brown)
-          GitSignsDelete = { fg = "#cf222e" }, -- Solid Red
-          GitSignsTopdelete = { fg = "#cf222e" }, -- Solid Red
-          GitSignsChangedelete = { fg = "#cf222e" }, -- Solid Red
-        }
+            NvimTreeNormal = { bg = "NONE" },
+            NvimTreeNormalNC = { bg = "NONE" },
+            NvimTreeWinSeparator = { fg = "#dbdbdb", bg = "NONE" },
+            WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
+            VertSplit = { fg = "#dbdbdb", bg = "NONE" },
+
+            CursorNormal = { fg = "#ffffff", bg = "#f28c28" },
+            CursorInsert = { fg = "#ffffff", bg = "#000000" },
+            CursorVisual = { fg = "#ffffff", bg = "#7a4cff" },
+            CursorReplace = { fg = "#ffffff", bg = "#cf222e" },
+
+            GitSignsAdd = { fg = "#1a7f37" },
+            GitSignsChange = { fg = "#cf222e" },
+            GitSignsDelete = { fg = "#cf222e" },
+            GitSignsTopdelete = { fg = "#cf222e" },
+            GitSignsChangedelete = { fg = "#cf222e" },
+          }
+        end,
       })
-      vim.cmd.colorscheme("vscode")
+
+      vim.cmd.colorscheme("catppuccin")
     end,
   },
 }

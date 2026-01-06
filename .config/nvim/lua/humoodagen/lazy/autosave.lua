@@ -30,28 +30,5 @@ return {
     },
     config = function(_, opts)
         require("auto-save").setup(opts)
-
-        local group = vim.api.nvim_create_augroup("humoodagen_autosave_message", { clear = true })
-        vim.api.nvim_create_autocmd("User", {
-            pattern = "AutoSaveWritePost",
-            group = group,
-            callback = function(event)
-                local saved_buffer = event.data and event.data.saved_buffer or nil
-                if not saved_buffer then
-                    return
-                end
-
-                local full_path = vim.api.nvim_buf_get_name(saved_buffer)
-                if full_path == "" then
-                    return
-                end
-
-                vim.notify(
-                    ("AutoSave: saved %s at %s"):format(vim.fn.fnamemodify(full_path, ":t"), vim.fn.strftime("%H:%M:%S")),
-                    vim.log.levels.INFO,
-                    { title = "AutoSave", timeout = 1000 }
-                )
-            end,
-        })
     end,
 }

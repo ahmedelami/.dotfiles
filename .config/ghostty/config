@@ -89,7 +89,8 @@ keybind = ctrl+d=text:\x04
 
 
 # Switch Tmux Windows (Tabs) within the focused pane
-# Explicitly unbind native Ghostty goto_tab to prevent conflicts
+# Ghostty has built-in Cmd+1..9 bindings for tab switching; unbind them and
+# rebind to send tmux prefix so tmux can conditionally pass through to Neovim.
 keybind = super+1=unbind
 keybind = super+2=unbind
 keybind = super+3=unbind
@@ -100,15 +101,36 @@ keybind = super+7=unbind
 keybind = super+8=unbind
 keybind = super+9=unbind
 
-keybind = super+1=text:\x021
-keybind = super+2=text:\x022
-keybind = super+3=text:\x023
-keybind = super+4=text:\x024
-keybind = super+5=text:\x025
-keybind = super+6=text:\x026
-keybind = super+7=text:\x027
-keybind = super+8=text:\x028
-keybind = super+9=text:\x029
+keybind = super+digit_1=unbind
+keybind = super+digit_2=unbind
+keybind = super+digit_3=unbind
+keybind = super+digit_4=unbind
+keybind = super+digit_5=unbind
+keybind = super+digit_6=unbind
+keybind = super+digit_7=unbind
+keybind = super+digit_8=unbind
+keybind = super+digit_9=unbind
+
+keybind = super+1=text:\x02\x31
+keybind = super+2=text:\x02\x32
+keybind = super+3=text:\x02\x33
+keybind = super+4=text:\x02\x34
+keybind = super+5=text:\x02\x35
+keybind = super+6=text:\x02\x36
+keybind = super+7=text:\x02\x37
+keybind = super+8=text:\x02\x38
+keybind = super+9=text:\x02\x39
+
+keybind = super+digit_1=text:\x02\x31
+keybind = super+digit_2=text:\x02\x32
+keybind = super+digit_3=text:\x02\x33
+keybind = super+digit_4=text:\x02\x34
+keybind = super+digit_5=text:\x02\x35
+keybind = super+digit_6=text:\x02\x36
+keybind = super+digit_7=text:\x02\x37
+keybind = super+digit_8=text:\x02\x38
+keybind = super+digit_9=text:\x02\x39
+
 
 # Undo last close (tab/split/window)
 keybind = super+z=undo

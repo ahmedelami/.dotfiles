@@ -835,6 +835,11 @@ return {
         end
 
         local function set_term_tab_keymaps(buf)
+            if vim.b[buf].humoodagen_term_tab_keymaps_set then
+                return
+            end
+            vim.b[buf].humoodagen_term_tab_keymaps_set = true
+
             local opts = { buffer = buf, silent = true }
             vim.keymap.set("t", "<Esc>", function()
                 -- If we have pending input (like the rest of a Cmd sequence), don't set 'nt'.
@@ -879,6 +884,17 @@ return {
                 vim.opt_local.winbar = ""
                 set_term_tab_keymaps(args.buf)
                 vim.schedule(update_laststatus)
+            end,
+        })
+
+        -- Fallback for cases where the buffer already has `filetype=toggleterm`
+        -- before the `FileType` autocmd runs (or for restored buffers).
+        vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
+            callback = function(args)
+                local buf = args.buf
+                if vim.bo[buf].filetype == "toggleterm" then
+                    set_term_tab_keymaps(buf)
+                end
             end,
         })
 

@@ -1,0 +1,6 @@
+[user]
+name = "ahmedelami"
+email = "elaminahmed03@gmail.com"
+
+[ui]
+editor = "nvim"

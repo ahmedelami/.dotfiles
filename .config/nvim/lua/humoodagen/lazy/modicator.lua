@@ -1,6 +1,6 @@
 return {
   'mawkler/modicator.nvim',
-  dependencies = 'mawkler/onedark.nvim', -- Add your colorscheme plugin here
+  dependencies = 'catppuccin/nvim', -- Colorscheme dependency
   init = function()
     -- These are required for Modicator to work
     vim.o.cursorline = true
