@@ -157,6 +157,7 @@ return {
             view = {
                 number = true,
                 relativenumber = true,
+                signcolumn = "no",
                 width = "15%",
             },
             renderer = {
@@ -301,7 +302,11 @@ return {
         vim.api.nvim_create_autocmd({ "VimEnter" }, { callback = open_nvim_tree })
         vim.api.nvim_create_autocmd("FileType", {
             pattern = "NvimTree",
-            callback = ensure_main_edit_win,
+            callback = function()
+                vim.opt_local.numberwidth = 1
+                vim.opt_local.signcolumn = "no"
+                ensure_main_edit_win()
+            end,
         })
     end,
 }
