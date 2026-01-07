@@ -637,11 +637,51 @@ local function call_toggleterm_any_mode(action)
     end)
 end
 
+local function normalize_main_before_terminal_normal(target_pane)
+    local mode = vim.api.nvim_get_mode().mode
+    if mode:sub(1, 1) ~= "i" then
+        return
+    end
+
+    local buf = vim.api.nvim_get_current_buf()
+    if vim.bo[buf].buftype ~= "" then
+        return
+    end
+
+    local ft = vim.bo[buf].filetype
+    if ft == "NvimTree" or ft == "toggleterm" then
+        return
+    end
+
+    local desired = pane_mode_table()[target_pane]
+    if type(desired) ~= "string" or desired == "" then
+        return
+    end
+    if desired:sub(1, 1) ~= "n" then
+        return
+    end
+
+    local win = vim.api.nvim_get_current_win()
+    local pos = vim.api.nvim_win_get_cursor(win)
+    debug.log("pane_jump stopinsert preserve_cursor target=" .. target_pane .. " desired=" .. desired)
+    vim.cmd("stopinsert")
+    vim.schedule(function()
+        if not vim.api.nvim_win_is_valid(win) then
+            return
+        end
+        if vim.api.nvim_get_current_win() ~= win then
+            return
+        end
+        pcall(vim.api.nvim_win_set_cursor, win, pos)
+    end)
+end
+
 -- Cmd+H/J/K/L jumps to fixed panes.
 local function jump_or_toggle_bottom_any_mode()
     cancel_pending_main_normal()
     cancel_pending_toggleterm_exit()
     debug.log("jump bottom")
+    normalize_main_before_terminal_normal("bottom")
     save_current_pane_mode()
     if current_toggleterm_direction() == "horizontal" then
         call_toggleterm_any_mode("toggle_bottom")
@@ -671,6 +711,7 @@ local function jump_or_toggle_right_any_mode()
     cancel_pending_main_normal()
     cancel_pending_toggleterm_exit()
     debug.log("jump right")
+    normalize_main_before_terminal_normal("right")
     save_current_pane_mode()
     if current_toggleterm_direction() == "vertical" then
         call_toggleterm_any_mode("toggle_right")
