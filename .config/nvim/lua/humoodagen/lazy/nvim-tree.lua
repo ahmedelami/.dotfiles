@@ -171,23 +171,27 @@ return {
                         none = " ",
                     },
                 },
-                icons = {
-                    git_placement = "after",
-                    show = {
-                        file = true,
-                        folder = false,
-                        folder_arrow = true,
-                        git = true,
-                    },
-                    glyphs = {
-                        folder = {
-                            arrow_closed = "",
-                            arrow_open = "",
-                        },
-                        git = {
-                            unstaged = "",
-                            staged = "",
-                            unmerged = "",
+	                icons = {
+	                    git_placement = "after",
+	                    show = {
+	                        file = true,
+	                        folder = true,
+	                        folder_arrow = true,
+	                        git = true,
+	                    },
+	                    glyphs = {
+	                        folder = {
+	                            arrow_closed = "",
+	                            arrow_open = "",
+	                            default = "",
+	                            open = "",
+	                            empty = "",
+	                            empty_open = "",
+	                        },
+	                        git = {
+	                            unstaged = "",
+	                            staged = "",
+	                            unmerged = "",
                             renamed = "",
                             untracked = "",
                             deleted = "",
