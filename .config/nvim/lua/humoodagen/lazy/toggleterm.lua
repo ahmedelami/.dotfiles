@@ -454,6 +454,46 @@ return {
                     end
                     local term = current_toggleterm()
                     restore_term_mode(term)
+
+                    local desired = vim.b[buf].humoodagen_term_mode
+                    if type(desired) == "string" and desired:sub(1, 1) == "n" then
+                        local cursor = vim.b[buf].humoodagen_term_nt_cursor
+                        if type(cursor) == "table" and #cursor == 2 then
+                            local win = vim.api.nvim_get_current_win()
+                            local function restore_cursor(tag)
+                                if not vim.api.nvim_win_is_valid(win) then
+                                    return
+                                end
+                                if vim.api.nvim_get_current_win() ~= win then
+                                    return
+                                end
+                                if vim.api.nvim_get_current_buf() ~= buf then
+                                    return
+                                end
+                                if vim.bo[buf].filetype ~= "toggleterm" then
+                                    return
+                                end
+                                if vim.api.nvim_get_mode().mode ~= "nt" then
+                                    return
+                                end
+
+                                local line_count = vim.api.nvim_buf_line_count(buf)
+                                local row = math.min(math.max(1, cursor[1]), line_count)
+                                local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, true)[1] or ""
+                                local max_col = #line > 0 and (#line - 1) or 0
+                                local col = math.min(math.max(0, cursor[2]), max_col)
+                                debug.log(string.format("term_nt_cursor restore(%s) row=%d col=%d", tag, row, col))
+                                pcall(vim.api.nvim_win_set_cursor, win, { row, col })
+                            end
+
+                            vim.schedule(function()
+                                restore_cursor("schedule")
+                            end)
+                            vim.defer_fn(function()
+                                restore_cursor("defer10")
+                            end, 10)
+                        end
+                    end
                 end
             end,
         })
@@ -464,6 +504,14 @@ return {
                 local buf = vim.api.nvim_get_current_buf()
                 if vim.bo[buf].filetype == "toggleterm" then
                     vim.wo.cursorline = false
+                    local mode = vim.api.nvim_get_mode().mode
+                    if mode == "nt" then
+                        local ok, cursor = pcall(vim.api.nvim_win_get_cursor, 0)
+                        if ok and type(cursor) == "table" and #cursor == 2 then
+                            vim.b[buf].humoodagen_term_nt_cursor = cursor
+                            debug.log(string.format("term_nt_cursor save row=%d col=%d", cursor[1], cursor[2]))
+                        end
+                    end
                 end
             end,
         })
