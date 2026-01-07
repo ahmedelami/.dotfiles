@@ -5,6 +5,7 @@ return {
         require("toggleterm").setup({
             start_in_insert = true,
             persist_size = true,
+            shade_terminals = false,
             direction = "horizontal",
             -- Toggleterm shells are not "real" outer terminals; prevent our zshrc
             -- from auto-attaching to tmux inside them (which feels like it
@@ -226,7 +227,9 @@ return {
 
         local function update_laststatus()
             if any_toggleterm_window() then
-                vim.o.laststatus = 2
+                -- Use global statusline so window separators render for horizontal splits
+                -- (fillchars.horiz, etc.), keeping the pane borders consistent.
+                vim.o.laststatus = 3
                 vim.go.statusline = " "
             else
                 vim.o.laststatus = base_laststatus
