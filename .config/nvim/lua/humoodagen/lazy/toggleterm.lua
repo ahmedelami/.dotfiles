@@ -86,35 +86,84 @@ return {
             local want_job = desired:sub(1, 1) == "t"
             if want_job then
                 local win = vim.api.nvim_get_current_win()
+                local token = tostring(vim.loop.hrtime())
+                local deadline = vim.loop.hrtime() + 500 * 1e6
+                vim.b[buf].humoodagen_term_restore_token = token
+                vim.b[buf].humoodagen_term_restore_active = true
+
+                local function stop(reason)
+                    if not vim.api.nvim_buf_is_valid(buf) then
+                        return
+                    end
+                    if vim.b[buf].humoodagen_term_restore_token ~= token then
+                        return
+                    end
+                    vim.b[buf].humoodagen_term_restore_token = nil
+                    vim.b[buf].humoodagen_term_restore_active = nil
+                    if reason then
+                        debug.log("term_restore done reason=" .. reason .. " desired=" .. desired)
+                    end
+                end
+
                 local function attempt(tag)
                     if not vim.api.nvim_win_is_valid(win) then
+                        stop("invalid_win")
                         return
                     end
                     if vim.api.nvim_get_current_win() ~= win then
+                        stop("win_changed")
                         return
                     end
                     if vim.api.nvim_get_current_buf() ~= buf then
+                        stop("buf_changed")
                         return
                     end
                     if vim.bo[buf].filetype ~= "toggleterm" then
+                        stop("not_toggleterm")
                         return
                     end
-                    if vim.api.nvim_get_mode().mode:sub(1, 1) == "t" then
+                    if vim.b[buf].humoodagen_term_restore_token ~= token then
                         return
                     end
-                    debug.log("term_restore startinsert(" .. tag .. ") desired=" .. desired)
-                    pcall(vim.cmd, "startinsert")
+
+                    local mode = vim.api.nvim_get_mode().mode
+                    if mode:sub(1, 1) == "t" then
+                        stop("already_t")
+                        return
+                    end
+
+                    local desired_now = vim.b[buf].humoodagen_term_mode
+                    if type(desired_now) ~= "string" or desired_now == "" then
+                        desired_now = "t"
+                    end
+                    if desired_now:sub(1, 1) ~= "t" then
+                        stop("desired=" .. desired_now)
+                        return
+                    end
+
+                    if vim.b[buf].humoodagen_term_exit_pending ~= nil then
+                        stop("exit_pending")
+                        return
+                    end
+
+                    if vim.loop.hrtime() > deadline then
+                        stop("timeout")
+                        return
+                    end
+
+                    if mode:sub(1, 1) == "n" then
+                        debug.log("term_restore startinsert(" .. tag .. ") desired=" .. desired)
+                        pcall(vim.cmd, "startinsert")
+                    end
+
+                    vim.defer_fn(function()
+                        attempt("defer10")
+                    end, 10)
                 end
 
-                -- In Neovide (and sometimes with Noice/cmdline), starting insert
-                -- inside WinEnter can be overridden by the final mode switch to
-                -- `nt`. Retry on the next ticks so it actually sticks.
                 vim.schedule(function()
                     attempt("schedule")
                 end)
-                vim.defer_fn(function()
-                    attempt("defer10")
-                end, 10)
                 return
             end
 

@@ -6,6 +6,18 @@ local state = {
     id = nil,
 }
 
+local redraw_scheduled = false
+local function schedule_redraw()
+    if redraw_scheduled then
+        return
+    end
+    redraw_scheduled = true
+    vim.schedule(function()
+        redraw_scheduled = false
+        pcall(vim.cmd, "redraw")
+    end)
+end
+
 local function mode_to_hl(mode)
     if type(mode) ~= "string" or mode == "" then
         return "HumoodagenModeCursorNormal"
@@ -69,6 +81,10 @@ local function place(mode_override)
         return
     end
 
+    if mode == "nt" and vim.bo[buf].filetype == "toggleterm" and vim.b[buf].humoodagen_term_restore_active then
+        mode = "t"
+    end
+
     local cursor = vim.api.nvim_win_get_cursor(win)
     local row = cursor[1] - 1
     local col = cursor[2]
@@ -105,7 +121,7 @@ function M.setup()
         group = group,
         callback = function()
             place(vim.v.event and vim.v.event.new_mode or nil)
-            pcall(vim.cmd, "redraw")
+            schedule_redraw()
         end,
         desc = "Update per-mode cursor block immediately",
     })
