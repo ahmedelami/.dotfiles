@@ -136,15 +136,11 @@ end, { expr = true, silent = true, desc = "Exit visual (remember per pane)" })
 local function toggle_nvim_tree_any_mode()
     local mode = vim.api.nvim_get_mode().mode
     local mode_prefix = mode:sub(1, 1)
-    local suppressed = false
     if mode_prefix == "t" then
         local buf = vim.api.nvim_get_current_buf()
         if vim.bo[buf].filetype == "toggleterm" then
             vim.b.humoodagen_term_mode = "t"
         end
-        vim.g.humoodagen_suppress_toggleterm_mode_capture = (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
-        suppressed = true
-        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
     elseif mode_prefix == "c" then
         vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
     end
@@ -153,24 +149,17 @@ local function toggle_nvim_tree_any_mode()
         pcall(function()
             require("nvim-tree.api").tree.toggle()
         end)
-        if suppressed then
-            vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
-        end
     end)
 end
 
 local function toggle_nvim_tree_visibility_any_mode()
     local mode = vim.api.nvim_get_mode().mode
     local mode_prefix = mode:sub(1, 1)
-    local suppressed = false
     if mode_prefix == "t" then
         local buf = vim.api.nvim_get_current_buf()
         if vim.bo[buf].filetype == "toggleterm" then
             vim.b.humoodagen_term_mode = "t"
         end
-        vim.g.humoodagen_suppress_toggleterm_mode_capture = (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
-        suppressed = true
-        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
     elseif mode_prefix == "c" then
         vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
     end
@@ -178,30 +167,20 @@ local function toggle_nvim_tree_visibility_any_mode()
     vim.schedule(function()
         local ok, api = pcall(require, "nvim-tree.api")
         if not ok then
-            if suppressed then
-                vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
-            end
             return
         end
         api.tree.toggle({ focus = false })
-        if suppressed then
-            vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
-        end
     end)
 end
 
 local function focus_nvim_tree_any_mode()
     local mode = vim.api.nvim_get_mode().mode
     local mode_prefix = mode:sub(1, 1)
-    local suppressed = false
     if mode_prefix == "t" then
         local buf = vim.api.nvim_get_current_buf()
         if vim.bo[buf].filetype == "toggleterm" then
             vim.b.humoodagen_term_mode = "t"
         end
-        vim.g.humoodagen_suppress_toggleterm_mode_capture = (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
-        suppressed = true
-        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
     elseif mode_prefix == "c" then
         vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
     end
@@ -209,15 +188,9 @@ local function focus_nvim_tree_any_mode()
     vim.schedule(function()
         local ok, api = pcall(require, "nvim-tree.api")
         if not ok then
-            if suppressed then
-                vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
-            end
             return
         end
         api.tree.focus()
-        if suppressed then
-            vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
-        end
     end)
 end
 
@@ -632,9 +605,28 @@ local function call_toggleterm_action(action)
 end
 
 local function call_toggleterm_any_mode(action)
-    resize_window_any_mode(function()
+    local mode_prefix = vim.api.nvim_get_mode().mode:sub(1, 1)
+    if mode_prefix == "c" then
+        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
+    end
+    vim.schedule(function()
         call_toggleterm_action(action)
     end)
+end
+
+local function arm_main_restore_cursor_override()
+    local desired = pane_mode_table().main
+    if type(desired) ~= "string" or desired:sub(1, 1) ~= "i" then
+        return
+    end
+
+    local token = tostring(vim.loop.hrtime())
+    vim.g.humoodagen_main_restore_cursor_override = token
+    vim.defer_fn(function()
+        if vim.g.humoodagen_main_restore_cursor_override == token then
+            vim.g.humoodagen_main_restore_cursor_override = nil
+        end
+    end, 200)
 end
 
 local function normalize_main_before_terminal_normal(target_pane)
@@ -703,6 +695,7 @@ local function jump_or_toggle_main_any_mode()
     if in_main then
         call_toggleterm_any_mode("toggle_main_only")
     else
+        arm_main_restore_cursor_override()
         call_toggleterm_any_mode("jump_main")
     end
 end

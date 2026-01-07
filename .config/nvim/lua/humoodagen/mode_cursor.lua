@@ -88,6 +88,22 @@ local function place(mode_override)
         end
     end
 
+    if type(mode) == "string" and mode:sub(1, 1) == "i" then
+        vim.g.humoodagen_main_restore_cursor_override = nil
+    elseif type(mode) == "string"
+        and mode:sub(1, 1) == "n"
+        and vim.g.humoodagen_main_restore_cursor_override ~= nil
+        and vim.bo[buf].buftype == ""
+        and vim.bo[buf].filetype ~= "toggleterm"
+        and vim.bo[buf].filetype ~= "NvimTree"
+    then
+        local pane = vim.g.humoodagen_pane_mode
+        local desired_main = type(pane) == "table" and pane.main or nil
+        if type(desired_main) == "string" and desired_main:sub(1, 1) == "i" then
+            mode = "i"
+        end
+    end
+
     local cursor = vim.api.nvim_win_get_cursor(win)
     local row = cursor[1] - 1
     local col = cursor[2]

@@ -645,9 +645,7 @@ return {
         local function toggle_terminal(term, opts)
             local mode = vim.api.nvim_get_mode().mode
             local mode_prefix = mode:sub(1, 1)
-            if mode_prefix == "t" then
-                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
-            elseif mode_prefix == "c" then
+            if mode_prefix == "c" then
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
             end
 
@@ -697,8 +695,6 @@ return {
                     vim.b[buf].humoodagen_term_mode = "t"
                     cancel_pending_term_exit(buf)
                 end
-                vim.g.humoodagen_suppress_toggleterm_mode_capture = (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
-                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
             elseif mode_prefix == "c" then
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
             end
@@ -709,7 +705,6 @@ return {
                     if vim.bo[buf].filetype == "toggleterm" then
                         vim.cmd("startinsert")
                     end
-                    vim.g.humoodagen_suppress_toggleterm_mode_capture = math.max(0, (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) - 1)
                 end
                 if not ok then
                     error(err)
