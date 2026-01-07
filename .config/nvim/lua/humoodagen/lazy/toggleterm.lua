@@ -175,8 +175,8 @@ return {
         end
 
         local function set_toggleterm_status_hl()
-            vim.api.nvim_set_hl(0, "HumoodagenToggletermTabActive", { fg = "#ffffff", bg = "#005eff" })
-            vim.api.nvim_set_hl(0, "HumoodagenToggletermTabInactive", { fg = "#000000", bg = "#d6d6d6" })
+            vim.api.nvim_set_hl(0, "HumoodagenToggletermTabActive", { fg = "#ffffff", bg = "#005eff", bold = true })
+            vim.api.nvim_set_hl(0, "HumoodagenToggletermTabInactive", { fg = "#000000", bg = "#d6d6d6", bold = true })
         end
 
         local function fix_toggleterm_inactive_statusline(buf)
@@ -1163,24 +1163,6 @@ return {
             return term_module.get(term_id, true)
         end
 
-        local subscript_digits = {
-            ["0"] = "₀",
-            ["1"] = "₁",
-            ["2"] = "₂",
-            ["3"] = "₃",
-            ["4"] = "₄",
-            ["5"] = "₅",
-            ["6"] = "₆",
-            ["7"] = "₇",
-            ["8"] = "₈",
-            ["9"] = "₉",
-        }
-
-        local function toggleterm_tab_label(index)
-            local label = tostring(index):gsub("%d", subscript_digits)
-            return " " .. label .. " "
-        end
-
         _G.HumoodagenToggletermStatusline = function()
             local term = term_for_win(vim.g.statusline_winid)
             if not term or not term.direction then
@@ -1213,13 +1195,12 @@ return {
 
             local parts = { inactive_hl }
             for i = 1, total do
-                local label = toggleterm_tab_label(i)
                 if i == current then
                     table.insert(parts, active_hl)
-                    table.insert(parts, label)
+                    table.insert(parts, tostring(i))
                     table.insert(parts, inactive_hl)
                 else
-                    table.insert(parts, label)
+                    table.insert(parts, tostring(i))
                 end
 
                 if i < total then
