@@ -2,13 +2,12 @@ if not vim.g.neovide then
     return
 end
 
--- Make Neovide feel "instant" (no cursor/trail animation).
-vim.g.neovide_cursor_animation_length = 0
-vim.g.neovide_cursor_short_animation_length = 0
--- `trail_size` < 1 can add visible lag; 1 makes the cursor jump immediately.
-vim.g.neovide_cursor_trail_size = 1.0
-vim.g.neovide_cursor_animate_in_insert_mode = false
-vim.g.neovide_cursor_animate_command_line = false
+-- Cursor animation (smear/trail) to improve tracking.
+vim.g.neovide_cursor_animation_length = 0.08
+vim.g.neovide_cursor_short_animation_length = 0.04
+vim.g.neovide_cursor_trail_size = 0.8
+vim.g.neovide_cursor_animate_in_insert_mode = true
+vim.g.neovide_cursor_animate_command_line = true
 vim.g.neovide_cursor_vfx_mode = ""
 
 -- Neovide can appear to "lag" on certain UI updates when it idles. Force it to
