@@ -9,22 +9,12 @@ return {
 
       require("catppuccin").setup({
         flavour = "latte",
-        transparent_background = true,
+        transparent_background = false,
+        integrations = {
+          nvimtree = true,
+        },
         custom_highlights = function(_)
           return {
-            NvimTreeFolderName = { fg = "#005eff", bold = true },
-            NvimTreeOpenedFolderName = { fg = "#005eff", bold = true },
-            NvimTreeEmptyFolderName = { fg = "#005eff", bold = true },
-            NvimTreeFolderIcon = { fg = "#005eff", bold = true },
-            NvimTreeFolderArrowOpen = { fg = "#005eff", bold = true },
-            NvimTreeFolderArrowClosed = { fg = "#005eff", bold = true },
-
-            NvimTreeNormal = { bg = "NONE" },
-            NvimTreeNormalNC = { bg = "NONE" },
-            NvimTreeWinSeparator = { fg = "#dbdbdb", bg = "NONE" },
-            WinSeparator = { fg = "#dbdbdb", bg = "NONE" },
-            VertSplit = { fg = "#dbdbdb", bg = "NONE" },
-
             CursorNormal = { fg = "#ffffff", bg = "#f28c28" },
             CursorInsert = { fg = "#ffffff", bg = "#000000" },
             CursorVisual = { fg = "#ffffff", bg = "#7a4cff" },
@@ -40,12 +30,6 @@ return {
             HumoodagenCursorLineInsert = { fg = "#000000", bg = "#000000" },
             HumoodagenCursorLineVisual = { fg = "#7a4cff", bg = "#7a4cff" },
             HumoodagenCursorLineReplace = { fg = "#cf222e", bg = "#cf222e" },
-
-            GitSignsAdd = { fg = "#1a7f37" },
-            GitSignsChange = { fg = "#cf222e" },
-            GitSignsDelete = { fg = "#cf222e" },
-            GitSignsTopdelete = { fg = "#cf222e" },
-            GitSignsChangedelete = { fg = "#cf222e" },
           }
         end,
       })
@@ -55,8 +39,16 @@ return {
       -- Hide the extra inactive statusline bar under NvimTree.
       local augroup = vim.api.nvim_create_augroup("HumoodagenNvimTreeHighlights", { clear = true })
       local function fix_nvim_tree_statusline()
-        vim.api.nvim_set_hl(0, "NvimTreeStatuslineNC", { bg = "NONE" })
-        vim.api.nvim_set_hl(0, "NvimTreeStatusLineNC", { bg = "NONE" })
+        -- Make NvimTree blend with the main background (Catppuccin Latte).
+        vim.api.nvim_set_hl(0, "NvimTreeNormal", { link = "Normal" })
+        vim.api.nvim_set_hl(0, "NvimTreeNormalNC", { link = "Normal" })
+        vim.api.nvim_set_hl(0, "NvimTreeEndOfBuffer", { link = "EndOfBuffer" })
+        vim.api.nvim_set_hl(0, "NvimTreeWinSeparator", { link = "WinSeparator" })
+
+        -- Hide the extra statusline bar under NvimTree (active + inactive).
+        vim.api.nvim_set_hl(0, "NvimTreeStatusLine", { link = "NvimTreeNormal" })
+        vim.api.nvim_set_hl(0, "NvimTreeStatusLineNC", { link = "NvimTreeNormal" })
+        vim.api.nvim_set_hl(0, "NvimTreeStatuslineNC", { link = "NvimTreeNormal" })
         vim.api.nvim_set_hl(0, "TermCursorNC", { link = "Normal" })
       end
 

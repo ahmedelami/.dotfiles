@@ -155,6 +155,8 @@ return {
                 timeout = 400,
             },
             view = {
+                number = true,
+                relativenumber = true,
                 width = "15%",
             },
             renderer = {
@@ -162,7 +164,7 @@ return {
                 highlight_git = "name",
                 indent_markers = {
                     enable = true,
-                    inline_arrows = true,
+                    inline_arrows = false,
                     icons = {
                         corner = "└",
                         edge = "│",
@@ -171,27 +173,27 @@ return {
                         none = " ",
                     },
                 },
-	                icons = {
-	                    git_placement = "after",
-	                    show = {
-	                        file = true,
-	                        folder = true,
-	                        folder_arrow = true,
-	                        git = true,
-	                    },
-	                    glyphs = {
-	                        folder = {
-	                            arrow_closed = "",
-	                            arrow_open = "",
-	                            default = "",
-	                            open = "",
-	                            empty = "",
-	                            empty_open = "",
-	                        },
-	                        git = {
-	                            unstaged = "",
-	                            staged = "",
-	                            unmerged = "",
+                icons = {
+                    git_placement = "after",
+                    show = {
+                        file = true,
+                        folder = true,
+                        folder_arrow = false,
+                        git = true,
+                    },
+                    glyphs = {
+                        folder = {
+                            arrow_closed = "",
+                            arrow_open = "",
+                            default = "",
+                            open = "",
+                            empty = "",
+                            empty_open = "",
+                        },
+                        git = {
+                            unstaged = "",
+                            staged = "",
+                            unmerged = "",
                             renamed = "",
                             untracked = "",
                             deleted = "",
