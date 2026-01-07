@@ -3,8 +3,9 @@ vim.g.loaded_netrwPlugin = 1
 
 -- Block cursor, with mode feedback drawn via `HumoodagenModeCursor*` highlights.
 vim.opt.guicursor = table.concat({
-    "n-v-c:block-HumoodagenModeCursorNormal",
+    "n-v:block-HumoodagenModeCursorNormal",
     "i-ci:block-HumoodagenModeCursorInsert",
+    "c:block-HumoodagenModeCursorInsert",
     "r-cr:block-HumoodagenModeCursorReplace",
     "o:block-HumoodagenModeCursorNormal",
     "v-ve:block-HumoodagenModeCursorVisual",

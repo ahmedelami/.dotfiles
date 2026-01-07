@@ -24,12 +24,53 @@ return {
         local term_module = require("toggleterm.terminal")
         local ui = require("toggleterm.ui")
         local Terminal = term_module.Terminal
+        local debug = require("humoodagen.debug")
         local term_sets = {
             horizontal = { terms = {}, current = 1 },
             vertical = { terms = {}, current = 1 },
         }
         local base_laststatus = vim.o.laststatus
         local base_statusline = vim.go.statusline
+
+        local pending_term_exit = {}
+
+        local function cancel_pending_term_exit(buf)
+            if not (buf and pending_term_exit[buf]) then
+                return
+            end
+            pending_term_exit[buf] = nil
+            if vim.api.nvim_buf_is_valid(buf) then
+                vim.b[buf].humoodagen_term_exit_pending = nil
+            end
+            debug.log("term_exit_pending canceled buf=" .. tostring(buf))
+        end
+
+        local function schedule_term_mode_nt(buf)
+            if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                return
+            end
+            cancel_pending_term_exit(buf)
+            local token = tostring(vim.loop.hrtime())
+            pending_term_exit[buf] = token
+            vim.b[buf].humoodagen_term_exit_pending = token
+            debug.log("term_mode schedule <- nt source=term_exit buf=" .. tostring(buf))
+            vim.defer_fn(function()
+                if not vim.api.nvim_buf_is_valid(buf) then
+                    return
+                end
+                if pending_term_exit[buf] ~= token then
+                    return
+                end
+                pending_term_exit[buf] = nil
+                vim.b[buf].humoodagen_term_exit_pending = nil
+                vim.b[buf].humoodagen_term_mode = "nt"
+                debug.log("term_mode <- nt source=term_exit_deferred buf=" .. tostring(buf))
+            end, 50)
+        end
+
+        _G.HumoodagenCancelToggletermPendingExit = function()
+            cancel_pending_term_exit(vim.api.nvim_get_current_buf())
+        end
 
         local function restore_term_mode(term)
             local buf = vim.api.nvim_get_current_buf()
@@ -43,15 +84,43 @@ return {
             end
 
             local want_job = desired:sub(1, 1) == "t"
-            local mode = vim.api.nvim_get_mode().mode
             if want_job then
-                if mode ~= "t" then
+                local win = vim.api.nvim_get_current_win()
+                local function attempt(tag)
+                    if not vim.api.nvim_win_is_valid(win) then
+                        return
+                    end
+                    if vim.api.nvim_get_current_win() ~= win then
+                        return
+                    end
+                    if vim.api.nvim_get_current_buf() ~= buf then
+                        return
+                    end
+                    if vim.bo[buf].filetype ~= "toggleterm" then
+                        return
+                    end
+                    if vim.api.nvim_get_mode().mode:sub(1, 1) == "t" then
+                        return
+                    end
+                    debug.log("term_restore startinsert(" .. tag .. ") desired=" .. desired)
                     pcall(vim.cmd, "startinsert")
                 end
+
+                -- In Neovide (and sometimes with Noice/cmdline), starting insert
+                -- inside WinEnter can be overridden by the final mode switch to
+                -- `nt`. Retry on the next ticks so it actually sticks.
+                vim.schedule(function()
+                    attempt("schedule")
+                end)
+                vim.defer_fn(function()
+                    attempt("defer10")
+                end, 10)
                 return
             end
 
+            local mode = vim.api.nvim_get_mode().mode
             if mode == "t" then
+                debug.log("term_restore to_normal desired=" .. desired)
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
             end
         end
@@ -526,6 +595,7 @@ return {
                 local buf = vim.api.nvim_get_current_buf()
                 if vim.bo[buf].filetype == "toggleterm" then
                     vim.b[buf].humoodagen_term_mode = "t"
+                    cancel_pending_term_exit(buf)
                 end
                 vim.g.humoodagen_suppress_toggleterm_mode_capture = (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) + 1
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
@@ -1000,23 +1070,37 @@ return {
                 -- This prevents Cmd+keys (which send Esc+...) from flipping the mode.
                 local has_pending = vim.fn.getchar(1) ~= 0
                 if not has_pending and (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) == 0 then
-                    vim.b[buf].humoodagen_term_mode = "nt"
+                    if vim.g.neovide then
+                        schedule_term_mode_nt(buf)
+                    else
+                        vim.b[buf].humoodagen_term_mode = "nt"
+                        debug.log("term_mode <- nt source=term_esc buf=" .. tostring(buf))
+                    end
                 end
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
             end, vim.tbl_extend("force", opts, { desc = "Terminal normal mode (Esc)" }))
             vim.keymap.set("t", "<C-[>", function()
                 local has_pending = vim.fn.getchar(1) ~= 0
                 if not has_pending and (vim.g.humoodagen_suppress_toggleterm_mode_capture or 0) == 0 then
-                    vim.b[buf].humoodagen_term_mode = "nt"
+                    if vim.g.neovide then
+                        schedule_term_mode_nt(buf)
+                    else
+                        vim.b[buf].humoodagen_term_mode = "nt"
+                        debug.log("term_mode <- nt source=term_ctrl_[ buf=" .. tostring(buf))
+                    end
                 end
                 vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
             end, vim.tbl_extend("force", opts, { desc = "Terminal normal mode (Ctrl-[)" }))
             vim.keymap.set("n", "i", function()
                 vim.b[buf].humoodagen_term_mode = "t"
+                cancel_pending_term_exit(buf)
+                debug.log("term_mode <- t source=term_i buf=" .. tostring(buf))
                 vim.cmd("startinsert")
             end, vim.tbl_extend("force", opts, { desc = "Terminal insert mode (i)" }))
             vim.keymap.set("n", "a", function()
                 vim.b[buf].humoodagen_term_mode = "t"
+                cancel_pending_term_exit(buf)
+                debug.log("term_mode <- t source=term_a buf=" .. tostring(buf))
                 vim.cmd("startinsert")
             end, vim.tbl_extend("force", opts, { desc = "Terminal insert mode (a)" }))
             vim.keymap.set({ "t", "n" }, "<C-b>t", new_term_tab, vim.tbl_extend("force", opts, { desc = "Toggleterm new tab" }))

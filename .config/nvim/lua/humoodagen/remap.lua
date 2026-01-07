@@ -35,6 +35,13 @@ local function cancel_pending_main_normal()
     pending_main_normal = nil
 end
 
+local function cancel_pending_toggleterm_exit()
+    local fn = rawget(_G, "HumoodagenCancelToggletermPendingExit")
+    if type(fn) == "function" then
+        pcall(fn)
+    end
+end
+
 local function set_main_mode_normal()
     vim.g.humoodagen_pane_mode = vim.g.humoodagen_pane_mode or {}
     vim.g.humoodagen_pane_mode.main = "n"
@@ -218,6 +225,7 @@ local save_current_pane_mode
 
 local function jump_or_toggle_filetree_any_mode()
     cancel_pending_main_normal()
+    cancel_pending_toggleterm_exit()
     debug.log("jump filetree")
     if save_current_pane_mode then
         save_current_pane_mode()
@@ -632,6 +640,7 @@ end
 -- Cmd+H/J/K/L jumps to fixed panes.
 local function jump_or_toggle_bottom_any_mode()
     cancel_pending_main_normal()
+    cancel_pending_toggleterm_exit()
     debug.log("jump bottom")
     save_current_pane_mode()
     if current_toggleterm_direction() == "horizontal" then
@@ -643,6 +652,7 @@ end
 
 local function jump_or_toggle_main_any_mode()
     cancel_pending_main_normal()
+    cancel_pending_toggleterm_exit()
     debug.log("jump main")
     save_current_pane_mode()
     local buf = vim.api.nvim_get_current_buf()
@@ -659,6 +669,7 @@ end
 
 local function jump_or_toggle_right_any_mode()
     cancel_pending_main_normal()
+    cancel_pending_toggleterm_exit()
     debug.log("jump right")
     save_current_pane_mode()
     if current_toggleterm_direction() == "vertical" then
