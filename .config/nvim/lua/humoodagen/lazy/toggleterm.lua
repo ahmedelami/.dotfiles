@@ -225,9 +225,7 @@ return {
         end
 
         local function update_laststatus()
-            local buf = vim.api.nvim_get_current_buf()
-            local is_toggleterm = vim.bo[buf].filetype == "toggleterm"
-            if is_toggleterm or any_toggleterm_window() then
+            if any_toggleterm_window() then
                 vim.o.laststatus = 2
                 vim.go.statusline = " "
             else
@@ -301,6 +299,7 @@ return {
                             open_or_focus_term(next_term)
                         end
                     end
+                    sync_toggleterm_inactive_highlight()
                     vim.cmd("redrawstatus")
                     update_laststatus()
                 end)
@@ -364,10 +363,10 @@ return {
             return term_module.get(term_id, true)
         end
 
-        local function sync_current_term_from_buf()
-            local term = current_toggleterm()
-            if not term or not term.direction then
-                return
+	        local function sync_current_term_from_buf()
+	            local term = current_toggleterm()
+	            if not term or not term.direction then
+	                return
             end
 
             attach_tab_lifecycle(term)
@@ -379,127 +378,186 @@ return {
                 end
             end
 
-            table.insert(set.terms, term)
-            set.current = #set.terms
-        end
-
-        local function with_directional_open_windows(direction, fn)
-            local original = ui.find_open_windows
-            ui.find_open_windows = function(comparator)
-                local has_open, windows = original(comparator)
-                if not has_open then
-                    return false, windows
-                end
-                local filtered = {}
-                for _, win in ipairs(windows) do
-                    local term = term_module.get(win.term_id, true)
-                    if term and term.direction == direction then
-                        table.insert(filtered, win)
-                    end
-                end
-                return #filtered > 0, filtered
-            end
-
-            local ok, err = pcall(fn)
-            ui.find_open_windows = original
-            if not ok then
-                error(err)
-            end
-        end
-
-        local function is_main_win(win)
-            if not win or not vim.api.nvim_win_is_valid(win) then
-                return false
-            end
-            local buf = vim.api.nvim_win_get_buf(win)
-            local buftype = vim.bo[buf].buftype
-            local filetype = vim.bo[buf].filetype
-            if buftype == "terminal" or filetype == "toggleterm" or filetype == "NvimTree" then
-                return false
-            end
-            local cfg = vim.api.nvim_win_get_config(win)
-            if cfg.relative ~= "" then
-                return false
-            end
-            return true
-        end
-
-        local last_main_win = nil
-
-        local nav_group = vim.api.nvim_create_augroup("ToggleTermNav", { clear = true })
-        vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
-            group = nav_group,
-            callback = function()
-                local win = vim.api.nvim_get_current_win()
-                if is_main_win(win) then
-                    last_main_win = win
-                end
-            end,
-        })
-
-        vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
-            group = nav_group,
-            callback = function()
-                local buf = vim.api.nvim_get_current_buf()
-                if vim.bo[buf].filetype == "toggleterm" then
-                    sync_current_term_from_buf()
-                    vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
-                    vim.opt_local.winbar = ""
-                    vim.wo.cursorline = true
-                    fix_toggleterm_inactive_statusline(buf)
-                    vim.schedule(update_laststatus)
-                    local stored = vim.b[buf].humoodagen_term_mode
-                    if type(stored) ~= "string" or stored == "" then
-                        vim.b[buf].humoodagen_term_mode = "t"
-                    end
-                    local term = current_toggleterm()
-                    restore_term_mode(term)
-
-                    local desired = vim.b[buf].humoodagen_term_mode
-                    if type(desired) == "string" and desired:sub(1, 1) == "n" then
-                        local cursor = vim.b[buf].humoodagen_term_nt_cursor
-                        if type(cursor) == "table" and #cursor == 2 then
-                            local win = vim.api.nvim_get_current_win()
-                            local function restore_cursor(tag)
-                                if not vim.api.nvim_win_is_valid(win) then
-                                    return
-                                end
-                                if vim.api.nvim_get_current_win() ~= win then
-                                    return
-                                end
-                                if vim.api.nvim_get_current_buf() ~= buf then
-                                    return
-                                end
-                                if vim.bo[buf].filetype ~= "toggleterm" then
-                                    return
-                                end
-                                if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "n" then
-                                    return
-                                end
-
-                                local line_count = vim.api.nvim_buf_line_count(buf)
-                                local row = math.min(math.max(1, cursor[1]), line_count)
-                                local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, true)[1] or ""
-                                local max_col = #line > 0 and (#line - 1) or 0
-                                local col = math.min(math.max(0, cursor[2]), max_col)
-                                debug.log(string.format("term_nt_cursor restore(%s) row=%d col=%d", tag, row, col))
-                                pcall(vim.api.nvim_win_set_cursor, win, { row, col })
-                            end
-
-                            vim.schedule(function()
-                                restore_cursor("schedule")
-                            end)
-                            vim.defer_fn(function()
-                                restore_cursor("defer10")
-                            end, 10)
-                            vim.defer_fn(function()
-                                restore_cursor("defer50")
-                            end, 50)
-                        end
-                    end
-                end
-            end,
-        })
+	            table.insert(set.terms, term)
+	            set.current = #set.terms
+	        end
+	
+	        local function with_directional_open_windows(direction, fn)
+	            local original = ui.find_open_windows
+	            ui.find_open_windows = function(comparator)
+	                local has_open, windows = original(comparator)
+	                if not has_open then
+	                    return false, windows
+	                end
+	                local filtered = {}
+	                for _, win in ipairs(windows) do
+	                    local term = term_module.get(win.term_id, true)
+	                    if term and term.direction == direction then
+	                        table.insert(filtered, win)
+	                    end
+	                end
+	                return #filtered > 0, filtered
+	            end
+	
+	            local ok, err = pcall(fn)
+	            ui.find_open_windows = original
+	            if not ok then
+	                error(err)
+	            end
+	        end
+	
+	        local function is_main_win(win)
+	            if not win or not vim.api.nvim_win_is_valid(win) then
+	                return false
+	            end
+	            local buf = vim.api.nvim_win_get_buf(win)
+	            local buftype = vim.bo[buf].buftype
+	            local filetype = vim.bo[buf].filetype
+	            if buftype == "terminal" or filetype == "toggleterm" or filetype == "NvimTree" then
+	                return false
+	            end
+	            local cfg = vim.api.nvim_win_get_config(win)
+	            if cfg.relative ~= "" then
+	                return false
+	            end
+	            return true
+	        end
+	
+	        local last_main_win = nil
+	
+	        local function parse_winhighlight(value)
+	            local map = {}
+	            if type(value) ~= "string" or value == "" then
+	                return map
+	            end
+	            for entry in value:gmatch("[^,]+") do
+	                local from, to = entry:match("^([^:]+):(.+)$")
+	                if from and to then
+	                    map[from] = to
+	                end
+	            end
+	            return map
+	        end
+	
+	        local function build_winhighlight(map)
+	            local parts = {}
+	            for from, to in pairs(map) do
+	                table.insert(parts, from .. ":" .. to)
+	            end
+	            table.sort(parts)
+	            return table.concat(parts, ",")
+	        end
+	
+	        local function normalize_toggleterm_winhighlight(value)
+	            local map = parse_winhighlight(value)
+	            local normal = map.Normal or "Normal"
+	            map.NormalNC = normal
+	            map.TermNormal = normal
+	            map.TermNormalNC = normal
+	            map.CursorLine = "Normal"
+	            map.CursorLineNr = "LineNr"
+	            map.StatusLine = "Normal"
+	            map.StatusLineNC = "Normal"
+	            return build_winhighlight(map)
+	        end
+	
+	        local function sync_toggleterm_inactive_highlight()
+	            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+	                local buf = vim.api.nvim_win_get_buf(win)
+	                if vim.bo[buf].filetype == "toggleterm" then
+	                    vim.wo[win].cursorline = false
+	                    local current_wh = vim.wo[win].winhighlight or ""
+	                    local normalized = normalize_toggleterm_winhighlight(current_wh)
+	                    if normalized ~= current_wh then
+	                        vim.wo[win].winhighlight = normalized
+	                    end
+	                end
+	            end
+	        end
+	
+	        local nav_group = vim.api.nvim_create_augroup("ToggleTermNav", { clear = true })
+	        vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
+	            group = nav_group,
+	            callback = function()
+	                local win = vim.api.nvim_get_current_win()
+	                if is_main_win(win) then
+	                    last_main_win = win
+	                end
+	                sync_toggleterm_inactive_highlight()
+	                vim.schedule(update_laststatus)
+	            end,
+	        })
+	
+	        vim.api.nvim_create_autocmd("ModeChanged", {
+	            group = nav_group,
+	            callback = function()
+	                sync_toggleterm_inactive_highlight()
+	            end,
+	        })
+	
+	        vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
+	            group = nav_group,
+	            callback = function()
+	                local buf = vim.api.nvim_get_current_buf()
+	                if vim.bo[buf].filetype == "toggleterm" then
+	                    sync_current_term_from_buf()
+	                    vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
+	                    vim.opt_local.winbar = ""
+	                    vim.wo.cursorline = false
+	                    fix_toggleterm_inactive_statusline(buf)
+	                    local stored = vim.b[buf].humoodagen_term_mode
+	                    if type(stored) ~= "string" or stored == "" then
+	                        vim.b[buf].humoodagen_term_mode = "t"
+	                    end
+	                    local term = current_toggleterm()
+	                    restore_term_mode(term)
+	                    vim.schedule(sync_toggleterm_inactive_highlight)
+	
+	                    local desired = vim.b[buf].humoodagen_term_mode
+	                    if type(desired) == "string" and desired:sub(1, 1) == "n" then
+	                        local cursor = vim.b[buf].humoodagen_term_nt_cursor
+	                        if type(cursor) == "table" and #cursor == 2 then
+	                            local win = vim.api.nvim_get_current_win()
+	                            local function restore_cursor(tag)
+	                                if not vim.api.nvim_win_is_valid(win) then
+	                                    return
+	                                end
+	                                if vim.api.nvim_get_current_win() ~= win then
+	                                    return
+	                                end
+	                                if vim.api.nvim_get_current_buf() ~= buf then
+	                                    return
+	                                end
+	                                if vim.bo[buf].filetype ~= "toggleterm" then
+	                                    return
+	                                end
+	                                if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "n" then
+	                                    return
+	                                end
+	
+	                                local line_count = vim.api.nvim_buf_line_count(buf)
+	                                local row = math.min(math.max(1, cursor[1]), line_count)
+	                                local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, true)[1] or ""
+	                                local max_col = #line > 0 and (#line - 1) or 0
+	                                local col = math.min(math.max(0, cursor[2]), max_col)
+	                                debug.log(string.format("term_nt_cursor restore(%s) row=%d col=%d", tag, row, col))
+	                                pcall(vim.api.nvim_win_set_cursor, win, { row, col })
+	                            end
+	
+	                            vim.schedule(function()
+	                                restore_cursor("schedule")
+	                            end)
+	                            vim.defer_fn(function()
+	                                restore_cursor("defer10")
+	                            end, 10)
+	                            vim.defer_fn(function()
+	                                restore_cursor("defer50")
+	                            end, 50)
+	                        end
+	                    end
+	                end
+	            end,
+	        })
 
         vim.api.nvim_create_autocmd("WinLeave", {
             group = nav_group,
@@ -620,9 +678,10 @@ return {
                 ui.switch_buf(bufnr)
             end
 
-            ui.hl_term(term)
-            if term.on_open then term:on_open() end
-        end
+	            ui.hl_term(term)
+	            vim.schedule(sync_toggleterm_inactive_highlight)
+	            if term.on_open then term:on_open() end
+	        end
 
         local function toggle_bottom_terminal(term)
             if term:is_open() then
@@ -777,13 +836,14 @@ return {
                 with_directional_open_windows("vertical", function()
                     term:open()
                 end)
-            else
-                term:open()
-            end
-
-            restore_term_mode(term)
-            vim.cmd("redrawstatus")
-        end
+	            else
+	                term:open()
+	            end
+	
+	            vim.schedule(sync_toggleterm_inactive_highlight)
+	            restore_term_mode(term)
+	            vim.cmd("redrawstatus")
+	        end
 
         local function open_or_focus_bottom()
             run_in_normal(function()
@@ -1132,7 +1192,6 @@ return {
 
             local inactive_hl = "%#HumoodagenToggletermTabInactive#"
             local active_hl = "%#HumoodagenToggletermTabActive#"
-            local reset_hl = "%*"
 
             local parts = { inactive_hl }
             for i = 1, total do
@@ -1149,7 +1208,9 @@ return {
                 end
             end
 
-            table.insert(parts, reset_hl)
+            -- Ensure the unused statusline fill is transparent instead of inheriting
+            -- StatusLine/StatusLineNC highlights.
+            table.insert(parts, "%#Normal#")
             return table.concat(parts)
         end
 
@@ -1216,7 +1277,6 @@ return {
                 vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
                 vim.opt_local.winbar = ""
                 set_term_tab_keymaps(args.buf)
-                vim.schedule(update_laststatus)
             end,
         })
 
