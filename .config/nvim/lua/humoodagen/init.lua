@@ -1,7 +1,11 @@
 require("humoodagen.set")
+require("humoodagen.neovide")
 require("humoodagen.remap")
 require("humoodagen.commands")
 require("humoodagen.lazy_init")
+local debug = require("humoodagen.debug")
+
+require("humoodagen.mode_cursor").setup()
 
 -- DO.not
 -- DO NOT INCLUDE THIS
@@ -95,7 +99,9 @@ autocmd("InsertEnter", {
             return
         end
 
-        pane_mode_table().main = vim.api.nvim_get_mode().mode
+        local mode = vim.api.nvim_get_mode().mode
+        pane_mode_table().main = mode
+        debug.log("pane_mode.main <- " .. mode .. " source=InsertEnter")
     end,
 })
 
@@ -115,6 +121,7 @@ autocmd("ModeChanged", {
         local first = new_mode:sub(1, 1)
         if first == "v" or new_mode == "V" or new_mode == "\022" then
             pane_mode_table().main = new_mode
+            debug.log("pane_mode.main <- " .. new_mode .. " source=ModeChanged(visual)")
         end
     end,
 })
@@ -131,30 +138,48 @@ autocmd("WinEnter", {
         local desired = pane_mode_table().main or "n"
         local first = desired:sub(1, 1)
 
-        vim.schedule(function()
+        debug.log("pane_restore WinEnter desired=" .. desired)
+
+        local function attempt_restore(tag)
             if not vim.api.nvim_win_is_valid(win) then
+                debug.log("pane_restore skip(" .. tag .. ") reason=invalid_win desired=" .. desired)
                 return
             end
             if vim.api.nvim_get_current_win() ~= win then
+                debug.log("pane_restore skip(" .. tag .. ") reason=win_changed desired=" .. desired)
                 return
             end
             if not is_main_buf(vim.api.nvim_get_current_buf()) then
+                debug.log("pane_restore skip(" .. tag .. ") reason=not_main_buf desired=" .. desired)
                 return
             end
             if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "n" then
+                debug.log("pane_restore skip(" .. tag .. ") reason=mode_not_normal desired=" .. desired)
                 return
             end
 
             if first == "i" then
-                vim.cmd("startinsert")
+                debug.log("pane_restore apply(" .. tag .. ") action=startinsert desired=" .. desired)
+                pcall(vim.cmd, "startinsert")
                 return
             end
 
             if first == "v" or desired == "V" or desired == "\022" then
-                vim.cmd("normal! gv")
+                debug.log("pane_restore apply(" .. tag .. ") action=gv desired=" .. desired)
+                pcall(vim.cmd, "normal! gv")
                 return
             end
+        end
+
+        vim.schedule(function()
+            attempt_restore("schedule")
         end)
+        vim.defer_fn(function()
+            attempt_restore("defer10")
+        end, 10)
+        vim.defer_fn(function()
+            attempt_restore("defer50")
+        end, 50)
     end,
 })
 

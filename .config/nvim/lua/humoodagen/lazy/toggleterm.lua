@@ -6,6 +6,10 @@ return {
             start_in_insert = true,
             persist_size = true,
             direction = "horizontal",
+            -- Toggleterm shells are not "real" outer terminals; prevent our zshrc
+            -- from auto-attaching to tmux inside them (which feels like it
+            -- "inherits" an external terminal).
+            env = { DISABLE_TMUX_AUTO = "1" },
             size = function(term)
                 if term.direction == "horizontal" then
                     return 15
@@ -42,9 +46,7 @@ return {
             local mode = vim.api.nvim_get_mode().mode
             if want_job then
                 if mode ~= "t" then
-                    vim.schedule(function()
-                        vim.cmd("startinsert")
-                    end)
+                    pcall(vim.cmd, "startinsert")
                 end
                 return
             end
@@ -59,10 +61,36 @@ return {
             vim.api.nvim_set_hl(0, "HumoodagenToggletermTabInactive", { fg = "#000000", bg = "#d6d6d6", bold = true })
         end
 
+        local function fix_toggleterm_inactive_statusline(buf)
+            if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                return
+            end
+            if vim.bo[buf].filetype ~= "toggleterm" then
+                return
+            end
+
+            local num = vim.b[buf].toggle_number
+            if not num then
+                return
+            end
+
+            vim.api.nvim_set_hl(0, ("ToggleTerm%sStatusLineNC"):format(num), { bg = "NONE" })
+        end
+
+        local function fix_all_toggleterm_inactive_statuslines()
+            for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+                if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "toggleterm" then
+                    fix_toggleterm_inactive_statusline(buf)
+                end
+            end
+        end
+
         set_toggleterm_status_hl()
+        fix_all_toggleterm_inactive_statuslines()
         vim.api.nvim_create_autocmd("ColorScheme", {
             callback = function()
                 set_toggleterm_status_hl()
+                fix_all_toggleterm_inactive_statuslines()
             end,
         })
 
@@ -299,6 +327,8 @@ return {
                     sync_current_term_from_buf()
                     vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
                     vim.opt_local.winbar = ""
+                    vim.wo.cursorline = true
+                    fix_toggleterm_inactive_statusline(buf)
                     vim.schedule(update_laststatus)
                     local stored = vim.b[buf].humoodagen_term_mode
                     if type(stored) ~= "string" or stored == "" then
@@ -306,6 +336,16 @@ return {
                     end
                     local term = current_toggleterm()
                     restore_term_mode(term)
+                end
+            end,
+        })
+
+        vim.api.nvim_create_autocmd("WinLeave", {
+            group = nav_group,
+            callback = function()
+                local buf = vim.api.nvim_get_current_buf()
+                if vim.bo[buf].filetype == "toggleterm" then
+                    vim.wo.cursorline = false
                 end
             end,
         })
@@ -509,7 +549,7 @@ return {
 
         local function focus_main_win()
             local target = last_main_win
-            if target and vim.api.nvim_win_is_valid(target) then
+            if target and vim.api.nvim_win_is_valid(target) and is_main_win(target) then
                 vim.api.nvim_set_current_win(target)
                 return true
             end
@@ -695,6 +735,23 @@ return {
             jump_main = function()
                 run_in_normal(function()
                     focus_main_win()
+                    local buf = vim.api.nvim_get_current_buf()
+                    if vim.bo[buf].buftype ~= "" then
+                        return
+                    end
+                    if vim.api.nvim_buf_get_name(buf) ~= "" then
+                        return
+                    end
+                    if vim.bo[buf].modified then
+                        return
+                    end
+                    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+                    for _, line in ipairs(lines) do
+                        if line ~= "" then
+                            return
+                        end
+                    end
+                    vim.cmd("startinsert")
                 end)
             end,
             toggle_bottom = function()
@@ -765,6 +822,103 @@ return {
             end,
             toggle_main_only = toggle_main_only,
         }
+
+        local startup_group = vim.api.nvim_create_augroup("HumoodagenToggletermStartup", { clear = true })
+        local function open_startup_terminals()
+            if #vim.api.nvim_list_uis() == 0 then
+                return
+            end
+            if vim.g.humoodagen_startup_terminals_opened then
+                return
+            end
+            vim.g.humoodagen_startup_terminals_opened = true
+
+            run_in_normal(function()
+                local desired_cwd = vim.loop.cwd()
+                local repos = vim.fn.expand("~/repos")
+                if vim.fn.isdirectory(repos) == 1 then
+                    local real_repos = vim.loop.fs_realpath(repos)
+                    if real_repos and real_repos == desired_cwd then
+                        -- Use the symlink path so shells show `~/repos` in the prompt.
+                        desired_cwd = repos
+                    end
+                end
+
+                local origin_win = vim.api.nvim_get_current_win()
+                local origin_mode = vim.api.nvim_get_mode().mode
+
+                local function has_open_direction(direction)
+                    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                        local buf = vim.api.nvim_win_get_buf(win)
+                        if vim.bo[buf].filetype == "toggleterm" then
+                            local id = vim.b[buf].toggle_number
+                            if id then
+                                local t = term_module.get(id, true)
+                                if t and t.direction == direction and t:is_open() then
+                                    return true
+                                end
+                            end
+                        end
+                    end
+                    return false
+                end
+
+                local right = current_term("vertical")
+                if right then
+                    right.dir = desired_cwd
+                end
+                if right and not has_open_direction("vertical") and not right:is_open() then
+                    local set = term_sets[right.direction]
+                    if set then
+                        for _, other in ipairs(set.terms) do
+                            if other ~= right and other:is_open() then
+                                safe_close_term(other)
+                            end
+                        end
+                    end
+
+                    focus_main_win()
+                    with_directional_open_windows("vertical", function()
+                        right:open()
+                    end)
+                end
+
+                local bottom = current_term("horizontal")
+                if bottom then
+                    bottom.dir = desired_cwd
+                end
+                if bottom and not has_open_direction("horizontal") and not bottom:is_open() then
+                    toggle_bottom_terminal(bottom)
+                end
+
+                if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+                    vim.api.nvim_set_current_win(origin_win)
+                    if origin_mode:sub(1, 1) == "i" then
+                        local buf = vim.api.nvim_win_get_buf(origin_win)
+                        if vim.bo[buf].buftype == "" and vim.bo[buf].filetype ~= "NvimTree" and vim.bo[buf].filetype ~= "toggleterm" then
+                            vim.cmd("startinsert")
+                        end
+                    end
+                else
+                    local tree_win = find_tree_win()
+                    if tree_win and vim.api.nvim_win_is_valid(tree_win) then
+                        vim.api.nvim_set_current_win(tree_win)
+                    else
+                        focus_main_win()
+                    end
+                end
+
+                vim.cmd("redrawstatus")
+                update_laststatus()
+            end)
+        end
+
+        vim.api.nvim_create_autocmd("VimEnter", {
+            group = startup_group,
+            callback = function()
+                vim.schedule(open_startup_terminals)
+            end,
+        })
 
         local function term_for_win(winid)
             if not winid or winid == 0 then

@@ -21,6 +21,9 @@ return {
         condition = function(buf)
             local fn = vim.fn
             local utils = require("auto-save.utils.data")
+            if vim.api.nvim_buf_get_name(buf) == "" then
+                return false
+            end
             if fn.getbufvar(buf, "&modifiable") == 1 and
                utils.not_in(fn.getbufvar(buf, "&filetype"), { "NvimTree", "toggleterm", "TelescopePrompt" }) then
                 return true

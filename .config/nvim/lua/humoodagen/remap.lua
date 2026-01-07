@@ -27,13 +27,46 @@ vim.keymap.set("n", "<leader>f", vim.lsp.buf.format)
 -- make executable
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true })
 
+local debug = require("humoodagen.debug")
+
+local pending_main_normal = nil
+
+local function cancel_pending_main_normal()
+    pending_main_normal = nil
+end
+
+local function set_main_mode_normal()
+    vim.g.humoodagen_pane_mode = vim.g.humoodagen_pane_mode or {}
+    vim.g.humoodagen_pane_mode.main = "n"
+    debug.log("pane_mode.main <- n source=main_exit")
+end
+
+local function schedule_main_mode_normal(buf)
+    pending_main_normal = buf
+    debug.log("pane_mode.main schedule <- n source=main_exit buf=" .. tostring(buf))
+    vim.defer_fn(function()
+        if pending_main_normal ~= buf then
+            debug.log("pane_mode.main schedule canceled buf=" .. tostring(buf))
+            return
+        end
+        pending_main_normal = nil
+        set_main_mode_normal()
+    end, 30)
+end
+
 vim.keymap.set("i", "<Esc>", function()
     local buf = vim.api.nvim_get_current_buf()
     if vim.bo[buf].buftype == "" then
         local ft = vim.bo[buf].filetype
         if ft ~= "NvimTree" and ft ~= "toggleterm" then
-            vim.g.humoodagen_pane_mode = vim.g.humoodagen_pane_mode or {}
-            vim.g.humoodagen_pane_mode.main = "n"
+            local has_pending = vim.fn.getchar(1) ~= 0
+            if not has_pending then
+                if vim.g.neovide then
+                    schedule_main_mode_normal(buf)
+                else
+                    set_main_mode_normal()
+                end
+            end
         end
     end
     return "<Esc>"
@@ -44,8 +77,14 @@ vim.keymap.set("i", "<C-[>", function()
     if vim.bo[buf].buftype == "" then
         local ft = vim.bo[buf].filetype
         if ft ~= "NvimTree" and ft ~= "toggleterm" then
-            vim.g.humoodagen_pane_mode = vim.g.humoodagen_pane_mode or {}
-            vim.g.humoodagen_pane_mode.main = "n"
+            local has_pending = vim.fn.getchar(1) ~= 0
+            if not has_pending then
+                if vim.g.neovide then
+                    schedule_main_mode_normal(buf)
+                else
+                    set_main_mode_normal()
+                end
+            end
         end
     end
     return "<C-[>"
@@ -56,8 +95,14 @@ vim.keymap.set({ "v", "x" }, "<Esc>", function()
     if vim.bo[buf].buftype == "" then
         local ft = vim.bo[buf].filetype
         if ft ~= "NvimTree" and ft ~= "toggleterm" then
-            vim.g.humoodagen_pane_mode = vim.g.humoodagen_pane_mode or {}
-            vim.g.humoodagen_pane_mode.main = "n"
+            local has_pending = vim.fn.getchar(1) ~= 0
+            if not has_pending then
+                if vim.g.neovide then
+                    schedule_main_mode_normal(buf)
+                else
+                    set_main_mode_normal()
+                end
+            end
         end
     end
     return "<Esc>"
@@ -68,8 +113,14 @@ vim.keymap.set({ "v", "x" }, "<C-[>", function()
     if vim.bo[buf].buftype == "" then
         local ft = vim.bo[buf].filetype
         if ft ~= "NvimTree" and ft ~= "toggleterm" then
-            vim.g.humoodagen_pane_mode = vim.g.humoodagen_pane_mode or {}
-            vim.g.humoodagen_pane_mode.main = "n"
+            local has_pending = vim.fn.getchar(1) ~= 0
+            if not has_pending then
+                if vim.g.neovide then
+                    schedule_main_mode_normal(buf)
+                else
+                    set_main_mode_normal()
+                end
+            end
         end
     end
     return "<C-[>"
@@ -166,6 +217,8 @@ end
 local save_current_pane_mode
 
 local function jump_or_toggle_filetree_any_mode()
+    cancel_pending_main_normal()
+    debug.log("jump filetree")
     if save_current_pane_mode then
         save_current_pane_mode()
     end
@@ -402,6 +455,92 @@ local function ensure_main_win()
     return vim.api.nvim_get_current_win()
 end
 
+local untitled_prompt_group = vim.api.nvim_create_augroup("HumoodagenUntitledPrompt", { clear = true })
+
+local function is_untitled_buf(buf)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+        return false
+    end
+    if vim.bo[buf].buftype ~= "" then
+        return false
+    end
+    local ft = vim.bo[buf].filetype
+    if ft == "NvimTree" or ft == "toggleterm" or ft == "TelescopePrompt" then
+        return false
+    end
+    return vim.api.nvim_buf_get_name(buf) == ""
+end
+
+local function untitled_has_content(buf)
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    for _, line in ipairs(lines) do
+        if line ~= "" then
+            return true
+        end
+    end
+    return false
+end
+
+local function prompt_save_untitled(buf)
+    if not is_untitled_buf(buf) then
+        return
+    end
+    if not vim.bo[buf].modified then
+        return
+    end
+    if not untitled_has_content(buf) then
+        vim.bo[buf].modified = false
+        return
+    end
+
+    local name = vim.fn.input("Type file name then Enter to save, or 'n' then Enter to discard: ", "", "file")
+    name = vim.fn.trim(name)
+    if name:lower() == "n" then
+        vim.api.nvim_buf_delete(buf, { force = true })
+        return
+    end
+    if name == "" then
+        local win = vim.api.nvim_get_current_win()
+        vim.schedule(function()
+            if vim.api.nvim_win_is_valid(win) then
+                vim.api.nvim_set_current_win(win)
+            end
+        end)
+        return
+    end
+
+    local full_path = vim.fn.fnamemodify(name, ":p")
+    vim.fn.mkdir(vim.fn.fnamemodify(full_path, ":h"), "p")
+    vim.cmd("silent keepalt saveas " .. vim.fn.fnameescape(full_path))
+end
+
+vim.api.nvim_create_autocmd("WinLeave", {
+    group = untitled_prompt_group,
+    callback = function()
+        if #vim.api.nvim_list_uis() == 0 then
+            return
+        end
+
+        local buf = vim.api.nvim_get_current_buf()
+        if not is_untitled_buf(buf) then
+            return
+        end
+        if vim.b[buf].humoodagen_untitled_prompting then
+            return
+        end
+        if not vim.bo[buf].modified then
+            return
+        end
+
+        vim.b[buf].humoodagen_untitled_prompting = true
+        local ok, err = pcall(prompt_save_untitled, buf)
+        vim.b[buf].humoodagen_untitled_prompting = false
+        if not ok then
+            error(err)
+        end
+    end,
+})
+
 local ctrl_k_toggleterm_group = vim.api.nvim_create_augroup("HumoodagenToggletermCtrlK", { clear = true })
 vim.api.nvim_create_autocmd("FileType", {
     group = ctrl_k_toggleterm_group,
@@ -492,6 +631,8 @@ end
 
 -- Cmd+H/J/K/L jumps to fixed panes.
 local function jump_or_toggle_bottom_any_mode()
+    cancel_pending_main_normal()
+    debug.log("jump bottom")
     save_current_pane_mode()
     if current_toggleterm_direction() == "horizontal" then
         call_toggleterm_any_mode("toggle_bottom")
@@ -501,6 +642,8 @@ local function jump_or_toggle_bottom_any_mode()
 end
 
 local function jump_or_toggle_main_any_mode()
+    cancel_pending_main_normal()
+    debug.log("jump main")
     save_current_pane_mode()
     local buf = vim.api.nvim_get_current_buf()
     local buftype = vim.bo[buf].buftype
@@ -515,6 +658,8 @@ local function jump_or_toggle_main_any_mode()
 end
 
 local function jump_or_toggle_right_any_mode()
+    cancel_pending_main_normal()
+    debug.log("jump right")
     save_current_pane_mode()
     if current_toggleterm_direction() == "vertical" then
         call_toggleterm_any_mode("toggle_right")
@@ -533,14 +678,20 @@ vim.keymap.set(all_modes, "<F56>", jump_or_toggle_bottom_any_mode, { desc = "Jum
 vim.keymap.set(all_modes, "<F57>", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K ghostty)" })
 vim.keymap.set(all_modes, "<F58>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L ghostty)" })
 
-vim.keymap.set(all_modes, esc .. "[18;3~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H raw)" })
-vim.keymap.set(all_modes, esc .. "[19;3~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J raw)" })
-vim.keymap.set(all_modes, esc .. "[20;3~", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K raw)" })
-vim.keymap.set(all_modes, esc .. "[21;3~", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L raw)" })
-vim.keymap.set(all_modes, esc .. "[18;9~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H fallback)" })
-vim.keymap.set(all_modes, esc .. "[19;9~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J fallback)" })
-vim.keymap.set(all_modes, esc .. "[20;9~", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K fallback)" })
-vim.keymap.set(all_modes, esc .. "[21;9~", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L fallback)" })
+-- Raw ESC-prefixed sequences (mostly for terminal emulators) make a plain `Esc`
+-- ambiguous, which can add a noticeable delay when exiting Insert/Visual mode.
+-- Neovide sends proper `<D-…>` keycodes, so skip these there to keep `Esc`
+-- instant.
+if not vim.g.neovide then
+    vim.keymap.set(all_modes, esc .. "[18;3~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H raw)" })
+    vim.keymap.set(all_modes, esc .. "[19;3~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J raw)" })
+    vim.keymap.set(all_modes, esc .. "[20;3~", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K raw)" })
+    vim.keymap.set(all_modes, esc .. "[21;3~", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L raw)" })
+    vim.keymap.set(all_modes, esc .. "[18;9~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H fallback)" })
+    vim.keymap.set(all_modes, esc .. "[19;9~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J fallback)" })
+    vim.keymap.set(all_modes, esc .. "[20;9~", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K fallback)" })
+    vim.keymap.set(all_modes, esc .. "[21;9~", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L fallback)" })
+end
 
 -- Cmd+Shift+H/J/K/L toggles panes.
 vim.keymap.set(all_modes, "<D-S-h>", function()
@@ -594,39 +745,41 @@ vim.keymap.set(all_modes, "<F12>", function()
     call_toggleterm_any_mode("toggle_right")
 end, { desc = "Toggle right terminal (Cmd+Shift+L fallback)" })
 
-vim.keymap.set(all_modes, esc .. "[33~", function()
-    save_current_pane_mode()
-    toggle_nvim_tree_visibility_any_mode()
-end, { desc = "Toggle filetree (Cmd+Shift+H raw)" })
-vim.keymap.set(all_modes, esc .. "[34~", function()
-    save_current_pane_mode()
-    call_toggleterm_any_mode("toggle_bottom")
-end, { desc = "Toggle bottom terminal (Cmd+Shift+J raw)" })
-vim.keymap.set(all_modes, esc .. "[35~", function()
-    save_current_pane_mode()
-    call_toggleterm_any_mode("toggle_main_only")
-end, { desc = "Toggle file-only mode (Cmd+Shift+K raw)" })
-vim.keymap.set(all_modes, esc .. "[36~", function()
-    save_current_pane_mode()
-    call_toggleterm_any_mode("toggle_right")
-end, { desc = "Toggle right terminal (Cmd+Shift+L raw)" })
+if not vim.g.neovide then
+    vim.keymap.set(all_modes, esc .. "[33~", function()
+        save_current_pane_mode()
+        toggle_nvim_tree_visibility_any_mode()
+    end, { desc = "Toggle filetree (Cmd+Shift+H raw)" })
+    vim.keymap.set(all_modes, esc .. "[34~", function()
+        save_current_pane_mode()
+        call_toggleterm_any_mode("toggle_bottom")
+    end, { desc = "Toggle bottom terminal (Cmd+Shift+J raw)" })
+    vim.keymap.set(all_modes, esc .. "[35~", function()
+        save_current_pane_mode()
+        call_toggleterm_any_mode("toggle_main_only")
+    end, { desc = "Toggle file-only mode (Cmd+Shift+K raw)" })
+    vim.keymap.set(all_modes, esc .. "[36~", function()
+        save_current_pane_mode()
+        call_toggleterm_any_mode("toggle_right")
+    end, { desc = "Toggle right terminal (Cmd+Shift+L raw)" })
 
-vim.keymap.set(all_modes, esc .. "[18;2~", function()
-    save_current_pane_mode()
-    toggle_nvim_tree_visibility_any_mode()
-end, { desc = "Toggle filetree (Cmd+Shift+H xterm)" })
-vim.keymap.set(all_modes, esc .. "[19;2~", function()
-    save_current_pane_mode()
-    call_toggleterm_any_mode("toggle_bottom")
-end, { desc = "Toggle bottom terminal (Cmd+Shift+J xterm)" })
-vim.keymap.set(all_modes, esc .. "[20;2~", function()
-    save_current_pane_mode()
-    call_toggleterm_any_mode("toggle_main_only")
-end, { desc = "Toggle file-only mode (Cmd+Shift+K xterm)" })
-vim.keymap.set(all_modes, esc .. "[21;2~", function()
-    save_current_pane_mode()
-    call_toggleterm_any_mode("toggle_right")
-end, { desc = "Toggle right terminal (Cmd+Shift+L xterm)" })
+    vim.keymap.set(all_modes, esc .. "[18;2~", function()
+        save_current_pane_mode()
+        toggle_nvim_tree_visibility_any_mode()
+    end, { desc = "Toggle filetree (Cmd+Shift+H xterm)" })
+    vim.keymap.set(all_modes, esc .. "[19;2~", function()
+        save_current_pane_mode()
+        call_toggleterm_any_mode("toggle_bottom")
+    end, { desc = "Toggle bottom terminal (Cmd+Shift+J xterm)" })
+    vim.keymap.set(all_modes, esc .. "[20;2~", function()
+        save_current_pane_mode()
+        call_toggleterm_any_mode("toggle_main_only")
+    end, { desc = "Toggle file-only mode (Cmd+Shift+K xterm)" })
+    vim.keymap.set(all_modes, esc .. "[21;2~", function()
+        save_current_pane_mode()
+        call_toggleterm_any_mode("toggle_right")
+    end, { desc = "Toggle right terminal (Cmd+Shift+L xterm)" })
+end
 
 -- Cmd+Ctrl+H/J/K/L resizes splits.
 vim.keymap.set(all_modes, "<D-C-h>", resize_left, { desc = "Resize split left (Cmd+Ctrl+H)" })
@@ -637,10 +790,12 @@ vim.keymap.set(all_modes, "<F31>", resize_left, { desc = "Resize split left (Cmd
 vim.keymap.set(all_modes, "<F32>", resize_down, { desc = "Resize split down (Cmd+Ctrl+J ghostty)" })
 vim.keymap.set(all_modes, "<F33>", resize_up, { desc = "Resize split up (Cmd+Ctrl+K ghostty)" })
 vim.keymap.set(all_modes, "<F34>", resize_right, { desc = "Resize split right (Cmd+Ctrl+L ghostty)" })
-vim.keymap.set(all_modes, esc .. "[18;5~", resize_left, { desc = "Resize split left (Cmd+Ctrl+H raw)" })
-vim.keymap.set(all_modes, esc .. "[19;5~", resize_down, { desc = "Resize split down (Cmd+Ctrl+J raw)" })
-vim.keymap.set(all_modes, esc .. "[20;5~", resize_up, { desc = "Resize split up (Cmd+Ctrl+K raw)" })
-vim.keymap.set(all_modes, esc .. "[21;5~", resize_right, { desc = "Resize split right (Cmd+Ctrl+L raw)" })
+if not vim.g.neovide then
+    vim.keymap.set(all_modes, esc .. "[18;5~", resize_left, { desc = "Resize split left (Cmd+Ctrl+H raw)" })
+    vim.keymap.set(all_modes, esc .. "[19;5~", resize_down, { desc = "Resize split down (Cmd+Ctrl+J raw)" })
+    vim.keymap.set(all_modes, esc .. "[20;5~", resize_up, { desc = "Resize split up (Cmd+Ctrl+K raw)" })
+    vim.keymap.set(all_modes, esc .. "[21;5~", resize_right, { desc = "Resize split right (Cmd+Ctrl+L raw)" })
+end
 
 -- Set the width of a hard tabstop
 vim.opt.tabstop = 4

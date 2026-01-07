@@ -1,0 +1,13 @@
+# Neovide config file (TOML)
+# Docs: https://neovide.dev/config-file.html
+
+# When launching Neovide from Spotlight/Finder, start here by default.
+chdir = "/Users/ahmedelamin/repos"
+
+# Window decorations (macOS):
+# - "buttonless": keep the titlebar but remove the traffic lights (still movable/resizable)
+# - "none": no titlebar/traffic lights (NOTE: window can't be moved/resized via mouse)
+frame = "none"
+
+# Hide the window title text (macOS).
+title-hidden = true

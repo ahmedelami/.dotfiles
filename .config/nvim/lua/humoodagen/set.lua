@@ -1,14 +1,15 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
+-- Block cursor, with mode feedback drawn via `HumoodagenModeCursor*` highlights.
 vim.opt.guicursor = table.concat({
-    "n-v-c:block-CursorNormal",
-    "i-ci:block-CursorInsert",
-    "r-cr:block-CursorReplace",
-    "o:block-CursorNormal",
-    "v-ve:block-CursorVisual",
-    "sm:block-CursorNormal",
-    "t:block-CursorInsert",
+    "n-v-c:block-HumoodagenModeCursorNormal",
+    "i-ci:block-HumoodagenModeCursorInsert",
+    "r-cr:block-HumoodagenModeCursorReplace",
+    "o:block-HumoodagenModeCursorNormal",
+    "v-ve:block-HumoodagenModeCursorVisual",
+    "sm:block-HumoodagenModeCursorNormal",
+    "t:block-HumoodagenModeCursorInsert",
 }, ",")
 
 vim.opt.number = true
@@ -69,7 +70,8 @@ vim.opt.colorcolumn = "80"
 
 -- Make Escape responsive, but still long enough to reliably parse Ghostty's
 -- Cmd-based escape sequences (they start with ESC, so too-low values break).
-vim.opt.ttimeoutlen = 100
+vim.opt.timeoutlen = 300
+vim.opt.ttimeoutlen = 10
 
 
 -- Automatically reload files when they change on disk
