@@ -473,7 +473,7 @@ return {
                                 if vim.bo[buf].filetype ~= "toggleterm" then
                                     return
                                 end
-                                if vim.api.nvim_get_mode().mode ~= "nt" then
+                                if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "n" then
                                     return
                                 end
 
@@ -492,6 +492,9 @@ return {
                             vim.defer_fn(function()
                                 restore_cursor("defer10")
                             end, 10)
+                            vim.defer_fn(function()
+                                restore_cursor("defer50")
+                            end, 50)
                         end
                     end
                 end
@@ -505,7 +508,7 @@ return {
                 if vim.bo[buf].filetype == "toggleterm" then
                     vim.wo.cursorline = false
                     local mode = vim.api.nvim_get_mode().mode
-                    if mode == "nt" then
+                    if mode:sub(1, 1) == "n" then
                         local ok, cursor = pcall(vim.api.nvim_win_get_cursor, 0)
                         if ok and type(cursor) == "table" and #cursor == 2 then
                             vim.b[buf].humoodagen_term_nt_cursor = cursor

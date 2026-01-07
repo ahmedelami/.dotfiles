@@ -81,8 +81,11 @@ local function place(mode_override)
         return
     end
 
-    if mode == "nt" and vim.bo[buf].filetype == "toggleterm" and vim.b[buf].humoodagen_term_restore_active then
-        mode = "t"
+    if mode == "nt" and vim.bo[buf].filetype == "toggleterm" then
+        local desired = vim.b[buf].humoodagen_term_mode
+        if vim.b[buf].humoodagen_term_restore_active or (type(desired) == "string" and desired:sub(1, 1) == "t") then
+            mode = "t"
+        end
     end
 
     local cursor = vim.api.nvim_win_get_cursor(win)
