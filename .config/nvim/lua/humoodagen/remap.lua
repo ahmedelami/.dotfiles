@@ -29,6 +29,34 @@ vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true })
 
 local debug = require("humoodagen.debug")
 
+vim.keymap.set("n", "/", function()
+    local buf = vim.api.nvim_get_current_buf()
+    local ft = vim.bo[buf].filetype
+    if ft ~= "NvimTree" and ft ~= "toggleterm" then
+        return "/"
+    end
+
+    pcall(function()
+        local ok_lazy, lazy = pcall(require, "lazy")
+        if ok_lazy then
+            lazy.load({ plugins = { "flash.nvim" } })
+        end
+    end)
+
+    local ok_flash, flash = pcall(require, "flash")
+    if ok_flash then
+        flash.jump({
+            search = {
+                mode = "search",
+                multi_window = false,
+            },
+        })
+        return ""
+    end
+
+    return "/"
+end, { expr = true, silent = true, desc = "Search (Flash in tree/term)" })
+
 local pending_main_normal = nil
 
 local function cancel_pending_main_normal()
