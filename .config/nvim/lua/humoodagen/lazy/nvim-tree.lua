@@ -356,19 +356,47 @@ return {
         end
 
         vim.api.nvim_create_autocmd({ "VimEnter" }, { callback = open_nvim_tree })
+
+        local function ensure_nvim_tree_normal_mode()
+            local buf = vim.api.nvim_get_current_buf()
+            if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                return
+            end
+            if vim.bo[buf].filetype ~= "NvimTree" then
+                return
+            end
+
+            local mode = vim.api.nvim_get_mode().mode
+            local first = type(mode) == "string" and mode:sub(1, 1) or ""
+            if first == "i" or first == "R" then
+                pcall(vim.cmd, "stopinsert")
+            elseif first == "t" then
+                vim.api.nvim_feedkeys(
+                    vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true),
+                    "n",
+                    false
+                )
+            end
+        end
+
+        local nvim_tree_mode_group = vim.api.nvim_create_augroup("HumoodagenNvimTreeNormalMode", { clear = true })
+        vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
+            group = nvim_tree_mode_group,
+            callback = function()
+                vim.schedule(ensure_nvim_tree_normal_mode)
+            end,
+        })
+        vim.api.nvim_create_autocmd("ModeChanged", {
+            group = nvim_tree_mode_group,
+            callback = function()
+                vim.schedule(ensure_nvim_tree_normal_mode)
+            end,
+        })
+
         vim.api.nvim_create_autocmd("FileType", {
             pattern = "NvimTree",
             callback = function()
-                -- NvimTree is not a modifiable buffer; force Normal mode so we
-                -- don't land in Insert (which triggers E21 on any keypress).
-                local mode = vim.api.nvim_get_mode().mode
-                local first = type(mode) == "string" and mode:sub(1, 1) or ""
-                if first == "t" then
-                    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
-                elseif first == "i" or first == "R" then
-                    vim.cmd("stopinsert")
-                end
-
+                vim.schedule(ensure_nvim_tree_normal_mode)
                 vim.opt_local.numberwidth = 1
                 vim.opt_local.signcolumn = "no"
                 ensure_main_edit_win()
