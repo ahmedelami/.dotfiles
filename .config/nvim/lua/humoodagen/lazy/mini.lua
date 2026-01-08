@@ -153,6 +153,8 @@ return {
                                 table.insert(items, {
                                     text = status .. " " .. display_path,
                                     path = root .. "/" .. path,
+                                    relpath = path,
+                                    display_path = display_path,
                                     status = status,
                                 })
                             end
@@ -160,6 +162,52 @@ return {
                     end
 
                     return items
+                end
+
+                local function open_git_diff_scratch(win, root, relpath, display, opts)
+                    if not (win and vim.api.nvim_win_is_valid(win)) then
+                        return
+                    end
+                    if type(root) ~= "string" or root == "" then
+                        return
+                    end
+                    if type(relpath) ~= "string" or relpath == "" then
+                        return
+                    end
+
+                    local args = { "diff", "--no-color" }
+                    if opts and opts.cached then
+                        table.insert(args, "--cached")
+                    end
+                    table.insert(args, "--")
+                    table.insert(args, relpath)
+
+                    local cmd = { "git", "-C", root, "-c", "core.quotePath=false" }
+                    vim.list_extend(cmd, args)
+                    local lines = vim.fn.systemlist(cmd)
+                    if vim.v.shell_error ~= 0 then
+                        vim.notify("git diff failed for " .. relpath, vim.log.levels.ERROR)
+                        return
+                    end
+                    if vim.tbl_isempty(lines) then
+                        vim.notify("No diff output for " .. relpath, vim.log.levels.INFO)
+                        return
+                    end
+
+                    local title = "[git diff] " .. (display or relpath)
+                    vim.api.nvim_win_call(win, function()
+                        vim.cmd("enew")
+                        local buf = vim.api.nvim_get_current_buf()
+                        vim.api.nvim_buf_set_name(buf, title)
+                        vim.bo[buf].buftype = "nofile"
+                        vim.bo[buf].bufhidden = "wipe"
+                        vim.bo[buf].swapfile = false
+                        vim.bo[buf].modifiable = true
+                        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+                        vim.bo[buf].modifiable = false
+                        vim.bo[buf].readonly = true
+                        vim.bo[buf].filetype = "diff"
+                    end)
                 end
 
                 local function open_git_changes_picker(target_win, context_path)
@@ -198,6 +246,19 @@ return {
                                     end
 
                                     if vim.fn.filereadable(path) == 0 then
+                                        local status = type(item) == "table" and item.status or ""
+                                        local relpath = type(item) == "table" and item.relpath or nil
+                                        local display = type(item) == "table" and item.display_path or nil
+                                        local index_status = type(status) == "string" and status:sub(1, 1) or ""
+                                        local worktree_status = type(status) == "string" and status:sub(2, 2) or ""
+
+                                        if index_status == "D" or worktree_status == "D" then
+                                            open_git_diff_scratch(win, root, relpath or path, display, {
+                                                cached = index_status == "D",
+                                            })
+                                            return
+                                        end
+
                                         vim.notify("File not readable: " .. path, vim.log.levels.WARN)
                                         return
                                     end
