@@ -213,33 +213,39 @@ return {
                                         end
                                     end
 
-                                    local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
-                                    if not ok_overlay then
-                                        vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
-                                    end
-                                end)
-                            end,
-                        },
-                    })
-                end
+	                                    local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
+	                                    if not ok_overlay then
+	                                        vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
+	                                    end
+	                                end)
+	                                return true
+	                            end,
+	                        },
+	                    })
+	                end
 
                 local initial_buf = vim.api.nvim_get_current_buf()
                 local initial_context_path = get_context_path(initial_buf)
+                local initial_name = vim.api.nvim_buf_get_name(initial_buf)
+                local initial_ft = vim.bo[initial_buf].filetype
+                local initial_buftype = vim.bo[initial_buf].buftype
 
-                local buf = vim.api.nvim_get_current_buf()
-                if vim.bo[buf].buftype ~= "" or vim.bo[buf].filetype == "NvimTree" or vim.bo[buf].filetype == "toggleterm" then
-                    local main_win = find_main_edit_win()
-                    if main_win and vim.api.nvim_win_is_valid(main_win) then
-                        vim.api.nvim_set_current_win(main_win)
-                        buf = vim.api.nvim_get_current_buf()
+                -- If invoked from NvimTree/term/unnamed buffers, open the "Git Changes"
+                -- picker instead of jumping focus to the main file window.
+                if initial_ft == "NvimTree"
+                    or initial_ft == "toggleterm"
+                    or initial_buftype ~= ""
+                    or initial_name == ""
+                then
+                    local target_win = find_main_edit_win()
+                    if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
+                        target_win = vim.api.nvim_get_current_win()
                     end
-                end
-
-                if vim.bo[buf].buftype ~= "" or vim.api.nvim_buf_get_name(buf) == "" then
-                    local target_win = find_main_edit_win() or vim.api.nvim_get_current_win()
                     open_git_changes_picker(target_win, initial_context_path)
                     return
                 end
+
+                local buf = initial_buf
 
                 if MiniDiff.get_buf_data(buf) == nil then
                     local ok_enable, err = pcall(MiniDiff.enable, buf)
