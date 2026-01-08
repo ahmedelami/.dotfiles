@@ -49,7 +49,53 @@ return {
                     end
                 end
             end, opts('[File] Trash'))
-            vim.keymap.set('n', 'r', api.fs.rename, opts('[File] Rename'))
+            vim.keymap.set('n', 'r', function()
+                local original = vim.ui.input
+
+                vim.ui.input = function(input_opts, on_confirm)
+                    local prompt = (input_opts and input_opts.prompt) or "Rename to "
+                    local default_value = ""
+                    if input_opts then
+                        default_value = input_opts.default or input_opts.default_value or ""
+                    end
+
+                    local input = Input({
+                        relative = "cursor",
+                        position = { row = 1, col = 0 },
+                        size = { width = math.min(80, math.max(24, #prompt + #default_value + 10)) },
+                        border = { style = "rounded", text = { top = "Rename", top_align = "left" } },
+                        win_options = { winblend = 0 },
+                    }, {
+                        prompt = prompt,
+                        default_value = default_value,
+                        on_submit = function(value)
+                            vim.ui.input = original
+                            on_confirm(value)
+                        end,
+                        on_close = function()
+                            vim.ui.input = original
+                            on_confirm(nil)
+                        end,
+                    })
+
+                    input:mount()
+
+                    -- Keep <Esc> for Normal-mode editing inside the prompt; use
+                    -- <C-c> to cancel the rename prompt.
+                    local function cancel()
+                        pcall(function()
+                            input:unmount()
+                        end)
+                    end
+                    vim.keymap.set({ "n", "i" }, "<C-c>", cancel, { buffer = input.bufnr, noremap = true, silent = true, nowait = true })
+                end
+
+                local ok, err = pcall(api.fs.rename)
+                if not ok then
+                    vim.ui.input = original
+                    error(err)
+                end
+            end, opts('[File] Rename'))
             vim.keymap.set('n', 'c', api.fs.copy.node, opts('[File] Copy'))
             vim.keymap.set('n', 'p', api.fs.paste, opts('[File] Paste'))
             vim.keymap.set('n', 'u', function()
