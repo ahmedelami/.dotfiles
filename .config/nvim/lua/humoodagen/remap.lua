@@ -352,6 +352,11 @@ local function block_vertical_resize()
     return current_toggleterm_direction() == "vertical"
 end
 
+local function block_horizontal_resize()
+    local pane = current_pane_key()
+    return pane == "main" or pane == "bottom"
+end
+
 local function resize_toward(direction, shrink_cmd)
     resize_window_any_mode(function()
         local neighbor_nr = vim.fn.winnr(direction)
@@ -370,11 +375,17 @@ local function resize_toward(direction, shrink_cmd)
 end
 
 local function resize_left()
-    resize_toward("h", "vertical resize -5")
+    if block_horizontal_resize() then
+        return
+    end
+    resize_window_any_mode("vertical resize -5")
 end
 
 local function resize_right()
-    resize_toward("l", "vertical resize -5")
+    if block_horizontal_resize() then
+        return
+    end
+    resize_window_any_mode("vertical resize +5")
 end
 
 local function resize_down()

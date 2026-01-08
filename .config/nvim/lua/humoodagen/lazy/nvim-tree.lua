@@ -17,13 +17,6 @@ return {
 
             -- [Nav]igation Group
             vim.keymap.set('n', 'l', api.node.open.edit, opts('[Nav] Open/Expand'))
-            -- Cmd+Ctrl+L is globally used for resizing splits; in the tree it
-            -- should behave like "open/expand".
-            vim.keymap.set('n', '<D-C-l>', api.node.open.edit, opts('[Nav] Open/Expand (Cmd+Ctrl+L)'))
-            -- Some UIs encode Cmd+Ctrl+L as plain Ctrl+L/Shift+Ctrl+L; cover those
-            -- so the tree always expands instead of resizing the right split.
-            vim.keymap.set('n', '<C-l>', api.node.open.edit, opts('[Nav] Open/Expand (Ctrl+L)'))
-            vim.keymap.set('n', '<C-S-l>', api.node.open.edit, opts('[Nav] Open/Expand (Ctrl+Shift+L)'))
             vim.keymap.set('n', 'h', function()
                 local node = api.tree.get_node_under_cursor()
                 if not node then
