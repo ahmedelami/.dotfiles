@@ -22,6 +22,39 @@ vim.g.neovide_cursor_vfx_mode = ""
 -- render continuously so cursor/mode visuals update immediately.
 vim.g.neovide_no_idle = true
 
+-- Zoom (scale) with Cmd +/- like a normal macOS app. Without explicit mappings,
+-- some setups pass through the raw keys ("-" and "=") which then trigger Vim
+-- motions/indent instead of resizing the UI.
+vim.g.neovide_scale_factor = vim.g.neovide_scale_factor or 1.0
+
+local function neovide_change_scale(delta)
+    local current = tonumber(vim.g.neovide_scale_factor) or 1.0
+    local next = current + delta
+    if next < 0.5 then
+        next = 0.5
+    elseif next > 2.5 then
+        next = 2.5
+    end
+    vim.g.neovide_scale_factor = next
+end
+
+local zoom_modes = { "n", "i", "v", "t", "c" }
+vim.keymap.set(zoom_modes, "<D-=>", function()
+    neovide_change_scale(0.1)
+end, { silent = true, nowait = true, desc = "Neovide zoom in" })
+vim.keymap.set(zoom_modes, "<D-+>", function()
+    neovide_change_scale(0.1)
+end, { silent = true, nowait = true, desc = "Neovide zoom in" })
+vim.keymap.set(zoom_modes, "<D-->", function()
+    neovide_change_scale(-0.1)
+end, { silent = true, nowait = true, desc = "Neovide zoom out" })
+vim.keymap.set(zoom_modes, "<D-_>", function()
+    neovide_change_scale(-0.1)
+end, { silent = true, nowait = true, desc = "Neovide zoom out" })
+vim.keymap.set(zoom_modes, "<D-0>", function()
+    vim.g.neovide_scale_factor = 1.0
+end, { silent = true, nowait = true, desc = "Neovide zoom reset" })
+
 -- When launching Neovide from Spotlight/Finder with no file args, default to
 -- `~/repos` so the file tree opens there.
 if vim.fn.argc() == 0 then
