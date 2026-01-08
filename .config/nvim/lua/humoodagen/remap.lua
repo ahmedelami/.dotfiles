@@ -4,7 +4,9 @@ vim.g.mapleader = " "
 vim.keymap.set({ "n", "v" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 vim.keymap.set({ "n", "v" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
 
-vim.keymap.set("n", "<C-c>", "<cmd>q<CR>")
+-- Keep <C-c> as a "cancel" key (not "close current split"), otherwise it can
+-- wreck the 4-pane layout when pressed in the main/empty buffer.
+vim.keymap.set("n", "<C-c>", "<Esc>", { silent = true })
 
 -- highlight and move
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv")
