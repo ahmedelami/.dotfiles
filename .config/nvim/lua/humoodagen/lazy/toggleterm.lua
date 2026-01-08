@@ -377,6 +377,32 @@ return {
             return attach_tab_lifecycle(Terminal:new({ direction = direction, hidden = true }))
         end
 
+        local float_term = nil
+
+        local function ensure_float_term()
+            if float_term then
+                return float_term
+            end
+
+            float_term = attach_tab_lifecycle(Terminal:new({
+                direction = "float",
+                hidden = true,
+                float_opts = {
+                    border = "rounded",
+                    width = math.floor(vim.o.columns * 0.85),
+                    height = math.floor(vim.o.lines * 0.75),
+                    winblend = 0,
+                },
+                on_open = function(term)
+                    if term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
+                        vim.b[term.bufnr].humoodagen_term_cwd_sync = true
+                    end
+                end,
+            }))
+
+            return float_term
+        end
+
         local function ensure_first_term(direction)
             local set = ensure_term_set(direction)
             if #set.terms == 0 then
@@ -1122,6 +1148,12 @@ return {
                 end
 
                 vim.cmd("redrawstatus")
+            end,
+            toggle_float = function()
+                run_in_normal(function()
+                    local term = ensure_float_term()
+                    toggle_terminal(term, { prefer_main = true })
+                end)
             end,
             toggle_main_only = toggle_main_only,
         }

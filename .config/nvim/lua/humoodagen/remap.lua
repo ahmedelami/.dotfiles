@@ -738,6 +738,10 @@ vim.keymap.set(all_modes, "<D-h>", jump_or_toggle_filetree_any_mode, { desc = "J
 vim.keymap.set(all_modes, "<D-j>", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J)" })
 vim.keymap.set(all_modes, "<D-k>", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K)" })
 vim.keymap.set(all_modes, "<D-l>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L)" })
+vim.keymap.set(all_modes, "<D-;>", function()
+    save_current_pane_mode()
+    call_toggleterm_any_mode("toggle_float")
+end, { desc = "Toggle floating terminal (Cmd+;)" })
 
 vim.keymap.set(all_modes, "<F55>", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H ghostty)" })
 vim.keymap.set(all_modes, "<F56>", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J ghostty)" })

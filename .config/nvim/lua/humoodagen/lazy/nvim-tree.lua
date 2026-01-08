@@ -190,6 +190,7 @@ return {
             },
             hijack_netrw = true,
             hijack_unnamed_buffer_when_opening = true,
+            sync_root_with_cwd = true,
             sort_by = "case_sensitive",
             ui = {
                 confirm = {

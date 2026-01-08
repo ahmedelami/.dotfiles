@@ -125,3 +125,70 @@ vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "CursorHoldI", "FocusGai
     end,
     pattern = { "*" },
 })
+
+-- Sync Neovim cwd to terminals that emit OSC 7 (current working directory).
+-- This is used by the floating "command terminal" so `cd`/`z` updates the
+-- file tree root (via nvim-tree's sync_root_with_cwd).
+local osc7_group = vim.api.nvim_create_augroup("HumoodagenOsc7Cwd", { clear = true })
+
+local function parse_osc7_dir(seq)
+    if type(seq) ~= "string" then
+        return nil
+    end
+    if seq:sub(1, 4) ~= "\x1b]7;" then
+        return nil
+    end
+
+    local dir = seq:gsub("^\x1b]7;file://[^/]*", "")
+    dir = dir:gsub("\x1b\\$", ""):gsub("\x07$", "")
+    dir = vim.trim(dir)
+    if dir == "" then
+        return nil
+    end
+    return dir
+end
+
+local function cd_if_changed(dir)
+    if type(dir) ~= "string" or dir == "" then
+        return
+    end
+    if vim.fn.isdirectory(dir) == 0 then
+        return
+    end
+    if vim.loop.cwd() == dir then
+        return
+    end
+    vim.cmd("cd " .. vim.fn.fnameescape(dir))
+end
+
+vim.api.nvim_create_autocmd("TermRequest", {
+    group = osc7_group,
+    callback = function(ev)
+        local dir = parse_osc7_dir(ev.data and ev.data.sequence or nil)
+        if not dir then
+            return
+        end
+
+        vim.b[ev.buf].humoodagen_osc7_dir = dir
+        if vim.b[ev.buf].humoodagen_term_cwd_sync and vim.api.nvim_get_current_buf() == ev.buf then
+            cd_if_changed(dir)
+        end
+    end,
+})
+
+vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
+    group = osc7_group,
+    callback = function(ev)
+        local buf = ev.buf
+        if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+            return
+        end
+        if not vim.b[buf].humoodagen_term_cwd_sync then
+            return
+        end
+        local dir = vim.b[buf].humoodagen_osc7_dir
+        if type(dir) == "string" and dir ~= "" then
+            cd_if_changed(dir)
+        end
+    end,
+})
