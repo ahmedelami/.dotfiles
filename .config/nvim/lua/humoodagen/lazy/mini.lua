@@ -48,7 +48,7 @@ return {
             vim.keymap.set('n', '<leader>ps', pick.grep_live, { desc = 'Grep Project' })
 
             -- Unified-ish overlay diff in the current buffer.
-            vim.keymap.set('n', '<C-g>', function()
+            local function ctrl_g()
                 local function find_main_edit_win()
                     for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
                         local cfg = vim.api.nvim_win_get_config(win)
@@ -259,6 +259,20 @@ return {
                 if not ok_overlay then
                     vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
                 end
+            end
+
+            vim.keymap.set('n', '<C-g>', ctrl_g, { desc = 'Toggle Diff Overlay' })
+            vim.keymap.set('t', '<C-g>', function()
+                vim.api.nvim_feedkeys(
+                    vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true),
+                    "n",
+                    false
+                )
+                vim.schedule(ctrl_g)
+            end, { desc = 'Toggle Diff Overlay' })
+            vim.keymap.set('i', '<C-g>', function()
+                vim.cmd("stopinsert")
+                vim.schedule(ctrl_g)
             end, { desc = 'Toggle Diff Overlay' })
         end,
     },
