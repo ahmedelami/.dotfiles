@@ -28,6 +28,8 @@ return {
                     api.node.navigate.parent_close()
                 end
             end, opts('[Nav] Collapse/Parent'))
+            vim.keymap.set('n', '<D-o>', api.tree.change_root_to_node, opts('[Nav] Root to node'))
+            vim.keymap.set('n', '<D-O>', api.tree.change_root_to_parent, opts('[Nav] Root up'))
             vim.keymap.set('n', '<CR>', api.node.open.edit, opts('[Nav] Open'))
             vim.keymap.set('n', 'W', api.tree.collapse_all, opts('[Nav] Collapse All'))
             vim.keymap.set('n', 'E', api.tree.expand_all, opts('[Nav] Expand All'))
