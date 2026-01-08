@@ -716,7 +716,8 @@ local function jump_or_toggle_main_any_mode()
     local in_main = buftype == "" and ft ~= "NvimTree" and ft ~= "toggleterm"
 
     if in_main then
-        call_toggleterm_any_mode("toggle_main_only")
+        -- Cmd+K is "focus editor" and should be idempotent.
+        return
     else
         arm_main_restore_cursor_override()
         call_toggleterm_any_mode("jump_main")
@@ -738,7 +739,7 @@ end
 
 vim.keymap.set(all_modes, "<D-h>", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H)" })
 vim.keymap.set(all_modes, "<D-j>", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J)" })
-vim.keymap.set(all_modes, "<D-k>", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K)" })
+vim.keymap.set(all_modes, "<D-k>", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K)" })
 vim.keymap.set(all_modes, "<D-l>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L)" })
 vim.keymap.set(all_modes, "<D-;>", function()
     save_current_pane_mode()
@@ -747,7 +748,7 @@ end, { desc = "Toggle floating terminal (Cmd+;)" })
 
 vim.keymap.set(all_modes, "<F55>", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H ghostty)" })
 vim.keymap.set(all_modes, "<F56>", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J ghostty)" })
-vim.keymap.set(all_modes, "<F57>", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K ghostty)" })
+vim.keymap.set(all_modes, "<F57>", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K ghostty)" })
 vim.keymap.set(all_modes, "<F58>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L ghostty)" })
 
 -- Raw ESC-prefixed sequences (mostly for terminal emulators) make a plain `Esc`
@@ -757,11 +758,11 @@ vim.keymap.set(all_modes, "<F58>", jump_or_toggle_right_any_mode, { desc = "Jump
 if not vim.g.neovide then
     vim.keymap.set(all_modes, esc .. "[18;3~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H raw)" })
     vim.keymap.set(all_modes, esc .. "[19;3~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J raw)" })
-    vim.keymap.set(all_modes, esc .. "[20;3~", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K raw)" })
+    vim.keymap.set(all_modes, esc .. "[20;3~", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K raw)" })
     vim.keymap.set(all_modes, esc .. "[21;3~", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L raw)" })
     vim.keymap.set(all_modes, esc .. "[18;9~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H fallback)" })
     vim.keymap.set(all_modes, esc .. "[19;9~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J fallback)" })
-    vim.keymap.set(all_modes, esc .. "[20;9~", jump_or_toggle_main_any_mode, { desc = "Jump/toggle file-only (Cmd+K fallback)" })
+    vim.keymap.set(all_modes, esc .. "[20;9~", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K fallback)" })
     vim.keymap.set(all_modes, esc .. "[21;9~", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L fallback)" })
 end
 
