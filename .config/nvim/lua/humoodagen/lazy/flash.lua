@@ -92,7 +92,8 @@ return {
         highlight = { backdrop = false },
         jump = { history = true, register = true, nohlsearch = true },
         search = {
-          -- Additional search-specific settings can go here
+          -- Keep `/` scoped to the active pane/window (no labels in other splits).
+          multi_window = false,
         },
       },
 
