@@ -378,14 +378,24 @@ local function resize_left()
     if block_horizontal_resize() then
         return
     end
-    resize_window_any_mode("vertical resize -5")
+    -- In the right pane, users think in terms of "move the border left/right".
+    -- Increasing width expands the pane leftwards, so swap directions there.
+    if current_pane_key() == "right" then
+        resize_window_any_mode("vertical resize +5")
+    else
+        resize_window_any_mode("vertical resize -5")
+    end
 end
 
 local function resize_right()
     if block_horizontal_resize() then
         return
     end
-    resize_window_any_mode("vertical resize +5")
+    if current_pane_key() == "right" then
+        resize_window_any_mode("vertical resize -5")
+    else
+        resize_window_any_mode("vertical resize +5")
+    end
 end
 
 local function resize_down()
