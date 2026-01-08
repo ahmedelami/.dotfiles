@@ -359,6 +359,16 @@ return {
         vim.api.nvim_create_autocmd("FileType", {
             pattern = "NvimTree",
             callback = function()
+                -- NvimTree is not a modifiable buffer; force Normal mode so we
+                -- don't land in Insert (which triggers E21 on any keypress).
+                local mode = vim.api.nvim_get_mode().mode
+                local first = type(mode) == "string" and mode:sub(1, 1) or ""
+                if first == "t" then
+                    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+                elseif first == "i" or first == "R" then
+                    vim.cmd("stopinsert")
+                end
+
                 vim.opt_local.numberwidth = 1
                 vim.opt_local.signcolumn = "no"
                 ensure_main_edit_win()
