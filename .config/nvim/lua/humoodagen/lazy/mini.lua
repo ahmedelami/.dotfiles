@@ -274,16 +274,16 @@ return {
                                         end
                                     end
 
-	                                    local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
-	                                    if not ok_overlay then
-	                                        vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
-	                                    end
-	                                end)
-	                                return true
-	                            end,
-	                        },
-	                    })
-	                end
+                                    local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
+                                    if not ok_overlay then
+                                        vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
+                                    end
+                                end)
+                                return true
+                            end,
+                        },
+                    })
+                end
 
                 local initial_buf = vim.api.nvim_get_current_buf()
                 local initial_context_path = get_context_path(initial_buf)
