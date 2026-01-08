@@ -212,6 +212,42 @@ return {
             renderer = {
                 group_empty = true,
                 highlight_git = "name",
+                -- Show only the last folder segment (e.g. "/analytics-dash") in
+                -- the tree header instead of the full path, and truncate to
+                -- avoid wrapping in narrow tree widths.
+                root_folder_label = function(path)
+                    if type(path) ~= "string" or path == "" then
+                        return ""
+                    end
+
+                    local clean = path:gsub("[/\\]+$", "")
+                    local name = vim.fn.fnamemodify(clean, ":t")
+                    if name == "" then
+                        name = clean
+                    end
+
+                    local label = "/" .. name
+
+                    local max = 30
+                    local ok_view, view = pcall(require, "nvim-tree.view")
+                    if ok_view then
+                        local win = view.get_winnr()
+                        if win and vim.api.nvim_win_is_valid(win) then
+                            max = math.max(8, vim.api.nvim_win_get_width(win) - 2)
+                        end
+                    end
+
+                    if vim.fn.strdisplaywidth(label) <= max then
+                        return label
+                    end
+
+                    -- Keep the end of the folder name (right side), and always
+                    -- show a "/" prefix for readability.
+                    local keep = math.max(1, max - 2) -- "…/"
+                    local chars = vim.fn.strchars(name)
+                    local tail = vim.fn.strcharpart(name, math.max(0, chars - keep), keep)
+                    return "…/" .. tail
+                end,
                 indent_markers = {
                     enable = true,
                     inline_arrows = false,
