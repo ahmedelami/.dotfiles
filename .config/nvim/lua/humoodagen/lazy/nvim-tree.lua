@@ -176,6 +176,14 @@ return {
                 },
                 icons = {
                     git_placement = "after",
+                    web_devicons = {
+                        file = { enable = true, color = true },
+                        -- mini.icons can mock `nvim-web-devicons` for files, but
+                        -- the devicons API can't tell "folder vs file name".
+                        -- Keep folders on nvim-tree glyphs, and use devicons
+                        -- only for file icons.
+                        folder = { enable = false },
+                    },
                     show = {
                         file = true,
                         folder = true,
@@ -186,10 +194,10 @@ return {
                         folder = {
                             arrow_closed = "",
                             arrow_open = "",
-                            default = "",
-                            open = "",
-                            empty = "",
-                            empty_open = "",
+                            default = "󰉋",
+                            open = "󰉖",
+                            empty = "󰉋",
+                            empty_open = "󰉖",
                         },
                         git = {
                             unstaged = "",
