@@ -119,44 +119,43 @@ return {
                 end
 
                 local function git_status_items(root)
-                    local out = vim.fn.system({ "git", "-C", root, "status", "--porcelain=v1", "-z" })
+                    local out = vim.fn.systemlist({
+                        "git",
+                        "-C",
+                        root,
+                        "-c",
+                        "core.quotePath=false",
+                        "status",
+                        "--porcelain=v1",
+                    })
                     if vim.v.shell_error ~= 0 then
                         return nil
                     end
 
-                    local parts = vim.split(out, "\0", { plain = true })
                     local items = {}
                     local seen = {}
 
-                    local i = 1
-                    while i <= #parts do
-                        local entry = parts[i]
-                        if entry == "" then
-                            i = i + 1
-                        else
-                            local status = entry:sub(1, 2)
-                            local path = entry:sub(4)
+                    for _, line in ipairs(out) do
+                        if type(line) == "string" and line ~= "" then
+                            local status = line:sub(1, 2)
+                            local path = vim.trim(line:sub(4))
                             local display_path = path
 
                             if status:find("R", 1, true) or status:find("C", 1, true) then
-                                local new_path = parts[i + 1]
-                                if new_path and new_path ~= "" then
-                                    display_path = path .. " -> " .. new_path
-                                    path = new_path
-                                    i = i + 1
+                                local parts = vim.split(path, " -> ", { plain = true })
+                                if #parts >= 2 then
+                                    path = parts[#parts]
                                 end
                             end
 
-                            if path ~= "" and not seen[status .. "\0" .. path] then
-                                seen[status .. "\0" .. path] = true
+                            if path ~= "" and not seen[status .. "\n" .. path] then
+                                seen[status .. "\n" .. path] = true
                                 table.insert(items, {
                                     text = status .. " " .. display_path,
                                     path = root .. "/" .. path,
                                     status = status,
                                 })
                             end
-
-                            i = i + 1
                         end
                     end
 
