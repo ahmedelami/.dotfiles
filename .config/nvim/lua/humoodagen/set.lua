@@ -52,11 +52,14 @@ vim.g.deprecation_warnings = false
 
 vim.opt.termguicolors = true
 
-vim.opt.fillchars:append({
-    horiz = "-",
-    horizup = "+",
-    horizdown = "+",
-    verthoriz = "+",
+vim.opt.fillchars = vim.tbl_extend("force", vim.opt.fillchars:get(), {
+    horiz = "─",
+    horizup = "┴",
+    horizdown = "┬",
+    vert = "│",
+    vertleft = "┤",
+    vertright = "├",
+    verthoriz = "┼",
 })
 
 
