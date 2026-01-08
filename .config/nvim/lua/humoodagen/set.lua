@@ -171,7 +171,11 @@ vim.api.nvim_create_autocmd("TermRequest", {
 
         vim.b[ev.buf].humoodagen_osc7_dir = dir
         if vim.b[ev.buf].humoodagen_term_cwd_sync then
-            cd_if_changed(dir)
+            -- TermRequest runs inside an autocmd callback; without scheduling,
+            -- the resulting DirChanged autocommands (nvim-tree sync) won't run.
+            vim.schedule(function()
+                cd_if_changed(dir)
+            end)
         end
     end,
 })
@@ -188,7 +192,9 @@ vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
         end
         local dir = vim.b[buf].humoodagen_osc7_dir
         if type(dir) == "string" and dir ~= "" then
-            cd_if_changed(dir)
+            vim.schedule(function()
+                cd_if_changed(dir)
+            end)
         end
     end,
 })
