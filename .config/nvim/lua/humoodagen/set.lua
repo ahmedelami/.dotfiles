@@ -47,6 +47,30 @@ vim.opt.shortmess:append("I")
 vim.opt.cmdheight = 0
 vim.opt.laststatus = 0
 
+-- With `cmdheight=0`, the cmdline/search UI is drawn over the bottom-most split,
+-- which can look like the cursor "jumps" into whichever pane is on the bottom.
+-- Temporarily increase cmdheight while the cmdline is active so it gets its own row.
+local cmdheight_group = vim.api.nvim_create_augroup("HumoodagenCmdheight", { clear = true })
+local cmdheight_restore = nil
+vim.api.nvim_create_autocmd("CmdlineEnter", {
+    group = cmdheight_group,
+    callback = function()
+        if vim.o.cmdheight == 0 then
+            cmdheight_restore = vim.o.cmdheight
+            vim.o.cmdheight = 1
+        end
+    end,
+})
+vim.api.nvim_create_autocmd("CmdlineLeave", {
+    group = cmdheight_group,
+    callback = function()
+        if cmdheight_restore ~= nil then
+            vim.o.cmdheight = cmdheight_restore
+            cmdheight_restore = nil
+        end
+    end,
+})
+
 -- Silence deprecation warnings (stops the tailwind-tools/lspconfig flash)
 vim.g.deprecation_warnings = false
 
