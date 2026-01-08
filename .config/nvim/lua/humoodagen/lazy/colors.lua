@@ -63,6 +63,15 @@ return {
         vim.api.nvim_set_hl(0, "NvimTreeStatusLine", { link = "NvimTreeNormal" })
         vim.api.nvim_set_hl(0, "NvimTreeStatusLineNC", { link = "NvimTreeNormal" })
         vim.api.nvim_set_hl(0, "NvimTreeStatuslineNC", { link = "NvimTreeNormal" })
+
+        -- When ToggleTerm enables per-window statuslines for its tab bars, keep
+        -- non-ToggleTerm statuslines completely invisible against Latte.
+        vim.api.nvim_set_hl(0, "StatusLine", { link = "Normal" })
+        vim.api.nvim_set_hl(0, "StatusLineNC", { link = "Normal" })
+
+        -- Don't dim inactive terminal panes.
+        vim.api.nvim_set_hl(0, "TermNormal", { link = "Normal" })
+        vim.api.nvim_set_hl(0, "TermNormalNC", { link = "Normal" })
         vim.api.nvim_set_hl(0, "TermCursorNC", { link = "Normal" })
       end
 

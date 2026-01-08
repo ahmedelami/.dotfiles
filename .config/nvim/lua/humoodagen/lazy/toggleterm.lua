@@ -213,16 +213,41 @@ return {
             end,
         })
 
+        local function is_toggleterm_buf(buf)
+            if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                return false
+            end
+            if vim.bo[buf].filetype == "toggleterm" then
+                return true
+            end
+            if vim.bo[buf].buftype == "terminal" and vim.b[buf].toggle_number ~= nil then
+                return true
+            end
+            return false
+        end
+
         local function any_toggleterm_window()
             for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
                 for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
                     local buf = vim.api.nvim_win_get_buf(win)
-                    if vim.bo[buf].filetype == "toggleterm" then
+                    if is_toggleterm_buf(buf) then
                         return true
                     end
                 end
             end
             return false
+        end
+
+        local function ensure_toggleterm_statuslines()
+            for _, win in ipairs(vim.api.nvim_list_wins()) do
+                if vim.api.nvim_win_is_valid(win) then
+                    local buf = vim.api.nvim_win_get_buf(win)
+                    if is_toggleterm_buf(buf) then
+                        vim.wo[win].statusline = "%!v:lua.HumoodagenToggletermStatusline()"
+                        vim.wo[win].winbar = ""
+                    end
+                end
+            end
         end
 
         local function update_laststatus()
@@ -231,6 +256,7 @@ return {
                 -- own tab bar (horizontal and vertical terminals).
                 vim.o.laststatus = 2
                 vim.go.statusline = " "
+                ensure_toggleterm_statuslines()
             else
                 vim.o.laststatus = base_laststatus
                 vim.go.statusline = base_statusline
@@ -467,7 +493,7 @@ return {
 	        local function sync_toggleterm_inactive_highlight()
 	            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 	                local buf = vim.api.nvim_win_get_buf(win)
-	                if vim.bo[buf].filetype == "toggleterm" then
+	                if is_toggleterm_buf(buf) then
 	                    vim.wo[win].cursorline = false
 	                    local current_wh = vim.wo[win].winhighlight or ""
 	                    local normalized = normalize_toggleterm_winhighlight(current_wh)
@@ -497,12 +523,25 @@ return {
 	                sync_toggleterm_inactive_highlight()
 	            end,
 	        })
+
+	        vim.api.nvim_create_autocmd("TermOpen", {
+	            group = nav_group,
+	            callback = function(ev)
+	                local buf = ev.buf
+	                if not is_toggleterm_buf(buf) then
+	                    return
+	                end
+
+	                sync_toggleterm_inactive_highlight()
+	                vim.schedule(update_laststatus)
+	            end,
+	        })
 	
 	        vim.api.nvim_create_autocmd({ "WinEnter", "BufEnter" }, {
 	            group = nav_group,
 	            callback = function()
 	                local buf = vim.api.nvim_get_current_buf()
-	                if vim.bo[buf].filetype == "toggleterm" then
+	                if is_toggleterm_buf(buf) then
 	                    sync_current_term_from_buf()
 	                    vim.opt_local.statusline = "%!v:lua.HumoodagenToggletermStatusline()"
 	                    vim.opt_local.winbar = ""
