@@ -1211,6 +1211,17 @@ return {
                     end
                 end
 
+                -- Opening terminals can leave Neovide in Insert-mode even after we
+                -- restore focus back to the tree/main window. Always start the UI
+                -- in Normal mode.
+                local final_mode = vim.api.nvim_get_mode().mode
+                local final_prefix = type(final_mode) == "string" and final_mode:sub(1, 1) or ""
+                if final_prefix == "t" then
+                    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+                elseif final_prefix == "i" or final_prefix == "R" then
+                    vim.cmd("stopinsert")
+                end
+
                 vim.cmd("redrawstatus")
                 update_laststatus()
             end)
