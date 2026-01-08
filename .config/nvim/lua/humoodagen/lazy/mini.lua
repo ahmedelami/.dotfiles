@@ -29,10 +29,28 @@ return {
 
             require('mini.extra').setup()
 
+            require('mini.diff').setup({
+                -- Avoid clobbering gitsigns' hunk mappings like [h and ]h.
+                mappings = {
+                    apply = '',
+                    reset = '',
+                    textobject = '',
+                    goto_first = '',
+                    goto_prev = '',
+                    goto_next = '',
+                    goto_last = '',
+                },
+            })
+
             local pick = mini_pick.builtin
             vim.keymap.set('n', '<leader>pf', pick.files, { desc = 'Find Files' })
             vim.keymap.set('n', '<C-p>', function() pick.files({ tool = 'git' }) end, { desc = 'Git Files' })
             vim.keymap.set('n', '<leader>ps', pick.grep_live, { desc = 'Grep Project' })
+
+            -- Unified-ish overlay diff in the current buffer.
+            vim.keymap.set('n', '<C-g>', function()
+                MiniDiff.toggle_overlay(0)
+            end, { desc = 'Toggle Diff Overlay' })
         end,
     },
 }

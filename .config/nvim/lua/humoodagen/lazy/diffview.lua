@@ -3,7 +3,7 @@ return {
     cmd = { "DiffviewOpen", "DiffviewFileHistory" },
     keys = {
         {
-            "<C-g>",
+            "<leader>gd",
             function()
                 local lib = require("diffview.lib")
                 local view = lib.get_current_view()
@@ -13,7 +13,7 @@ return {
                     vim.cmd("DiffviewOpen")
                 end
             end,
-            desc = "Toggle Git Diff View",
+            desc = "Toggle Diffview",
             mode = "n",
         },
     },
