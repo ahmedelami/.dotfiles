@@ -3,7 +3,7 @@ return {
     version = "*",
     lazy = false,
     dependencies = {
-        "nvim-tree/nvim-web-devicons",
+        "echasnovski/mini.nvim",
     },
     config = function()
         local function on_attach(bufnr)

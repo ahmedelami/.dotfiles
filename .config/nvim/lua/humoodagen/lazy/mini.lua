@@ -3,7 +3,10 @@ return {
         'echasnovski/mini.nvim',
         version = false,
         config = function()
-            require('mini.icons').setup()
+            local icons = require('mini.icons')
+            icons.setup({ style = 'glyph' })
+            icons.mock_nvim_web_devicons()
+            icons.tweak_lsp_kind()
 
             local mini_pick = require('mini.pick')
             mini_pick.setup({
