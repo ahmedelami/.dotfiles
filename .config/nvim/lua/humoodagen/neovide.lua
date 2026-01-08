@@ -13,7 +13,9 @@ vim.g.neovide_cursor_animation_length = 0.08
 vim.g.neovide_cursor_short_animation_length = 0.04
 vim.g.neovide_cursor_trail_size = 0.8
 vim.g.neovide_cursor_animate_in_insert_mode = true
-vim.g.neovide_cursor_animate_command_line = true
+-- Cmdline/search cursor animation can look like the cursor "jumps" between panes
+-- in split-heavy layouts; keep it instant.
+vim.g.neovide_cursor_animate_command_line = false
 vim.g.neovide_cursor_vfx_mode = ""
 
 -- Neovide can appear to "lag" on certain UI updates when it idles. Force it to
