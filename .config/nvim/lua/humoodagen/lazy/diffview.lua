@@ -1,6 +1,22 @@
 return {
     "sindrets/diffview.nvim",
     cmd = { "DiffviewOpen", "DiffviewFileHistory" },
+    keys = {
+        {
+            "<C-g>",
+            function()
+                local lib = require("diffview.lib")
+                local view = lib.get_current_view()
+                if view then
+                    vim.cmd("DiffviewClose")
+                else
+                    vim.cmd("DiffviewOpen")
+                end
+            end,
+            desc = "Toggle Git Diff View",
+            mode = "n",
+        },
+    },
     config = function()
         local actions = require("diffview.actions")
 
@@ -32,18 +48,5 @@ return {
                 },
             },
         })
-
-        -- Setup Toggle Function
-        local function toggle_diffview()
-            local lib = require("diffview.lib")
-            local view = lib.get_current_view()
-            if view then
-                vim.cmd("DiffviewClose")
-            else
-                vim.cmd("DiffviewOpen")
-            end
-        end
-
-        vim.keymap.set("n", "<C-g>", toggle_diffview, { desc = "Toggle Git Diff View" })
     end
 }
