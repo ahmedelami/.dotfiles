@@ -2,6 +2,12 @@ if not vim.g.neovide then
     return
 end
 
+-- Ensure Neovide's grid reaches the window edges (no extra padding).
+vim.g.neovide_padding_top = 0
+vim.g.neovide_padding_bottom = 0
+vim.g.neovide_padding_left = 0
+vim.g.neovide_padding_right = 0
+
 -- Cursor animation (smear/trail) to improve tracking.
 vim.g.neovide_cursor_animation_length = 0.08
 vim.g.neovide_cursor_short_animation_length = 0.04

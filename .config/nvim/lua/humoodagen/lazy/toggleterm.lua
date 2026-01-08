@@ -230,7 +230,7 @@ return {
                 -- Use global statusline so window separators render for horizontal splits
                 -- (fillchars.horiz, etc.), keeping the pane borders consistent.
                 vim.o.laststatus = 3
-                vim.go.statusline = "%!v:lua.HumoodagenBorderStatusline()"
+                vim.go.statusline = "%!v:lua.HumoodagenGlobalStatusline()"
             else
                 vim.o.laststatus = base_laststatus
                 vim.go.statusline = base_statusline
@@ -1231,6 +1231,17 @@ return {
 
         _G.HumoodagenBorderStatusline = function()
             return build_border_statusline("", 0)
+        end
+
+        _G.HumoodagenGlobalStatusline = function()
+            local win = vim.g.statusline_winid
+            if win and vim.api.nvim_win_is_valid(win) then
+                local buf = vim.api.nvim_win_get_buf(win)
+                if vim.bo[buf].filetype == "toggleterm" and type(_G.HumoodagenToggletermStatusline) == "function" then
+                    return _G.HumoodagenToggletermStatusline()
+                end
+            end
+            return _G.HumoodagenBorderStatusline()
         end
 
         _G.HumoodagenToggletermStatusline = function()
