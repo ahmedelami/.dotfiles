@@ -227,10 +227,10 @@ return {
 
         local function update_laststatus()
             if any_toggleterm_window() then
-                -- Use global statusline so window separators render for horizontal splits
-                -- (fillchars.horiz, etc.), keeping the pane borders consistent.
-                vim.o.laststatus = 3
-                vim.go.statusline = "%!v:lua.HumoodagenGlobalStatusline()"
+                -- Use per-window statuslines so each ToggleTerm pane can render its
+                -- own tab bar (horizontal and vertical terminals).
+                vim.o.laststatus = 2
+                vim.go.statusline = " "
             else
                 vim.o.laststatus = base_laststatus
                 vim.go.statusline = base_statusline
@@ -1166,88 +1166,10 @@ return {
             return term_module.get(term_id, true)
         end
 
-        local function split_separator_columns()
-            local cols = {}
-            local seen = {}
-            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-                if vim.api.nvim_win_is_valid(win) then
-                    local cfg = vim.api.nvim_win_get_config(win)
-                    if cfg.relative == "" then
-                        local pos = vim.fn.win_screenpos(win)
-                        local col = type(pos) == "table" and pos[2] or nil
-                        if type(col) == "number" and col > 1 then
-                            local sep = col - 1
-                            if not seen[sep] then
-                                seen[sep] = true
-                                table.insert(cols, sep)
-                            end
-                        end
-                    end
-                end
-            end
-            table.sort(cols)
-            return cols
-        end
-
-        local function build_border_statusline(prefix, prefix_width)
-            local width = vim.o.columns
-            if width <= 0 then
-                return ""
-            end
-
-            prefix = prefix or ""
-            prefix_width = prefix_width or 0
-
-            local fillchars = vim.opt.fillchars:get()
-            local vert = (fillchars and fillchars.vert) or "│"
-            local parts = {}
-            local col = 1
-
-            if prefix ~= "" then
-                table.insert(parts, prefix)
-                col = prefix_width + 1
-            end
-
-            table.insert(parts, "%#Normal#")
-
-            for _, sep_col in ipairs(split_separator_columns()) do
-                if sep_col > prefix_width and sep_col >= col and sep_col <= width then
-                    if sep_col > col then
-                        table.insert(parts, string.rep(" ", sep_col - col))
-                    end
-                    table.insert(parts, "%#WinSeparator#")
-                    table.insert(parts, vert)
-                    table.insert(parts, "%#Normal#")
-                    col = sep_col + 1
-                end
-            end
-
-            if col <= width then
-                table.insert(parts, string.rep(" ", width - col + 1))
-            end
-
-            return table.concat(parts)
-        end
-
-        _G.HumoodagenBorderStatusline = function()
-            return build_border_statusline("", 0)
-        end
-
-        _G.HumoodagenGlobalStatusline = function()
-            local win = vim.g.statusline_winid
-            if win and vim.api.nvim_win_is_valid(win) then
-                local buf = vim.api.nvim_win_get_buf(win)
-                if vim.bo[buf].filetype == "toggleterm" and type(_G.HumoodagenToggletermStatusline) == "function" then
-                    return _G.HumoodagenToggletermStatusline()
-                end
-            end
-            return _G.HumoodagenBorderStatusline()
-        end
-
         _G.HumoodagenToggletermStatusline = function()
             local term = term_for_win(vim.g.statusline_winid)
             if not term or not term.direction then
-                return _G.HumoodagenBorderStatusline()
+                return ""
             end
 
             attach_tab_lifecycle(term)
@@ -1268,13 +1190,12 @@ return {
             set.current = current
             local total = #set.terms
             if total == 0 then
-                return _G.HumoodagenBorderStatusline()
+                return ""
             end
 
             local inactive_hl = "%#HumoodagenToggletermTabInactive#"
             local active_hl = "%#HumoodagenToggletermTabActive#"
 
-            local plain = {}
             local parts = { inactive_hl }
             for i = 1, total do
                 if i == current then
@@ -1284,17 +1205,16 @@ return {
                 else
                     table.insert(parts, tostring(i))
                 end
-                table.insert(plain, tostring(i))
 
                 if i < total then
                     table.insert(parts, "|")
-                    table.insert(plain, "|")
                 end
             end
 
-            local label = table.concat(parts)
-            local label_width = vim.fn.strdisplaywidth(table.concat(plain))
-            return build_border_statusline(label, label_width)
+            -- Ensure the unused statusline fill uses Normal so it doesn't inherit
+            -- StatusLine/StatusLineNC highlights.
+            table.insert(parts, "%#Normal#")
+            return table.concat(parts)
         end
 
         local function set_term_tab_keymaps(buf)
