@@ -65,8 +65,53 @@ return {
                     return nil
                 end
 
-                local function get_git_root()
-                    local out = vim.fn.systemlist({ "git", "rev-parse", "--show-toplevel" })
+                local function get_context_path(buf)
+                    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                        return nil
+                    end
+
+                    local name = vim.api.nvim_buf_get_name(buf)
+                    if vim.bo[buf].buftype == "" and name ~= "" then
+                        return name
+                    end
+
+                    local ft = vim.bo[buf].filetype
+                    if ft == "NvimTree" then
+                        local ok_api, api = pcall(require, "nvim-tree.api")
+                        if ok_api then
+                            local ok_node, node = pcall(api.tree.get_node_under_cursor)
+                            if ok_node and node then
+                                return node.link_to or node.absolute_path
+                            end
+                        end
+                    end
+
+                    return vim.fn.getcwd()
+                end
+
+                local function normalize_path(path)
+                    if type(path) ~= "string" or path == "" then
+                        return nil
+                    end
+                    local abs = vim.fn.fnamemodify(path, ":p")
+                    if abs == "" then
+                        return nil
+                    end
+                    return abs
+                end
+
+                local function get_git_root(context_path)
+                    local path = normalize_path(context_path) or normalize_path(vim.fn.getcwd())
+                    if not path then
+                        return nil
+                    end
+
+                    local dir = path
+                    if vim.fn.isdirectory(dir) == 0 then
+                        dir = vim.fn.fnamemodify(dir, ":h")
+                    end
+
+                    local out = vim.fn.systemlist({ "git", "-C", dir, "rev-parse", "--show-toplevel" })
                     if vim.v.shell_error ~= 0 then
                         return nil
                     end
@@ -118,8 +163,8 @@ return {
                     return items
                 end
 
-                local function open_git_changes_picker(target_win)
-                    local root = get_git_root()
+                local function open_git_changes_picker(target_win, context_path)
+                    local root = get_git_root(context_path)
                     if not root or root == "" then
                         vim.notify("Not inside a Git repository.", vim.log.levels.WARN)
                         return
@@ -179,6 +224,9 @@ return {
                     })
                 end
 
+                local initial_buf = vim.api.nvim_get_current_buf()
+                local initial_context_path = get_context_path(initial_buf)
+
                 local buf = vim.api.nvim_get_current_buf()
                 if vim.bo[buf].buftype ~= "" or vim.bo[buf].filetype == "NvimTree" or vim.bo[buf].filetype == "toggleterm" then
                     local main_win = find_main_edit_win()
@@ -190,7 +238,7 @@ return {
 
                 if vim.bo[buf].buftype ~= "" or vim.api.nvim_buf_get_name(buf) == "" then
                     local target_win = find_main_edit_win() or vim.api.nvim_get_current_win()
-                    open_git_changes_picker(target_win)
+                    open_git_changes_picker(target_win, initial_context_path)
                     return
                 end
 
