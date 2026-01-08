@@ -397,6 +397,13 @@ return {
                     if term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
                         vim.b[term.bufnr].humoodagen_term_cwd_sync = true
                     end
+                    if term and term.job_id then
+                        -- Ensure Zsh emits OSC 7 when cwd changes so Neovim can
+                        -- follow `cd`/`z` and keep NvimTree in sync.
+                        term:send([[
+if [ -n "$ZSH_VERSION" ] && [ -z "$HUMOODAGEN_OSC7_READY" ]; then export HUMOODAGEN_OSC7_READY=1; autoload -Uz add-zsh-hook; __humoodagen_osc7(){ printf '\033]7;file://%s%s\033\\' "${HOST:-localhost}" "$PWD"; }; add-zsh-hook chpwd __humoodagen_osc7; add-zsh-hook precmd __humoodagen_osc7; __humoodagen_osc7; fi
+]])
+                    end
                 end,
             }))
 

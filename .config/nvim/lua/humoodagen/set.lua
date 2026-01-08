@@ -170,7 +170,7 @@ vim.api.nvim_create_autocmd("TermRequest", {
         end
 
         vim.b[ev.buf].humoodagen_osc7_dir = dir
-        if vim.b[ev.buf].humoodagen_term_cwd_sync and vim.api.nvim_get_current_buf() == ev.buf then
+        if vim.b[ev.buf].humoodagen_term_cwd_sync then
             cd_if_changed(dir)
         end
     end,
