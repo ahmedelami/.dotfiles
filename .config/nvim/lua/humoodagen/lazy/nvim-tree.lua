@@ -36,12 +36,61 @@ return {
 
             -- [File] Management Group
             vim.keymap.set('n', 'a', api.fs.create, opts('[File] Create'))
+
+            local function same_path(a, b)
+                if type(a) ~= "string" or a == "" or type(b) ~= "string" or b == "" then
+                    return false
+                end
+                if a == b then
+                    return true
+                end
+                local ra = vim.loop.fs_realpath(a)
+                local rb = vim.loop.fs_realpath(b)
+                return ra and rb and ra == rb
+            end
+
+            local function clear_open_file_buffers(path)
+                if type(path) ~= "string" or path == "" then
+                    return
+                end
+
+                for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+                    if vim.api.nvim_buf_is_loaded(buf) then
+                        local name = vim.api.nvim_buf_get_name(buf)
+                        if same_path(name, path) then
+                            -- If the file is visible in a window, switch that window
+                            -- to a fresh unnamed buffer so we don't leave the user
+                            -- looking at a deleted file.
+                            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                                if vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf then
+                                    vim.api.nvim_win_call(win, function()
+                                        vim.cmd("enew")
+                                    end)
+                                end
+                            end
+
+                            -- If the buffer has unsaved edits, keep its contents but
+                            -- detach it from the deleted filename to avoid E211.
+                            if vim.bo[buf].modified then
+                                pcall(vim.api.nvim_buf_set_name, buf, "")
+                                vim.bo[buf].swapfile = false
+                            else
+                                pcall(vim.api.nvim_buf_delete, buf, { force = true })
+                            end
+                        end
+                    end
+                end
+            end
+
             vim.keymap.set('n', 'x', function()
                 local node = api.tree.get_node_under_cursor()
                 if not node or node.name == '..' then return end
 
                 local answer = vim.fn.confirm("Trash " .. node.name .. "?", "&yes\n&no", 2)
                 if answer == 1 then
+                    if node.type ~= "directory" and node.absolute_path then
+                        clear_open_file_buffers(node.absolute_path)
+                    end
                     if not undo.trash(node) then
                         api.fs.trash(node)
                     else
