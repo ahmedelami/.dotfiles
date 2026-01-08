@@ -47,6 +47,19 @@ vim.opt.shortmess:append("IS")
 vim.opt.cmdheight = 0
 vim.opt.laststatus = 0
 
+-- Never allow Insert-mode in NvimTree (it's a non-modifiable buffer and will
+-- throw E21 on any keypress if something forces `startinsert`).
+local tree_mode_group = vim.api.nvim_create_augroup("HumoodagenNoInsertInTree", { clear = true })
+vim.api.nvim_create_autocmd("InsertEnter", {
+    group = tree_mode_group,
+    callback = function()
+        local buf = vim.api.nvim_get_current_buf()
+        if vim.bo[buf].filetype == "NvimTree" then
+            vim.cmd("stopinsert")
+        end
+    end,
+})
+
 -- With `cmdheight=0`, the cmdline/search UI is drawn over the bottom-most split,
 -- which can look like the cursor "jumps" into whichever pane is on the bottom.
 -- Temporarily increase cmdheight while the cmdline is active so it gets its own row.
