@@ -291,38 +291,70 @@ return {
                 local initial_ft = vim.bo[initial_buf].filetype
                 local initial_buftype = vim.bo[initial_buf].buftype
 
-                -- If invoked from NvimTree/term/unnamed buffers, open the "Git Changes"
-                -- picker instead of jumping focus to the main file window.
-                if initial_ft == "NvimTree"
-                    or initial_ft == "toggleterm"
-                    or initial_buftype ~= ""
-                    or initial_name == ""
-                then
-                    local target_win = find_main_edit_win()
-                    if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
-                        target_win = vim.api.nvim_get_current_win()
+                local target_win = find_main_edit_win()
+                if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
+                    target_win = vim.api.nvim_get_current_win()
+                end
+
+                -- In the main file buffer:
+                -- - If there are changes (dirty buffer or git status), toggle overlay.
+                -- - Otherwise, show the "Git Changes" picker (visible feedback).
+                local is_file_buf = initial_buftype == "" and initial_name ~= "" and initial_ft ~= "NvimTree" and initial_ft ~= "toggleterm"
+                if is_file_buf then
+                    local has_changes = vim.bo[initial_buf].modified
+                    if not has_changes then
+                        local root = get_git_root(initial_name)
+                        if root and root ~= "" then
+                            local out = vim.fn.systemlist({
+                                "git",
+                                "-C",
+                                root,
+                                "-c",
+                                "core.quotePath=false",
+                                "status",
+                                "--porcelain=v1",
+                                "--",
+                                initial_name,
+                            })
+                            if vim.v.shell_error == 0 then
+                                for _, line in ipairs(out) do
+                                    if type(line) == "string" and line ~= "" then
+                                        has_changes = true
+                                        break
+                                    end
+                                end
+                            end
+                        end
                     end
+
+                    if has_changes then
+                        local buf = initial_buf
+                        if MiniDiff.get_buf_data(buf) == nil then
+                            local ok_enable, err = pcall(MiniDiff.enable, buf)
+                            if not ok_enable then
+                                vim.notify("MiniDiff enable failed: " .. tostring(err), vim.log.levels.ERROR)
+                                open_git_changes_picker(target_win, initial_context_path)
+                                return
+                            end
+                        end
+
+                        local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
+                        if not ok_overlay then
+                            vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
+                            open_git_changes_picker(target_win, initial_context_path)
+                        end
+                        return
+                    end
+
                     open_git_changes_picker(target_win, initial_context_path)
                     return
                 end
 
-                local buf = initial_buf
-
-                if MiniDiff.get_buf_data(buf) == nil then
-                    local ok_enable, err = pcall(MiniDiff.enable, buf)
-                    if not ok_enable then
-                        vim.notify("MiniDiff enable failed: " .. tostring(err), vim.log.levels.ERROR)
-                        return
-                    end
-                end
-
-                local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
-                if not ok_overlay then
-                    vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
-                end
+                -- From NvimTree/term/unnamed/special buffers: always open picker.
+                open_git_changes_picker(target_win, initial_context_path)
             end
 
-            vim.keymap.set('n', '<C-g>', ctrl_g, { desc = 'Toggle Diff Overlay' })
+            vim.keymap.set('n', '<C-g>', ctrl_g, { desc = 'Git changes / diff overlay' })
             vim.keymap.set('t', '<C-g>', function()
                 vim.api.nvim_feedkeys(
                     vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true),
@@ -330,11 +362,11 @@ return {
                     false
                 )
                 vim.schedule(ctrl_g)
-            end, { desc = 'Toggle Diff Overlay' })
+            end, { desc = 'Git changes / diff overlay' })
             vim.keymap.set('i', '<C-g>', function()
                 vim.cmd("stopinsert")
                 vim.schedule(ctrl_g)
-            end, { desc = 'Toggle Diff Overlay' })
+            end, { desc = 'Git changes / diff overlay' })
         end,
     },
 }

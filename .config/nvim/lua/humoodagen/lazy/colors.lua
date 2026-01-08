@@ -40,9 +40,11 @@ return {
       local augroup = vim.api.nvim_create_augroup("HumoodagenNvimTreeHighlights", { clear = true })
       local function fix_nvim_tree_statusline()
         local normal_bg = nil
+        local normal_fg = nil
         local ok_hl, normal_hl = pcall(vim.api.nvim_get_hl, 0, { name = "Normal" })
         if ok_hl and type(normal_hl) == "table" then
           normal_bg = normal_hl.bg
+          normal_fg = normal_hl.fg
         end
 
         -- Make window borders high-contrast (black) on Latte.
@@ -73,6 +75,18 @@ return {
         vim.api.nvim_set_hl(0, "TermNormal", { link = "Normal" })
         vim.api.nvim_set_hl(0, "TermNormalNC", { link = "Normal" })
         vim.api.nvim_set_hl(0, "TermCursorNC", { link = "Normal" })
+
+        -- Experimental: make both guides pure white.
+        vim.api.nvim_set_hl(0, "ColorColumn", { bg = "#ffffff" })
+        vim.api.nvim_set_hl(0, "CursorLine", { bg = "#ffffff" })
+
+        -- Winbar (filename) should match the "white" guide styling.
+        local winbar_hl = { bg = "#ffffff" }
+        if normal_fg ~= nil then
+          winbar_hl.fg = normal_fg
+        end
+        vim.api.nvim_set_hl(0, "WinBar", winbar_hl)
+        vim.api.nvim_set_hl(0, "WinBarNC", winbar_hl)
       end
 
       fix_nvim_tree_statusline()

@@ -6,6 +6,8 @@ local state = {
     id = nil,
 }
 
+local place
+
 local redraw_scheduled = false
 local function schedule_redraw()
     if redraw_scheduled then
@@ -15,6 +17,33 @@ local function schedule_redraw()
     vim.schedule(function()
         redraw_scheduled = false
         pcall(vim.cmd, "redraw")
+    end)
+end
+
+local place_scheduled = false
+local scheduled_any = false
+local scheduled_bufs = {}
+local function schedule_place(buf)
+    if buf == nil then
+        scheduled_any = true
+    else
+        scheduled_bufs[buf] = true
+    end
+    if place_scheduled then
+        return
+    end
+    place_scheduled = true
+    vim.schedule(function()
+        place_scheduled = false
+        local any = scheduled_any
+        scheduled_any = false
+        local bufs = scheduled_bufs
+        scheduled_bufs = {}
+        if not any and not bufs[vim.api.nvim_get_current_buf()] then
+            return
+        end
+        place()
+        schedule_redraw()
     end)
 end
 
@@ -63,7 +92,7 @@ local function clear()
     state.id = nil
 end
 
-local function place(mode_override)
+place = function(mode_override)
     if #vim.api.nvim_list_uis() == 0 then
         return
     end
@@ -145,10 +174,46 @@ function M.setup()
         desc = "Update per-mode cursor block immediately",
     })
 
-    vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "WinEnter", "BufEnter", "CmdlineLeave", "ColorScheme" }, {
+    -- Terminal output can rewrite the current prompt/line without firing cursor
+    -- movement events. Attach to terminal buffers so we can keep the fake cursor
+    -- highlight in sync and avoid "ghost blocks" left behind.
+    vim.api.nvim_create_autocmd("TermOpen", {
+        group = group,
+        callback = function(ev)
+            local buf = ev.buf
+            if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                return
+            end
+            if vim.b[buf].humoodagen_mode_cursor_attached then
+                return
+            end
+
+            vim.b[buf].humoodagen_mode_cursor_attached = true
+            pcall(vim.api.nvim_buf_attach, buf, false, {
+                on_lines = function(_, changed_buf)
+                    schedule_place(changed_buf)
+                end,
+                on_detach = function(_, detached_buf)
+                    if detached_buf and vim.api.nvim_buf_is_valid(detached_buf) then
+                        vim.b[detached_buf].humoodagen_mode_cursor_attached = nil
+                    end
+                end,
+            })
+        end,
+        desc = "Track terminal redraws for cursor block highlight",
+    })
+
+    vim.api.nvim_create_autocmd({
+        "CursorMoved",
+        "CursorMovedI",
+        "WinEnter",
+        "BufEnter",
+        "CmdlineLeave",
+        "ColorScheme",
+    }, {
         group = group,
         callback = function()
-            place()
+            schedule_place()
         end,
         desc = "Draw a per-mode cursor block using buffer highlights (instant)",
     })

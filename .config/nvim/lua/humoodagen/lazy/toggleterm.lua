@@ -280,7 +280,7 @@ return {
                         -- Use a border-like statusline in normal buffers so the
                         -- split above the bottom terminal stays visible.
                         vim.wo[win].statusline = "%!v:lua.HumoodagenPaneBorderStatusline()"
-                        vim.wo[win].winbar = ""
+                        -- Leave winbar alone (handled globally in set.lua).
                     end
                 end
             end

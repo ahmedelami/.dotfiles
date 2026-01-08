@@ -8,7 +8,7 @@ return {
   config = function()
     require("notify").setup({
       background_colour = "#000000", -- Use a default black background for notifications
-      timeout = 3000,
+      timeout = 1500,
     })
 
     require("noice").setup({

@@ -485,6 +485,7 @@ return {
                 vim.schedule(ensure_nvim_tree_normal_mode)
                 vim.opt_local.numberwidth = 1
                 vim.opt_local.signcolumn = "no"
+                vim.opt_local.winbar = ""
                 ensure_main_edit_win()
             end,
         })

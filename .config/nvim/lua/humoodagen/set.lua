@@ -47,6 +47,53 @@ vim.opt.shortmess:append("IS")
 vim.opt.cmdheight = 0
 vim.opt.laststatus = 0
 
+-- Show the current file name at the top of the window (winbar) instead of using
+-- a statusline. ToggleTerm and NvimTree override this locally.
+local humoodagen_file_winbar = " %<%t"
+-- Don't set a global winbar (it would show up in NvimTree/term panes). We'll
+-- apply it only to real file windows below.
+vim.opt.winbar = ""
+
+-- Only show the winbar in real file buffers; hide it in terminals and special
+-- panes (otherwise ToggleTerm shows "zsh; #toggleterm#…" and wastes height).
+local winbar_group = vim.api.nvim_create_augroup("HumoodagenWinbar", { clear = true })
+
+local function sync_winbar_for_win(win)
+    if not (win and vim.api.nvim_win_is_valid(win)) then
+        return
+    end
+    local cfg = vim.api.nvim_win_get_config(win)
+    if cfg and cfg.relative and cfg.relative ~= "" then
+        return
+    end
+    local buf = vim.api.nvim_win_get_buf(win)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+        return
+    end
+
+    local bt = vim.bo[buf].buftype
+    local ft = vim.bo[buf].filetype
+    if bt == "" and ft ~= "toggleterm" and ft ~= "NvimTree" then
+        vim.wo[win].winbar = humoodagen_file_winbar
+        return
+    end
+
+    vim.wo[win].winbar = ""
+end
+
+local function sync_all_winbars()
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+        sync_winbar_for_win(win)
+    end
+end
+
+vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "TermOpen", "FileType", "VimEnter" }, {
+    group = winbar_group,
+    callback = function()
+        pcall(sync_all_winbars)
+    end,
+})
+
 -- Never allow Insert-mode in NvimTree (it's a non-modifiable buffer and will
 -- throw E21 on any keypress if something forces `startinsert`).
 local tree_mode_group = vim.api.nvim_create_augroup("HumoodagenNoInsertInTree", { clear = true })
