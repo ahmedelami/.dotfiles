@@ -10,7 +10,7 @@ return {
             -- Toggleterm shells are not "real" outer terminals; prevent our zshrc
             -- from auto-attaching to tmux inside them (which feels like it
             -- "inherits" an external terminal).
-            env = { DISABLE_TMUX_AUTO = "1" },
+            env = { DISABLE_TMUX_AUTO = "1", HUMOODAGEN_NVIM_TOGGLETERM = "1" },
             size = function(term)
                 if term.direction == "horizontal" then
                     return 15
@@ -397,13 +397,22 @@ return {
                     if term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
                         vim.b[term.bufnr].humoodagen_term_cwd_sync = true
                     end
-                    if term and term.job_id then
-                        -- Ensure Zsh emits OSC 7 when cwd changes so Neovim can
-                        -- follow `cd`/`z` and keep NvimTree in sync.
-                        term:send([[
-if [ -n "$ZSH_VERSION" ] && [ -z "$HUMOODAGEN_OSC7_READY" ]; then export HUMOODAGEN_OSC7_READY=1; autoload -Uz add-zsh-hook; __humoodagen_osc7(){ printf '\033]7;file://%s%s\033\\' "${HOST:-localhost}" "$PWD"; }; add-zsh-hook chpwd __humoodagen_osc7; add-zsh-hook precmd __humoodagen_osc7; __humoodagen_osc7; fi
-]])
+                end,
+                on_close = function(term)
+                    if not (term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr)) then
+                        return
                     end
+                    local dir = vim.b[term.bufnr].humoodagen_osc7_dir
+                    if type(dir) ~= "string" or dir == "" then
+                        return
+                    end
+                    if vim.fn.isdirectory(dir) == 0 then
+                        return
+                    end
+                    if vim.loop.cwd() == dir then
+                        return
+                    end
+                    vim.cmd("cd " .. vim.fn.fnameescape(dir))
                 end,
             }))
 

@@ -159,6 +159,17 @@ autoload -Uz add-zle-hook-widget
 add-zsh-hook preexec _tmux_vim_mode_clear
 add-zsh-hook precmd _tmux_vim_mode_update
 
+# Neovim ToggleTerm: emit OSC 7 cwd updates so Neovim can sync `:cd`/NvimTree
+# with the terminal's directory (used by the floating command terminal).
+if [[ -n ${HUMOODAGEN_NVIM_TOGGLETERM-} ]]; then
+  __humoodagen_emit_osc7() {
+    printf '\033]7;file://%s%s\033\\' "${HOST:-localhost}" "$PWD"
+  }
+  add-zsh-hook chpwd __humoodagen_emit_osc7
+  add-zsh-hook precmd __humoodagen_emit_osc7
+  __humoodagen_emit_osc7
+fi
+
 _tmux_vim_wrap_widget() {
   local widget=$1
   local fn="_tmux_vim_wrap_${widget//-/_}"
