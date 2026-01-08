@@ -226,6 +226,37 @@ return {
             return false
         end
 
+        local border_char = (vim.opt.fillchars:get() or {}).horiz or "─"
+        local border_cache = {}
+
+        _G.HumoodagenPaneBorderStatusline = function()
+            local win = vim.g.statusline_winid
+            if not (win and win ~= 0 and vim.api.nvim_win_is_valid(win)) then
+                return ""
+            end
+
+            local buf = vim.api.nvim_win_get_buf(win)
+            if vim.bo[buf].buftype ~= "" then
+                return ""
+            end
+
+            local ft = vim.bo[buf].filetype
+            if ft == "toggleterm" or ft == "NvimTree" then
+                return ""
+            end
+
+            local width = vim.api.nvim_win_get_width(win)
+            if width < 1 then
+                return ""
+            end
+
+            if border_cache[width] == nil then
+                border_cache[width] = "%#WinSeparator#" .. string.rep(border_char, width) .. "%#Normal#"
+            end
+
+            return border_cache[width]
+        end
+
         local function any_toggleterm_window()
             for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
                 for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
@@ -244,6 +275,11 @@ return {
                     local buf = vim.api.nvim_win_get_buf(win)
                     if is_toggleterm_buf(buf) then
                         vim.wo[win].statusline = "%!v:lua.HumoodagenToggletermStatusline()"
+                        vim.wo[win].winbar = ""
+                    elseif vim.bo[buf].buftype == "" and vim.bo[buf].filetype ~= "NvimTree" then
+                        -- Use a border-like statusline in normal buffers so the
+                        -- split above the bottom terminal stays visible.
+                        vim.wo[win].statusline = "%!v:lua.HumoodagenPaneBorderStatusline()"
                         vim.wo[win].winbar = ""
                     end
                 end
