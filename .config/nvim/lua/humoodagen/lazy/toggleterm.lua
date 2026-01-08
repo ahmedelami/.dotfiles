@@ -338,6 +338,7 @@ return {
         end
 
         local open_or_focus_term = nil
+        local sync_toggleterm_inactive_highlight
 
         local function attach_tab_lifecycle(term)
             if not term or term.__humoodagen_tab_lifecycle then
@@ -396,6 +397,14 @@ return {
                 on_open = function(term)
                     if term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
                         vim.b[term.bufnr].humoodagen_term_cwd_sync = true
+                        if not vim.b[term.bufnr].humoodagen_float_ctrl_c_close then
+                            vim.b[term.bufnr].humoodagen_float_ctrl_c_close = true
+                            vim.keymap.set("t", "<C-c>", function()
+                                if term and term:is_open() then
+                                    term:close()
+                                end
+                            end, { buffer = term.bufnr, silent = true, desc = "Close float terminal (Ctrl-C)" })
+                        end
                     end
                 end,
                 on_close = function(term)
@@ -568,18 +577,18 @@ return {
 	            return build_winhighlight(map)
 	        end
 	
-	        local function sync_toggleterm_inactive_highlight()
-	            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-	                local buf = vim.api.nvim_win_get_buf(win)
-	                if is_toggleterm_buf(buf) then
-	                    vim.wo[win].cursorline = false
+		        sync_toggleterm_inactive_highlight = function()
+		            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		                local buf = vim.api.nvim_win_get_buf(win)
+		                if is_toggleterm_buf(buf) then
+		                    vim.wo[win].cursorline = false
 	                    local current_wh = vim.wo[win].winhighlight or ""
 	                    local normalized = normalize_toggleterm_winhighlight(current_wh)
 	                    if normalized ~= current_wh then
 	                        vim.wo[win].winhighlight = normalized
-	                    end
-	                end
-	            end
+		                end
+		            end
+		        end
 	        end
 	
 	        local nav_group = vim.api.nvim_create_augroup("ToggleTermNav", { clear = true })
