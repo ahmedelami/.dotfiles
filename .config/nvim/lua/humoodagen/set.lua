@@ -42,7 +42,7 @@ vim.opt.wildmenu = true
 vim.opt.wildmode = "longest:full,full"
 vim.opt.wildoptions = "pum"
 
-vim.opt.shortmess:append("I")
+vim.opt.shortmess:append("IS")
 
 vim.opt.cmdheight = 0
 vim.opt.laststatus = 0
