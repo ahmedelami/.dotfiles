@@ -1223,26 +1223,6 @@ return {
                     return false
                 end
 
-                local right = current_term("vertical")
-                if right then
-                    right.dir = desired_cwd
-                end
-                if right and not has_open_direction("vertical") and not right:is_open() then
-                    local set = term_sets[right.direction]
-                    if set then
-                        for _, other in ipairs(set.terms) do
-                            if other ~= right and other:is_open() then
-                                safe_close_term(other)
-                            end
-                        end
-                    end
-
-                    focus_main_win()
-                    with_directional_open_windows("vertical", function()
-                        right:open()
-                    end)
-                end
-
                 local bottom = current_term("horizontal")
                 if bottom then
                     bottom.dir = desired_cwd

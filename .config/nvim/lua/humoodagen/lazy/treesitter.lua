@@ -9,6 +9,7 @@ return {
                 "jsdoc", "bash", "html", "css", "htmldjango", "python", "latex",
                 "json", "xml", "asm", "csv", "dockerfile", "disassembly", "gitignore",
                 "java", "http", "llvm", "make", "markdown", "php",
+                "markdown_inline",
             },
 
             -- Install parsers synchronously (only applied to `ensure_installed`)
