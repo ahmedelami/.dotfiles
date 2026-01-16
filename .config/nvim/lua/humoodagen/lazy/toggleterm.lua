@@ -399,11 +399,16 @@ return {
                         vim.b[term.bufnr].humoodagen_term_cwd_sync = true
                         if not vim.b[term.bufnr].humoodagen_float_ctrl_c_close then
                             vim.b[term.bufnr].humoodagen_float_ctrl_c_close = true
-                            vim.keymap.set("t", "<C-c>", function()
+                            vim.keymap.set({ "t", "n" }, "<C-c>", function()
                                 if term and term:is_open() then
                                     term:close()
                                 end
                             end, { buffer = term.bufnr, silent = true, desc = "Close float terminal (Ctrl-C)" })
+                            vim.keymap.set({ "t", "n" }, "<D-;>", function()
+                                if term and term:is_open() then
+                                    term:close()
+                                end
+                            end, { buffer = term.bufnr, silent = true, desc = "Close float terminal (Cmd+;)" })
                         end
                     end
                 end,
@@ -411,6 +416,7 @@ return {
                     if not (term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr)) then
                         return
                     end
+                    vim.b[term.bufnr].humoodagen_term_cwd_sync = false
                     local dir = vim.b[term.bufnr].humoodagen_osc7_dir
                     if type(dir) ~= "string" or dir == "" then
                         return
