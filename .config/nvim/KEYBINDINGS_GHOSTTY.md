@@ -91,6 +91,11 @@ create and switch terminal tabs independently for bottom and right terminals.
 This requires tmux to pass these keys through when the pane runs `nvim`
 (see `~/.tmux.conf`).
 
+Outside toggleterm buffers, `<C-b>1..9` (and `<D-1..9>` in Neovide) switches the
+**bottom workspace**: it selects the bottom terminal tab and restores the main
+file buffer associated with that workspace (or an empty placeholder buffer if
+none has been set yet).
+
 Tmux uses a per-pane flag (`@pane_is_nvim`) set by Neovim on `VimEnter` to keep
 the passthrough working even when a toggleterm child process (e.g. `zsh`) is the
 foreground job in that tmux pane (see `~/.config/nvim/lua/humoodagen/init.lua`).

@@ -496,10 +496,17 @@ function M.setup(state, mode, termset)
     end)
   end
 
+  local switch_bottom_workspace
+
   local function switch_term_tab(index)
     run_in_normal(function()
       local term = termset.current_toggleterm(state)
       if not term or not term.direction then
+        return
+      end
+      if term.direction == "horizontal" and type(switch_bottom_workspace) == "function" then
+        switch_bottom_workspace(index, { focus = "term", update_terminal = true })
+        vim.cmd("redrawstatus")
         return
       end
       local target = termset.term_tab_at(state, term.direction, index)
@@ -581,6 +588,198 @@ function M.setup(state, mode, termset)
     end)
   end
 
+  local function is_valid_workspace_buf(buf)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+      return false
+    end
+    if vim.bo[buf].buftype ~= "" then
+      return false
+    end
+    local ft = vim.bo[buf].filetype
+    return ft ~= "NvimTree" and ft ~= "toggleterm"
+  end
+
+  local function bottom_workspace_table()
+    if type(state.bottom_workspace_main_buf) ~= "table" then
+      state.bottom_workspace_main_buf = {}
+    end
+    return state.bottom_workspace_main_buf
+  end
+
+  local function get_main_win()
+    if state.last_main_win and vim.api.nvim_win_is_valid(state.last_main_win) and is_main_win(state.last_main_win) then
+      return state.last_main_win
+    end
+    local win = find_main_win()
+    if win and vim.api.nvim_win_is_valid(win) then
+      state.last_main_win = win
+      return win
+    end
+    return nil
+  end
+
+  local function capture_main_for_workspace(index)
+    local win = get_main_win()
+    if not win then
+      return
+    end
+    local buf = vim.api.nvim_win_get_buf(win)
+    if not is_valid_workspace_buf(buf) then
+      return
+    end
+    bottom_workspace_table()[index] = buf
+  end
+
+  local function ensure_main_for_workspace(index)
+    local t = bottom_workspace_table()
+    local buf = t[index]
+    if is_valid_workspace_buf(buf) then
+      return buf
+    end
+
+    local win = ensure_main_win()
+    if not (win and vim.api.nvim_win_is_valid(win)) then
+      return nil
+    end
+
+    vim.api.nvim_win_call(win, function()
+      vim.cmd("enew")
+    end)
+
+    buf = vim.api.nvim_win_get_buf(win)
+    if is_valid_workspace_buf(buf) then
+      t[index] = buf
+      return buf
+    end
+    return nil
+  end
+
+  local function ensure_bottom_term_tab(index)
+    local set = termset.ensure_first_term(state, "horizontal")
+    while #set.terms < index do
+      termset.new_term_tab_for_direction(state, "horizontal")
+    end
+    set.current = index
+    return set.terms[index]
+  end
+
+  local function cd_if_changed(dir)
+    if type(dir) ~= "string" or dir == "" then
+      return
+    end
+    if vim.fn.isdirectory(dir) == 0 then
+      return
+    end
+    if vim.loop.cwd() == dir then
+      return
+    end
+    vim.cmd("cd " .. vim.fn.fnameescape(dir))
+  end
+
+  local function workspace_dir_from_term(term)
+    if not (term and term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr)) then
+      return nil
+    end
+    if not vim.b[term.bufnr].humoodagen_term_cwd_sync then
+      return nil
+    end
+    local dir = vim.b[term.bufnr].humoodagen_osc7_dir
+    if type(dir) ~= "string" or dir == "" then
+      return nil
+    end
+    if vim.fn.isdirectory(dir) == 0 then
+      return nil
+    end
+    return dir
+  end
+
+  local function workspace_dir_from_buf(buf)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+      return nil
+    end
+    local name = vim.api.nvim_buf_get_name(buf)
+    if name == "" then
+      return nil
+    end
+    local dir = vim.fn.fnamemodify(name, ":h")
+    if type(dir) ~= "string" or dir == "" then
+      return nil
+    end
+    if vim.fn.isdirectory(dir) == 0 then
+      return nil
+    end
+    return dir
+  end
+
+  local function sync_tree_to_buf(buf)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+      return
+    end
+    local ok, api = pcall(require, "nvim-tree.api")
+    if not ok then
+      return
+    end
+    if not api.tree.is_visible() then
+      return
+    end
+    pcall(api.tree.find_file, { buf = buf, open = false, focus = false })
+  end
+
+  switch_bottom_workspace = function(index, opts)
+    opts = opts or {}
+    if type(index) ~= "number" or index < 1 then
+      return
+    end
+
+    local prev = term_sets.horizontal and term_sets.horizontal.current or 1
+    capture_main_for_workspace(prev)
+
+    local origin_mode = vim.api.nvim_get_mode().mode
+    local term = ensure_bottom_term_tab(index)
+
+    local main_win = ensure_main_win()
+    local main_buf = ensure_main_for_workspace(index)
+    if main_win and vim.api.nvim_win_is_valid(main_win) and main_buf then
+      vim.api.nvim_win_set_buf(main_win, main_buf)
+      state.last_main_win = main_win
+    end
+
+    local desired_dir = workspace_dir_from_term(term) or workspace_dir_from_buf(main_buf)
+    cd_if_changed(desired_dir)
+    sync_tree_to_buf(main_buf)
+
+    local update_terminal = opts.update_terminal
+    if update_terminal == nil then
+      update_terminal = any_term_open("horizontal")
+    end
+    if opts.focus == "term" then
+      update_terminal = true
+    end
+
+    if update_terminal and term then
+      open_or_focus_term(term)
+    end
+
+    if opts.focus ~= "term" and main_win and vim.api.nvim_win_is_valid(main_win) then
+      vim.api.nvim_set_current_win(main_win)
+      local first = type(origin_mode) == "string" and origin_mode:sub(1, 1) or ""
+      if first == "i" then
+        vim.cmd("startinsert")
+      elseif first == "n" then
+        vim.cmd("stopinsert")
+      end
+    end
+  end
+
+  local function workspace_action(index)
+    return function()
+      run_in_normal(function()
+        switch_bottom_workspace(index, { focus = "main" })
+        vim.cmd("redrawstatus")
+      end)
+    end
+  end
+
   _G.HumoodagenPanes = {
     jump_bottom = open_or_focus_bottom,
     jump_right = open_or_focus_right,
@@ -606,22 +805,41 @@ function M.setup(state, mode, termset)
         vim.cmd("startinsert")
       end)
     end,
+    workspace_1 = workspace_action(1),
+    workspace_2 = workspace_action(2),
+    workspace_3 = workspace_action(3),
+    workspace_4 = workspace_action(4),
+    workspace_5 = workspace_action(5),
+    workspace_6 = workspace_action(6),
+    workspace_7 = workspace_action(7),
+    workspace_8 = workspace_action(8),
+    workspace_9 = workspace_action(9),
     toggle_bottom = function()
-      local origin_win = vim.api.nvim_get_current_win()
-      local origin_mode = vim.api.nvim_get_mode().mode
+      run_in_normal(function()
+        local origin_win = vim.api.nvim_get_current_win()
 
-      local term = termset.current_term(state, "horizontal")
-      local opening = not term:is_open()
-      toggle_bottom_terminal(term)
-
-      if opening then
-        if origin_win and vim.api.nvim_win_is_valid(origin_win) then
-          vim.api.nvim_set_current_win(origin_win)
-          focus_main_insert_if_needed(origin_win, origin_mode)
-        else
-          focus_main_win()
+        local term = termset.current_term(state, "horizontal")
+        if term:is_open() then
+          safe_close_term(term)
+          if origin_win and vim.api.nvim_win_is_valid(origin_win) and origin_win ~= term.window then
+            vim.api.nvim_set_current_win(origin_win)
+          else
+            focus_main_win()
+          end
+          vim.cmd("redrawstatus")
+          return
         end
-      end
+
+        open_or_focus_term(term)
+        if term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr) then
+          vim.b[term.bufnr].humoodagen_term_mode = "t"
+          mode.cancel_pending_term_exit(state, term.bufnr)
+          mode.ensure_job_mode(state, term.bufnr)
+        else
+          vim.cmd("startinsert")
+        end
+        vim.cmd("redrawstatus")
+      end)
     end,
     toggle_right = function()
       local origin_win = vim.api.nvim_get_current_win()

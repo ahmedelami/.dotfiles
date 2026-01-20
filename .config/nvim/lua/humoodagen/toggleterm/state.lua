@@ -18,6 +18,7 @@ function M.new()
     pending_term_exit = {},
     last_main_win = nil,
     float_term = nil,
+    bottom_workspace_main_buf = {},
     border_char = (vim.opt.fillchars:get() or {}).horiz or "─",
     border_cache = {},
   }

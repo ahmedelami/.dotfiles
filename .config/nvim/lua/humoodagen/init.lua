@@ -1,4 +1,5 @@
 require("humoodagen.set")
+require("humoodagen.views")
 require("humoodagen.neovide")
 require("humoodagen.remap")
 require("humoodagen.commands")

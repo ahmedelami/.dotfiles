@@ -12,8 +12,33 @@ vim.keymap.set("n", "<C-c>", "<Esc>", { silent = true })
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv")
 
+local function scroll_quarter(direction)
+    local original_scroll = vim.o.scroll
+    local half = original_scroll > 0 and original_scroll or math.floor(vim.api.nvim_win_get_height(0) / 2)
+    local quarter = math.max(1, math.floor(half / 2))
+    local lines = quarter * vim.v.count1
+
+    vim.o.scroll = lines
+    local seq = vim.api.nvim_replace_termcodes(direction == "down" and "<C-d>zz" or "<C-u>zz", true, false, true)
+    local ok, err = pcall(vim.cmd.normal, {
+        args = { seq },
+        bang = true,
+    })
+    vim.o.scroll = original_scroll
+
+    if not ok then
+        error(err)
+    end
+end
+
 vim.keymap.set("n", "<C-d>", "<C-d>zz")
 vim.keymap.set("n", "<C-u>", "<C-u>zz")
+vim.keymap.set("n", "<C-s>", function() scroll_quarter("down") end, { silent = true, desc = "Quarter-page down (half of <C-d>)" })
+vim.keymap.set("n", "<C-q>", function() scroll_quarter("up") end, { silent = true, desc = "Quarter-page up (half of <C-u>)" })
+vim.keymap.set("n", "p", "p<Cmd>silent! '[,']foldopen!<CR>", { silent = true, desc = "Paste (open folds)" })
+vim.keymap.set("n", "P", "P<Cmd>silent! '[,']foldopen!<CR>", { silent = true, desc = "Paste before (open folds)" })
+vim.keymap.set("n", "gp", "gp<Cmd>silent! '[,']foldopen!<CR>", { silent = true, desc = "Paste and leave cursor (open folds)" })
+vim.keymap.set("n", "gP", "gP<Cmd>silent! '[,']foldopen!<CR>", { silent = true, desc = "Paste before and leave cursor (open folds)" })
 vim.keymap.set("n", "n", "nzzzv")
 vim.keymap.set("n", "N", "Nzzzv")
 
@@ -171,7 +196,7 @@ local function toggle_nvim_tree_visibility_any_mode()
         if not ok then
             return
         end
-        api.tree.toggle({ focus = false })
+        api.tree.toggle({ focus = true })
     end)
 end
 
@@ -848,6 +873,24 @@ if not vim.g.neovide then
         save_current_pane_mode()
         call_toggleterm_any_mode("toggle_right")
     end, { desc = "Toggle right terminal (Cmd+Shift+L xterm)" })
+end
+
+local function switch_bottom_workspace_any_mode(index)
+    cancel_pending_main_normal()
+    cancel_pending_toggleterm_exit()
+    debug.log("workspace " .. tostring(index))
+    save_current_pane_mode()
+    call_toggleterm_any_mode("workspace_" .. tostring(index))
+end
+
+for i = 1, 9 do
+    vim.keymap.set(all_modes, "<D-" .. i .. ">", function()
+        switch_bottom_workspace_any_mode(i)
+    end, { desc = "Switch workspace (Cmd+" .. i .. ")" })
+
+    vim.keymap.set(all_modes, "<C-b>" .. i, function()
+        switch_bottom_workspace_any_mode(i)
+    end, { desc = "Switch workspace (Cmd+" .. i .. " ghostty)" })
 end
 
 -- Cmd+Ctrl+H/J/K/L resizes splits.

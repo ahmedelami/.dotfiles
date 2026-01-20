@@ -165,6 +165,12 @@ vim.opt.colorcolumn = "80"
 vim.opt.timeoutlen = 300
 vim.opt.ttimeoutlen = 10
 
+-- Allow mapping <C-s>/<C-q> in terminal Neovim by disabling XON/XOFF flow control.
+-- Many terminals default to `stty ixon`, which swallows Ctrl+S/Ctrl+Q.
+if vim.fn.has("unix") == 1 and vim.fn.has("ttyin") == 1 and vim.fn.has("ttyout") == 1 and not vim.g.neovide then
+    pcall(vim.fn.system, "stty -ixon < /dev/tty >/dev/null 2>&1")
+end
+
 
 -- Automatically reload files when they change on disk
 vim.opt.autoread = true
