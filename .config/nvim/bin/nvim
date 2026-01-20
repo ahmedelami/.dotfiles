@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+set -eu
+
+real_nvim=${HUMOODAGEN_REAL_NVIM:-}
+self=$0
+case "$self" in
+  */*) ;;
+  *) self=$(command -v "$0" 2>/dev/null || echo "$0") ;;
+esac
+
+if [ -z "${real_nvim}" ]; then
+  IFS=:
+  for dir in $PATH; do
+    [ -z "$dir" ] && dir=.
+    cand=$dir/nvim
+    if [ -x "$cand" ] && [ "$cand" != "$self" ]; then
+      real_nvim=$cand
+      break
+    fi
+  done
+  unset IFS
+fi
+
+if [ -z "${real_nvim}" ]; then
+  real_nvim=nvim
+fi
+
+if [ -z "${HUMOODAGEN_NVIM_TOGGLETERM:-}" ] || [ -z "${NVIM:-}" ] || [ -z "${real_nvim}" ]; then
+  exec "${real_nvim:-nvim}" "$@"
+fi
+
+# If the user passed flags, assume they actually want a standalone Neovim.
+# (This wrapper is meant to stop nested `nvim file.md` from inside toggleterm.)
+if [ "${1:-}" = "--" ]; then
+  shift
+else
+  for arg in "$@"; do
+    case "$arg" in
+      -*|+*)
+        exec "$real_nvim" "$@"
+        ;;
+    esac
+  done
+fi
+
+if [ $# -eq 0 ]; then
+  "$real_nvim" --server "$NVIM" --remote-send '<C-\><C-N>:lua require("humoodagen.window").focus_main()<CR>' >/dev/null 2>&1 || true
+  exit 0
+fi
+
+list_path=$(mktemp "${TMPDIR:-/tmp}/humoodagen-nvim-args.XXXXXX")
+printf '%s\n' "$@" >"$list_path"
+
+keys="<C-\\><C-N>:lua require(\"humoodagen.remote_open\").open_from_file([=[$list_path]=])<CR>"
+if ! "$real_nvim" --server "$NVIM" --remote-send "$keys" >/dev/null 2>&1; then
+  rm -f "$list_path"
+  exec "$real_nvim" "$@"
+fi
+exit 0

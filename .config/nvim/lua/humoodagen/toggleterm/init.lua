@@ -6,7 +6,16 @@ function M.setup()
     persist_size = true,
     shade_terminals = false,
     direction = "horizontal",
-    env = { DISABLE_TMUX_AUTO = "1", HUMOODAGEN_NVIM_TOGGLETERM = "1" },
+    env = {
+      DISABLE_TMUX_AUTO = "1",
+      HUMOODAGEN_NVIM_TOGGLETERM = "1",
+      HUMOODAGEN_NVIM_WRAPPER = vim.fn.stdpath("config") .. "/bin/nvim",
+      HUMOODAGEN_ZDOTDIR_ORIG = vim.env.ZDOTDIR or (vim.env.HOME or ""),
+      HUMOODAGEN_REAL_NVIM = vim.v.progpath,
+      NVIM = vim.v.servername,
+      PATH = vim.fn.stdpath("config") .. "/bin:" .. (vim.env.PATH or ""),
+      ZDOTDIR = vim.fn.stdpath("config") .. "/.toggleterm-zdotdir",
+    },
     size = function(term)
       if term.direction == "horizontal" then
         return 15
