@@ -232,25 +232,36 @@ return {
             vim.keymap.set('n', 'i', inline_create, opts('[File] Inline Create'))
         end
 
-        require("nvim-tree").setup({
-            on_attach = on_attach,
-            trash = {
-                cmd = "trash", -- Requires 'trash-cli' or similar on your system
-            },
-            hijack_netrw = true,
-            hijack_unnamed_buffer_when_opening = true,
-            sync_root_with_cwd = true,
-            sort_by = "case_sensitive",
-            ui = {
-                confirm = {
-                    remove = false,
-                    trash = false,
+	        require("nvim-tree").setup({
+	            on_attach = on_attach,
+	            trash = {
+	                cmd = "trash", -- Requires 'trash-cli' or similar on your system
+	            },
+	            hijack_netrw = true,
+	            hijack_unnamed_buffer_when_opening = true,
+	            sync_root_with_cwd = true,
+	            update_focused_file = {
+	                enable = true,
+	                update_root = false,
+	            },
+	            sort_by = "case_sensitive",
+	            ui = {
+	                confirm = {
+	                    remove = false,
+	                    trash = false,
                 },
             },
             git = {
                 enable = true,
                 ignore = false,
                 timeout = 400,
+            },
+            actions = {
+                open_file = {
+                    -- Don't force the tree back to `view.width` whenever a file is opened.
+                    -- This keeps manual `:vertical resize` adjustments stable.
+                    resize_window = false,
+                },
             },
             view = {
                 number = true,
@@ -259,6 +270,7 @@ return {
                 width = "15%",
             },
             renderer = {
+                add_trailing = false,
                 group_empty = true,
                 highlight_git = "name",
                 -- Show only the last folder segment (e.g. "/analytics-dash") in
@@ -311,27 +323,32 @@ return {
                 icons = {
                     git_placement = "after",
                     web_devicons = {
-                        file = { enable = true, color = true },
+                        file = { enable = false, color = false },
                         -- mini.icons can mock `nvim-web-devicons` for files, but
                         -- the devicons API can't tell "folder vs file name".
                         -- Keep folders on nvim-tree glyphs, and use devicons
                         -- only for file icons.
                         folder = { enable = false },
                     },
+                    padding = {
+                        icon = "",
+                    },
                     show = {
-                        file = true,
+                        file = false,
                         folder = true,
                         folder_arrow = false,
-                        git = true,
+                        git = false,
                     },
                     glyphs = {
                         folder = {
                             arrow_closed = "",
                             arrow_open = "",
-                            default = "󰉋",
-                            open = "󰉖",
-                            empty = "󰉋",
-                            empty_open = "󰉖",
+                            default = "/",
+                            open = "/",
+                            empty = "/",
+                            empty_open = "/",
+                            symlink = "/",
+                            symlink_open = "/",
                         },
                         git = {
                             unstaged = "",
@@ -437,7 +454,7 @@ return {
             end
 
             -- open the tree
-            require("nvim-tree.api").tree.open()
+            require("nvim-tree.api").tree.open({ focus = false })
             ensure_main_edit_win()
         end
 

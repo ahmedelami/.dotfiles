@@ -9,6 +9,10 @@ return {
         local commands = require("humoodagen.commands")
 
         fzf.setup({
+            files = {
+                git_icons = false,
+                file_icons = false,
+            },
             winopts = {
                 height = 0.60,
                 width = 0.60,

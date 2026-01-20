@@ -3,13 +3,14 @@ return {
   config = function()
     require("gitsigns").setup({
       signs = {
-        add = { text = "▎" },
-        change = { text = "▎" },
-        delete = { text = "" },
-        topdelete = { text = "" },
-        changedelete = { text = "▎" },
-        untracked = { text = "▎" },
+        add = { text = "", numhl = "GitSignsAddNr" },
+        change = { text = "", numhl = "GitSignsChangeNr" },
+        delete = { text = "", numhl = "GitSignsDeleteNr" },
+        topdelete = { text = "", numhl = "GitSignsTopdeleteNr" },
+        changedelete = { text = "", numhl = "GitSignsChangedeleteNr" },
+        untracked = { text = "", numhl = "GitSignsUntrackedNr" },
       },
+      numhl = false,
       on_attach = function(bufnr)
         local gs = package.loaded.gitsigns
 

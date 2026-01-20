@@ -149,7 +149,24 @@ place = function(mode_override)
     local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, true)[1] or ""
     local opts
     if col < #line then
-        opts = { end_col = col + 1, hl_group = hl, hl_mode = "replace", priority = 5000 }
+        local byte = line:byte(col + 1)
+        if byte == 9 then
+            -- Highlighting a tab spans its full visual width, which can look like
+            -- a huge cursor. Draw a 1-cell overlay at the cursor's on-screen
+            -- column (Neovim places the cursor at the end of the tab).
+            local win_col = vim.fn.virtcol(".") - 1
+            local view = vim.fn.winsaveview()
+            local leftcol = type(view) == "table" and type(view.leftcol) == "number" and view.leftcol or 0
+            win_col = math.max(0, win_col - leftcol)
+            opts = {
+                virt_text = { { " ", hl } },
+                virt_text_pos = "overlay",
+                virt_text_win_col = win_col,
+                priority = 5000,
+            }
+        else
+            opts = { end_col = col + 1, hl_group = hl, hl_mode = "replace", priority = 5000 }
+        end
     else
         opts = {
             virt_text = { { " ", hl } },

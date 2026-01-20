@@ -42,12 +42,17 @@ return {
                 },
             })
 
+            local git_review = require("humoodagen.git_review")
+
             local pick = mini_pick.builtin
             vim.keymap.set('n', '<leader>pf', pick.files, { desc = 'Find Files' })
             vim.keymap.set('n', '<C-p>', function() pick.files({ tool = 'git' }) end, { desc = 'Git Files' })
             vim.keymap.set('n', '<leader>ps', pick.grep_live, { desc = 'Grep Project' })
+            vim.keymap.set('n', '<leader>gr', function() git_review.toggle() end, { desc = 'Git review (code + unified diff)' })
 
-            -- Unified-ish overlay diff in the current buffer.
+            -- Git review:
+            -- - If current file has changes: open/close the sidecar unified diff.
+            -- - Otherwise: open the Git Changes picker.
             local function ctrl_g()
                 local function find_main_edit_win()
                     for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
@@ -166,13 +171,13 @@ return {
 
                 local function open_git_diff_scratch(win, root, relpath, display, opts)
                     if not (win and vim.api.nvim_win_is_valid(win)) then
-                        return
+                        return false
                     end
                     if type(root) ~= "string" or root == "" then
-                        return
+                        return false
                     end
                     if type(relpath) ~= "string" or relpath == "" then
-                        return
+                        return false
                     end
 
                     local args = { "diff", "--no-color" }
@@ -187,11 +192,11 @@ return {
                     local lines = vim.fn.systemlist(cmd)
                     if vim.v.shell_error ~= 0 then
                         vim.notify("git diff failed for " .. relpath, vim.log.levels.ERROR)
-                        return
+                        return false
                     end
                     if vim.tbl_isempty(lines) then
                         vim.notify("No diff output for " .. relpath, vim.log.levels.INFO)
-                        return
+                        return false
                     end
 
                     local title = "[git diff] " .. (display or relpath)
@@ -208,6 +213,7 @@ return {
                         vim.bo[buf].readonly = true
                         vim.bo[buf].filetype = "diff"
                     end)
+                    return true
                 end
 
                 local function open_git_changes_picker(target_win, context_path)
@@ -238,6 +244,7 @@ return {
                                     return
                                 end
 
+                                local should_focus = false
                                 vim.api.nvim_win_call(win, function()
                                     local path = item.path or item
                                     if type(path) ~= "string" or path == "" then
@@ -253,7 +260,7 @@ return {
                                         local worktree_status = type(status) == "string" and status:sub(2, 2) or ""
 
                                         if index_status == "D" or worktree_status == "D" then
-                                            open_git_diff_scratch(win, root, relpath or path, display, {
+                                            should_focus = open_git_diff_scratch(win, root, relpath or path, display, {
                                                 cached = index_status == "D",
                                             })
                                             return
@@ -264,22 +271,19 @@ return {
                                     end
 
                                     vim.cmd("edit " .. vim.fn.fnameescape(path))
-                                    local buf = vim.api.nvim_get_current_buf()
+                                    should_focus = true
 
-                                    if MiniDiff.get_buf_data(buf) == nil then
-                                        local ok_enable, err = pcall(MiniDiff.enable, buf)
-                                        if not ok_enable then
-                                            vim.notify("MiniDiff enable failed: " .. tostring(err), vim.log.levels.ERROR)
-                                            return
-                                        end
-                                    end
-
-                                    local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
-                                    if not ok_overlay then
-                                        vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
-                                    end
+                                    pcall(git_review.open, { win = win })
                                 end)
-                                return true
+
+                                if should_focus then
+                                    vim.schedule(function()
+                                        if vim.api.nvim_win_is_valid(win) then
+                                            vim.api.nvim_set_current_win(win)
+                                        end
+                                    end)
+                                end
+                                return false
                             end,
                         },
                     })
@@ -297,7 +301,7 @@ return {
                 end
 
                 -- In the main file buffer:
-                -- - If there are changes (dirty buffer or git status), toggle overlay.
+                -- - If there are changes (dirty buffer or git status), toggle the sidecar diff.
                 -- - Otherwise, show the "Git Changes" picker (visible feedback).
                 local is_file_buf = initial_buftype == "" and initial_name ~= "" and initial_ft ~= "NvimTree" and initial_ft ~= "toggleterm"
                 if is_file_buf then
@@ -328,21 +332,7 @@ return {
                     end
 
                     if has_changes then
-                        local buf = initial_buf
-                        if MiniDiff.get_buf_data(buf) == nil then
-                            local ok_enable, err = pcall(MiniDiff.enable, buf)
-                            if not ok_enable then
-                                vim.notify("MiniDiff enable failed: " .. tostring(err), vim.log.levels.ERROR)
-                                open_git_changes_picker(target_win, initial_context_path)
-                                return
-                            end
-                        end
-
-                        local ok_overlay, err = pcall(MiniDiff.toggle_overlay, buf)
-                        if not ok_overlay then
-                            vim.notify("MiniDiff overlay failed: " .. tostring(err), vim.log.levels.ERROR)
-                            open_git_changes_picker(target_win, initial_context_path)
-                        end
+                        pcall(git_review.toggle, { win = target_win })
                         return
                     end
 
@@ -354,7 +344,7 @@ return {
                 open_git_changes_picker(target_win, initial_context_path)
             end
 
-            vim.keymap.set('n', '<C-g>', ctrl_g, { desc = 'Git changes / diff overlay' })
+            vim.keymap.set('n', '<C-g>', ctrl_g, { desc = 'Git changes / review' })
             vim.keymap.set('t', '<C-g>', function()
                 vim.api.nvim_feedkeys(
                     vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true),
@@ -362,11 +352,11 @@ return {
                     false
                 )
                 vim.schedule(ctrl_g)
-            end, { desc = 'Git changes / diff overlay' })
+            end, { desc = 'Git changes / review' })
             vim.keymap.set('i', '<C-g>', function()
                 vim.cmd("stopinsert")
                 vim.schedule(ctrl_g)
-            end, { desc = 'Git changes / diff overlay' })
+            end, { desc = 'Git changes / review' })
         end,
     },
 }

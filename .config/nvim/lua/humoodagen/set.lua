@@ -15,6 +15,7 @@ vim.opt.guicursor = table.concat({
 
 vim.opt.number = true
 vim.opt.relativenumber = true
+vim.opt.numberwidth = 1
 vim.opt.cursorline = true
 vim.opt.splitright = true
 vim.opt.splitbelow = true
@@ -134,6 +135,9 @@ vim.api.nvim_create_autocmd("CmdlineLeave", {
 -- Silence deprecation warnings (stops the tailwind-tools/lspconfig flash)
 vim.g.deprecation_warnings = false
 
+-- Disable mini.diff line-number coloring (git_review provides the diff view).
+vim.g.minidiff_disable = true
+
 vim.opt.termguicolors = true
 
 vim.opt.fillchars = vim.tbl_extend("force", vim.opt.fillchars:get(), {
@@ -149,7 +153,7 @@ vim.opt.fillchars = vim.tbl_extend("force", vim.opt.fillchars:get(), {
 
 
 vim.opt.scrolloff = 8
-vim.opt.signcolumn = "yes"
+vim.opt.signcolumn = "number"
 vim.opt.isfname:append("@-@")
 
 vim.opt.updatetime = 50  -- Back to original value
@@ -179,19 +183,45 @@ vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "CursorHoldI", "FocusGai
 local osc7_group = vim.api.nvim_create_augroup("HumoodagenOsc7Cwd", { clear = true })
 
 local function parse_osc7_dir(seq)
-    if type(seq) ~= "string" then
-        return nil
-    end
-    if seq:sub(1, 4) ~= "\x1b]7;" then
+    if type(seq) ~= "string" or seq == "" then
         return nil
     end
 
-    local dir = seq:gsub("^\x1b]7;file://[^/]*", "")
-    dir = dir:gsub("\x1b\\$", ""):gsub("\x07$", "")
-    dir = vim.trim(dir)
+    -- Strip common OSC terminators (ST or BEL).
+    local cleaned = seq:gsub("\x1b\\$", ""):gsub("\x07$", "")
+
+    -- Neovim/terminals may hand us either the full OSC sequence
+    -- (`ESC]7;file://...`) or just the payload portion. Still ensure this is
+    -- OSC 7 (cwd) so we don't accidentally treat other OSC sequences (like
+    -- OSC 8 hyperlinks) as directory changes.
+    local payload = nil
+    local osc_idx = cleaned:find("]7;file://", 1, true)
+    if osc_idx then
+        payload = cleaned:sub(osc_idx + 3) -- after "]7;"
+    elseif cleaned:sub(1, 9) == "7;file://" then
+        payload = cleaned:sub(3) -- after "7;"
+    elseif cleaned:sub(1, 7) == "file://" then
+        payload = cleaned
+    else
+        return nil
+    end
+
+    -- Drop hostname (may be empty) and keep the absolute path.
+    local rest = payload:sub(8)
+    local slash = rest:find("/", 1, true)
+    if not slash then
+        return nil
+    end
+
+    local dir = vim.trim(rest:sub(slash))
     if dir == "" then
         return nil
     end
+
+    -- URI decode (%xx) so `isdirectory()` works with spaces, etc.
+    dir = dir:gsub("%%(%x%x)", function(hex)
+        return string.char(tonumber(hex, 16))
+    end)
     return dir
 end
 
@@ -217,13 +247,33 @@ vim.api.nvim_create_autocmd("TermRequest", {
         end
 
         vim.b[ev.buf].humoodagen_osc7_dir = dir
-        if vim.b[ev.buf].humoodagen_term_cwd_sync then
-            -- TermRequest runs inside an autocmd callback; without scheduling,
-            -- the resulting DirChanged autocommands (nvim-tree sync) won't run.
-            vim.schedule(function()
-                cd_if_changed(dir)
-            end)
+        if not vim.b[ev.buf].humoodagen_term_cwd_sync then
+            return
         end
+
+        local dirty = vim.b[ev.buf].humoodagen_term_cwd_sync_dirty
+        if not dirty then
+            local baseline = vim.b[ev.buf].humoodagen_term_cwd_sync_baseline
+            if type(baseline) ~= "string" or baseline == "" then
+                vim.b[ev.buf].humoodagen_term_cwd_sync_baseline = dir
+                return
+            end
+            if dir == baseline then
+                return
+            end
+            vim.b[ev.buf].humoodagen_term_cwd_sync_dirty = true
+        end
+
+        -- TermRequest runs inside an autocmd callback; without scheduling,
+        -- the resulting DirChanged autocommands (nvim-tree sync) won't run.
+        -- Only change cwd when this terminal is focused; otherwise just record
+        -- the dir and let BufEnter/WinEnter apply it when you return.
+        if vim.api.nvim_get_current_buf() ~= ev.buf then
+            return
+        end
+        vim.schedule(function()
+            cd_if_changed(dir)
+        end)
     end,
 })
 
@@ -231,17 +281,21 @@ vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
     group = osc7_group,
     callback = function(ev)
         local buf = ev.buf
-        if not (buf and vim.api.nvim_buf_is_valid(buf)) then
-            return
-        end
-        if not vim.b[buf].humoodagen_term_cwd_sync then
-            return
-        end
-        local dir = vim.b[buf].humoodagen_osc7_dir
-        if type(dir) == "string" and dir ~= "" then
-            vim.schedule(function()
+        vim.schedule(function()
+            if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+                return
+            end
+            if vim.api.nvim_get_current_buf() ~= buf then
+                return
+            end
+            if not vim.b[buf].humoodagen_term_cwd_sync then
+                return
+            end
+
+            local dir = vim.b[buf].humoodagen_osc7_dir
+            if type(dir) == "string" and dir ~= "" then
                 cd_if_changed(dir)
-            end)
-        end
+            end
+        end)
     end,
 })

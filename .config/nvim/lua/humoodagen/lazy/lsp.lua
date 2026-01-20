@@ -89,6 +89,62 @@ return {
 
         require("fidget").setup({})
         require("mason").setup()
+
+        -- Prevent eslint-lsp from attaching in projects without an ESLint config.
+        -- This avoids noisy "Could not find config file" diagnostic errors.
+        if vim.lsp.config then
+            vim.lsp.config("eslint", {
+                root_dir = function(bufnr, on_dir)
+                    if vim.fs.root(bufnr, { "deno.json", "deno.jsonc", "deno.lock" }) then
+                        return
+                    end
+
+                    local filename = vim.api.nvim_buf_get_name(bufnr)
+                    if type(filename) ~= "string" or filename == "" then
+                        return
+                    end
+
+                    local project_root = vim.fs.root(bufnr, {
+                        "package-lock.json",
+                        "yarn.lock",
+                        "pnpm-lock.yaml",
+                        "bun.lockb",
+                        "bun.lock",
+                        ".git",
+                    })
+                    if not project_root then
+                        return
+                    end
+
+                    local eslint_config = vim.fs.find({
+                        ".eslintrc",
+                        ".eslintrc.js",
+                        ".eslintrc.cjs",
+                        ".eslintrc.yaml",
+                        ".eslintrc.yml",
+                        ".eslintrc.json",
+                        "eslint.config.js",
+                        "eslint.config.mjs",
+                        "eslint.config.cjs",
+                        "eslint.config.ts",
+                        "eslint.config.mts",
+                        "eslint.config.cts",
+                    }, {
+                        path = filename,
+                        type = "file",
+                        limit = 1,
+                        upward = true,
+                        stop = project_root,
+                    })[1]
+                    if not eslint_config then
+                        return
+                    end
+
+                    on_dir(project_root)
+                end,
+            })
+        end
+
         require("mason-lspconfig").setup({
             ensure_installed = {
                 "lua_ls",
