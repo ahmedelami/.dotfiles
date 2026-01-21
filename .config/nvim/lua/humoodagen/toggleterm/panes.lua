@@ -476,13 +476,42 @@ function M.setup(state, mode, termset)
     end)
   end
 
-  local function new_term_tab()
+  local switch_bottom_workspace
+
+  local function new_term_tab(direction)
     run_in_normal(function()
-      local term = termset.current_toggleterm(state)
-      if not term or not term.direction then
+      local resolved_direction = direction
+      if type(resolved_direction) ~= "string" or resolved_direction == "" then
+        local term = termset.current_toggleterm(state)
+        resolved_direction = term and term.direction or "horizontal"
+      end
+
+      if resolved_direction == "horizontal" and type(switch_bottom_workspace) == "function" then
+        local set = term_sets.horizontal
+        local prev = set and set.current or 1
+
+        local new_term = termset.new_term_tab_for_direction(state, resolved_direction)
+        local new_index = (set and set.current) or (prev + 1)
+
+        if set then
+          set.current = prev
+        end
+
+        switch_bottom_workspace(new_index, { focus = "term", update_terminal = true })
+        open_or_focus_term(new_term)
+
+        local buf = new_term.bufnr
+        if buf and vim.api.nvim_buf_is_valid(buf) then
+          vim.b[buf].humoodagen_term_mode = "t"
+          mode.cancel_pending_term_exit(state, buf)
+          mode.ensure_job_mode(state, buf)
+        end
+
+        vim.cmd("redrawstatus")
         return
       end
-      local new_term = termset.new_term_tab_for_direction(state, term.direction)
+
+      local new_term = termset.new_term_tab_for_direction(state, resolved_direction)
       open_or_focus_term(new_term)
 
       local buf = new_term.bufnr
@@ -495,8 +524,6 @@ function M.setup(state, mode, termset)
       vim.cmd("redrawstatus")
     end)
   end
-
-  local switch_bottom_workspace
 
   local function switch_term_tab(index)
     run_in_normal(function()
@@ -606,6 +633,13 @@ function M.setup(state, mode, termset)
     return state.bottom_workspace_main_buf
   end
 
+  local function bottom_workspace_view_table()
+    if type(state.bottom_workspace_view) ~= "table" then
+      state.bottom_workspace_view = {}
+    end
+    return state.bottom_workspace_view
+  end
+
   local function get_main_win()
     if state.last_main_win and vim.api.nvim_win_is_valid(state.last_main_win) and is_main_win(state.last_main_win) then
       return state.last_main_win
@@ -628,6 +662,13 @@ function M.setup(state, mode, termset)
       return
     end
     bottom_workspace_table()[index] = buf
+
+    local ok, view = pcall(vim.api.nvim_win_call, win, function()
+      return vim.fn.winsaveview()
+    end)
+    if ok and type(view) == "table" then
+      bottom_workspace_view_table()[index] = view
+    end
   end
 
   local function ensure_main_for_workspace(index)
@@ -642,6 +683,8 @@ function M.setup(state, mode, termset)
       return nil
     end
 
+    bottom_workspace_view_table()[index] = nil
+
     vim.api.nvim_win_call(win, function()
       vim.cmd("enew")
     end)
@@ -652,6 +695,21 @@ function M.setup(state, mode, termset)
       return buf
     end
     return nil
+  end
+
+  local function restore_view_for_workspace(index, win)
+    if not (win and vim.api.nvim_win_is_valid(win)) then
+      return
+    end
+
+    local view = bottom_workspace_view_table()[index]
+    if type(view) ~= "table" then
+      return
+    end
+
+    pcall(vim.api.nvim_win_call, win, function()
+      pcall(vim.fn.winrestview, view)
+    end)
   end
 
   local function ensure_bottom_term_tab(index)
@@ -742,6 +800,7 @@ function M.setup(state, mode, termset)
     if main_win and vim.api.nvim_win_is_valid(main_win) and main_buf then
       vim.api.nvim_win_set_buf(main_win, main_buf)
       state.last_main_win = main_win
+      restore_view_for_workspace(index, main_win)
     end
 
     local desired_dir = workspace_dir_from_term(term) or workspace_dir_from_buf(main_buf)
@@ -814,6 +873,9 @@ function M.setup(state, mode, termset)
     workspace_7 = workspace_action(7),
     workspace_8 = workspace_action(8),
     workspace_9 = workspace_action(9),
+    new_term_tab = function()
+      new_term_tab()
+    end,
     toggle_bottom = function()
       run_in_normal(function()
         local origin_win = vim.api.nvim_get_current_win()

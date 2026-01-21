@@ -883,6 +883,18 @@ local function switch_bottom_workspace_any_mode(index)
     call_toggleterm_any_mode("workspace_" .. tostring(index))
 end
 
+local function new_term_tab_any_mode()
+    cancel_pending_main_normal()
+    cancel_pending_toggleterm_exit()
+    debug.log("new term tab")
+    save_current_pane_mode()
+    call_toggleterm_any_mode("new_term_tab")
+end
+
+vim.keymap.set(all_modes, "<D-t>", new_term_tab_any_mode, { desc = "New terminal tab (Cmd+T)", silent = true, nowait = true })
+vim.keymap.set(all_modes, "<D-T>", new_term_tab_any_mode, { desc = "New terminal tab (Cmd+T)", silent = true, nowait = true })
+vim.keymap.set(all_modes, "<C-b>t", new_term_tab_any_mode, { desc = "New terminal tab (Ctrl+B t)", silent = true, nowait = true })
+
 for i = 1, 9 do
     vim.keymap.set(all_modes, "<D-" .. i .. ">", function()
         switch_bottom_workspace_any_mode(i)
