@@ -7,6 +7,24 @@ cursor-color = #000000
 selection-background = #d6d6d6
 selection-foreground = #000000
 
+# ANSI palette: match SwiftTerm (UT7 side panel)
+palette = 0=#000000
+palette = 1=#c23621
+palette = 2=#25bc24
+palette = 3=#adad27
+palette = 4=#492ee1
+palette = 5=#d338d3
+palette = 6=#33bbc8
+palette = 7=#cbcccd
+palette = 8=#818383
+palette = 9=#fc391f
+palette = 10=#31e722
+palette = 11=#eaec23
+palette = 12=#5833ff
+palette = 13=#f935f8
+palette = 14=#14f0f0
+palette = 15=#e9ebeb
+
 # Font
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 16.7
@@ -22,8 +40,9 @@ window-save-state = never
 # Hide Native Tabs (We use Tmux for tabs)
 window-show-tab-bar = never
 
-# Isolated Panes: Use a dedicated launcher script for perfect persistence
-command = /bin/zsh -l -c "/Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh"
+# Launcher: default is a fresh tmux session per Ghostty pane (auto-nvim).
+# Optional persistent mode is controlled by: ~/.local/state/humoodagen/ghostty-persist-session
+command = /Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh
 
 # Keybindings (Bridging to Tmux)
 # Using CTRL instead of CMD for terminal-level actions to avoid macOS conflicts
@@ -35,10 +54,11 @@ keybind = super+t=unbind
 keybind = super+t=text:\x02t
 # CTRL+W is unbound so it can delete words in the shell/readline
 keybind = ctrl+w=unbind
-# CTRL+Q kills the entire Ghostty pane (and the tmux session with it)
+# CTRL+Q closes the Ghostty pane (isolated mode will auto-clean the tmux session;
+# persistent mode just detaches).
 keybind = ctrl+q=close_surface
 
-# CTRL+SHIFT+W kills the entire Ghostty pane (and the tmux session with it)
+# CTRL+SHIFT+W closes the Ghostty pane (see note above).
 keybind = ctrl+shift+w=close_surface
 
 # Cmd+D toggles Neovim bottom terminal; disable split default.

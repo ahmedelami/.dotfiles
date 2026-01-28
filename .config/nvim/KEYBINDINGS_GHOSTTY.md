@@ -137,3 +137,17 @@ foreground job in that tmux pane (see `~/.config/nvim/lua/humoodagen/init.lua`).
   suddenly disappear, check `:messages` and ensure the config loads cleanly.
 - Lua string escapes: `<C-\\>` must be written as `<C-\\\\>` in Lua strings.
   A single backslash can create a parse error.
+
+## Startup profiling (Ghostty -> Neovim)
+
+Enable lightweight timeline logging for cold starts:
+
+- `HUMOODAGEN_PERF=1 ghostty`
+
+This writes a timestamped log to `vim.fn.stdpath("state")/humoodagen-perf.log`.
+Open it from inside Neovim with `:HumoodagenPerfOpen`.
+
+For deeper Neovim-only timings:
+
+- `HUMOODAGEN_FAST_START=1 nvim --startuptime /tmp/nvim-startup.log +qa`
+- In Neovim: `:Lazy profile` (plugin load/config breakdown)

@@ -11,9 +11,31 @@ This setup is optimized for extreme performance and true isolation. Every Ghostt
 ## The Workflow
 
 1.  **Isolated Panes:** When you split the screen in Ghostty (`CTRL + ;` or `CTRL + '`), a completely new and independent Tmux session is started in that pane.
-2.  **Tabs in a Pane:** Use `CTRL + T` to open a new tab *inside* the focused pane. These tabs are managed by Tmux and are unique to that pane.
-3.  **Automatic Cleanup:** Closing a Ghostty pane automatically kills the associated Tmux session to prevent background resource leaks.
-4.  **B&W Theme:** High-contrast black text on a pure white background. Active tabs/panes are highlighted in blue.
+2.  **Auto Neovim:** Every new Tmux session starts in Neovim. Quit Neovim to drop into a login shell (so the pane doesn't close).
+3.  **Tabs in a Pane:** Use `CTRL + T` to open a new tab *inside* the focused pane. These tabs are managed by Tmux and are unique to that pane.
+4.  **Automatic Cleanup (Default Mode):** Closing a Ghostty pane automatically kills the associated Tmux session to prevent background resource leaks.
+5.  **B&W Theme:** High-contrast black text on a pure white background. Active tabs/panes are highlighted in blue.
+
+## Optional: Persistent Session Mode (Faster Opens)
+
+If you want the “instant attach” experience after boot, you can keep a tmux server + the Neovim session running in the background, and have new Ghostty windows/panes attach to it.
+
+- Enable: `~/.dotfiles/ghostty_persist_enable.sh`
+- Disable: `~/.dotfiles/ghostty_persist_disable.sh`
+- Under the hood this is a flag file: `~/.local/state/humoodagen/ghostty-persist-session`
+
+Tradeoffs:
+
+- You lose “isolated panes”: all panes/windows attach to the same tmux session (`ghostty`).
+- There is no auto-cleanup in this mode: closing Ghostty just detaches from tmux; the session stays alive until disabled/killed.
+
+## Optional: Prewarm Ghostty at Login (Faster “Cold” Opens)
+
+On macOS, most of the “cold start” you feel is the app process launch. Prewarming starts Ghostty in the background with no initial window, so opening the first window later is measurably faster.
+
+- Script: `~/.dotfiles/ghostty_prewarm.sh`
+- LaunchAgent file (in repo): `~/.dotfiles/launchd/LaunchAgents/com.humoodagen.ghostty-prewarm.plist`
+- Installed path: `~/Library/LaunchAgents/com.humoodagen.ghostty-prewarm.plist` (symlink recommended)
 
 ## Key Bindings
 
@@ -60,6 +82,16 @@ Some macOS Cmd shortcuts never reach terminal apps. This setup forces `CMD + R` 
 - **Quietness:** No confirmation prompts for closing tabs or panes.
 - **Focus:** Unfocused panes are dimmed (`opacity = 0.6`).
 - **Isolation:** Ghostty handles the splits; Tmux handles the tabs *within* those splits.
+- **Cold start:** Ghostty sessions skip tmux TPM (`TMUX_SKIP_TPM=1`) for faster startup.
+- **Neovim cold start:** Ghostty sets `HUMOODAGEN_FAST_START=1` so heavy plugins load on-demand.
+
+## Performance Profiling (Verified Timing)
+
+This setup includes optional perf logs to measure where time is going (Ghostty → tmux → Neovim → toggleterm prompt).
+
+- Enable perf logging: `touch ~/.local/state/humoodagen/ghostty-perf-on`
+- Launch Ghostty with an “open timestamp” marker: `~/.dotfiles/ghostty_open_perf.sh`
+- Print latest report: `~/.dotfiles/ghostty_perf_report.py`
 
 ## AI Guidelines (AGENTS)
 

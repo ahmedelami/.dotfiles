@@ -1,5 +1,8 @@
 return {
   "NeogitOrg/neogit",
+  keys = {
+    { "<leader>gs", function() require("neogit").open() end, desc = "Neogit Status" },
+  },
   dependencies = {
     "nvim-lua/plenary.nvim",         -- required
     "sindrets/diffview.nvim",        -- optional - Diff integration
@@ -29,7 +32,5 @@ return {
         section = { "", "" },
       },
     })
-
-    vim.keymap.set("n", "<leader>gs", neogit.open, { desc = "Neogit Status" })
   end,
 }

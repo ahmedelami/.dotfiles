@@ -70,10 +70,19 @@ end
 
 function M.update_laststatus(state)
   if any_toggleterm_window(state) then
+    vim.g.humoodagen_seen_toggleterm_window = true
     vim.o.laststatus = 2
     vim.go.statusline = " "
     ensure_toggleterm_statuslines(state)
   else
+    if vim.env.HUMOODAGEN_FAST_START == "1"
+      and vim.fn.argc() == 0
+      and vim.g.humoodagen_seen_toggleterm_window ~= true
+    then
+      vim.o.laststatus = 2
+      vim.go.statusline = " "
+      return
+    end
     vim.o.laststatus = state.base_laststatus
     vim.go.statusline = state.base_statusline
   end

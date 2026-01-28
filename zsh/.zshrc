@@ -1,8 +1,28 @@
 alias n="nvim"
 
 export PATH="/opt/homebrew/bin:$PATH"
+HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
 
-if command -v tmux &> /dev/null && [ -z "$DISABLE_TMUX_AUTO" ] && [ -z "$WEZTERM_PANE" ] && [ -n "$PS1" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
+# Terminal.app startup: default to ~/repos and auto-launch nvim once.
+# (Terminal.app can't forward Cmd+... to terminal apps anyway, so this gives a
+# consistent "open Terminal -> land in Neovim" flow.)
+if [[ -n "${PS1:-}" ]] \
+  && [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]] \
+  && [[ -z "${VIMRUNTIME:-}" ]] \
+  && (( ${SHLVL:-1} <= 1 )) \
+  && [[ -z "${ZSH_AUTOSTART_NVIM_DONE:-}" ]]; then
+  export ZSH_AUTOSTART_NVIM_DONE=1
+
+  if [[ "${PWD:-}" == "$HOME" && -d "$HOME/repos" ]]; then
+    cd "$HOME/repos" || :
+  fi
+
+  if command -v nvim >/dev/null 2>&1; then
+    nvim
+  fi
+fi
+
+if command -v tmux &> /dev/null && [ -z "$DISABLE_TMUX_AUTO" ] && [ -z "$WEZTERM_PANE" ] && [ -n "$PS1" ] && [[ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
   # Load the safety wrapper first so manual calls are also protected
   source "$HOME/.tmux_safety_wrapper.zsh"
 
@@ -220,98 +240,183 @@ export LSCOLORS="Fxfxcxdxexegedabagacad"
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"
+__humoodagen_zshrc_extras() {
+  export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"
 
-# Created by `pipx` on 2025-02-17 21:28:04
-export PATH="$PATH:/Users/ahmedelamin/.local/bin"
-eval "$(direnv hook zsh)"
+  # Created by `pipx` on 2025-02-17 21:28:04
+  export PATH="$PATH:/Users/ahmedelamin/.local/bin"
 
-# Created by `pipx` on 2025-03-17 22:44:20
-export PATH="$PATH:/Users/ahmed/.local/bin"
+  __zsh_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+  __zsh_cache_source_cmd() {
+    local cache_name="$1"
+    shift
+    local tool="$1"
+    shift
 
-# . "$HOME/.local/bin/env"
+    local cache_file="$__zsh_cache_dir/$cache_name"
+    local tool_path
+    tool_path="$(command -v "$tool" 2>/dev/null)" || return 0
+    [[ -n "$tool_path" ]] || return 0
 
-source $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-eval "$(fnm env --use-on-cd)"
-
-
-export PATH="/Applications/UTM.app/Contents/MacOS:$PATH"
-eval "$(zoxide init zsh)"
-
-
-# BEGIN opam configuration
-# This is useful if you're using opam as it adds:
-#   - the correct directories to the PATH
-#   - auto-completion for the opam binary
-# This section can be safely removed at any time if needed.
-[[ ! -r '/Users/ahmed/.opam/opam-init/init.zsh' ]] || source '/Users/ahmed/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
-# END opam configuration
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-export ANDROID_HOME=~/Library/Android/sdk
-export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
-export PATH="$HOME/.local/bin:$PATH"
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-# pnpm
-export PNPM_HOME="/Users/ahmedelamin/Library/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;; 
-  *) export PATH="$PNPM_HOME:$PATH" ;; 
-esac
-# pnpm end
-
-# Added by Antigravity
-export PATH="/Users/ahmedelamin/.antigravity/antigravity/bin:$PATH"
-
-[[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path zsh)"
-[[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code-insiders --locate-shell-integration-path zsh)"
-
-# --- GEMINI AUTO-CONFIG START ---
-# Automatically creates VS Code settings for Homebrew Node when entering a repo project
-autoload -U add-zsh-hook
-function gemini_auto_repo_config() {
-    # Trigger only if in 'repos' path and package.json exists
-    if [[ "$PWD" == *"/repos/"* ]] && [[ -f "package.json" ]]; then
-         local s_file=".vscode/settings.json"
-         if [[ ! -f "$s_file" ]]; then
-             mkdir -p .vscode
-             cat > "$s_file" <<JSON
-{
-    "svelte.language-server.runtime": "/opt/homebrew/bin/node",
-    "eslint.runtime": "/opt/homebrew/bin/node",
-    "prettier.nodePath": "/opt/homebrew/bin/node"
-}
-JSON
-             echo "✨ Auto-configured VS Code settings for External Drive."
-         fi
+    if [[ ! -r "$cache_file" || "$tool_path" -nt "$cache_file" ]]; then
+      mkdir -p "$__zsh_cache_dir"
+      local tmp="${cache_file}.tmp.$$"
+      if "$tool_path" "$@" >| "$tmp"; then
+        mv -f "$tmp" "$cache_file"
+      else
+        rm -f "$tmp"
+        return 0
+      fi
     fi
+
+    source "$cache_file"
+  }
+
+  __zsh_cache_source_cmd "direnv_hook.zsh" direnv hook zsh
+
+  # Created by `pipx` on 2025-03-17 22:44:20
+  export PATH="$PATH:/Users/ahmed/.local/bin"
+
+  # . "$HOME/.local/bin/env"
+
+  source $HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+  __zsh_cache_source_cmd "fnm_env.zsh" fnm env --use-on-cd
+
+  export PATH="/Applications/UTM.app/Contents/MacOS:$PATH"
+  __zsh_cache_source_cmd "zoxide_init.zsh" zoxide init zsh
+
+  # BEGIN opam configuration
+  # This is useful if you're using opam as it adds:
+  #   - the correct directories to the PATH
+  #   - auto-completion for the opam binary
+  # This section can be safely removed at any time if needed.
+  [[ ! -r '/Users/ahmed/.opam/opam-init/init.zsh' ]] || source '/Users/ahmed/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
+  # END opam configuration
+  export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+  export ANDROID_HOME=~/Library/Android/sdk
+  export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+  export PATH="$HOME/.local/bin:$PATH"
+
+  export NVM_DIR="$HOME/.nvm"
+
+  # Lazy-load nvm (sourcing nvm.sh adds noticeable startup cost). This preserves
+  # `nvm` functionality; it just loads on first use.
+  __nvm_lazy_load() {
+    unset -f __nvm_lazy_load nvm 2>/dev/null || :
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  }
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    nvm() {
+      __nvm_lazy_load
+      nvm "$@"
+    }
+  fi
+
+  # pnpm
+  export PNPM_HOME="/Users/ahmedelamin/Library/pnpm"
+  case ":$PATH:" in
+    *":$PNPM_HOME:"*) ;;
+    *) export PATH="$PNPM_HOME:$PATH" ;;
+  esac
+  # pnpm end
+
+  # Added by Antigravity
+  export PATH="/Users/ahmedelamin/.antigravity/antigravity/bin:$PATH"
+
+  if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+    if command -v code >/dev/null 2>&1; then
+      VSCODE_ZSH_INTEGRATION="$(code --locate-shell-integration-path zsh 2>/dev/null)"
+      [[ -n "$VSCODE_ZSH_INTEGRATION" && -r "$VSCODE_ZSH_INTEGRATION" ]] && . "$VSCODE_ZSH_INTEGRATION"
+    elif command -v code-insiders >/dev/null 2>&1; then
+      VSCODE_ZSH_INTEGRATION="$(code-insiders --locate-shell-integration-path zsh 2>/dev/null)"
+      [[ -n "$VSCODE_ZSH_INTEGRATION" && -r "$VSCODE_ZSH_INTEGRATION" ]] && . "$VSCODE_ZSH_INTEGRATION"
+    fi
+  fi
+
+  # --- GEMINI AUTO-CONFIG START ---
+  # Automatically creates VS Code settings for Homebrew Node when entering a repo project
+  autoload -U add-zsh-hook
+  function gemini_auto_repo_config() {
+      # Trigger only if in 'repos' path and package.json exists
+      if [[ "$PWD" == *"/repos/"* ]] && [[ -f "package.json" ]]; then
+           local s_file=".vscode/settings.json"
+           if [[ ! -f "$s_file" ]]; then
+               mkdir -p .vscode
+               cat > "$s_file" <<JSON
+  {
+      "svelte.language-server.runtime": "/opt/homebrew/bin/node",
+      "eslint.runtime": "/opt/homebrew/bin/node",
+      "prettier.nodePath": "/opt/homebrew/bin/node"
+  }
+JSON
+               echo "✨ Auto-configured VS Code settings for External Drive."
+           fi
+      fi
+  }
+  add-zsh-hook chpwd gemini_auto_repo_config
+  # --- GEMINI AUTO-CONFIG END ---
+
+  # Check on startup too (for VS Code Integrated Terminal)
+  gemini_auto_repo_config
+
+  # bun completions
+  [ -s "/Users/ahmedelamin/.bun/_bun" ] && {
+    # Lazy-load completion script on first completion/use.
+    if (( ${+functions[compdef]} )); then
+      _bun_lazy_complete() {
+        unset -f _bun_lazy_complete 2>/dev/null || :
+        source "/Users/ahmedelamin/.bun/_bun"
+        (( ${+functions[_bun]} )) && _bun "$@"
+      }
+      compdef _bun_lazy_complete bun
+    else
+      source "/Users/ahmedelamin/.bun/_bun"
+    fi
+  }
+
+  # bun
+  export BUN_INSTALL="$HOME/.bun"
+  export PATH="$BUN_INSTALL/bin:$PATH"
+
+  # Neovim Aliases
+  alias n="nvim"
+  alias nv="nvim"
+
+  # API Keys (Sourced from local secrets file - DO NOT PUSH)
+  if [ -f "$HOME/.zsh_secrets" ]; then
+      source "$HOME/.zsh_secrets"
+  fi
+
+  # Switchb field lookup helper
+  alias fieldfind="/Volumes/t7/repos/work/switchb/analytics-dash/scripts/find-field.sh"
+  alias ff="/Volumes/t7/repos/work/switchb/analytics-dash/scripts/find-field.sh"
+  if [[ -d "$HOMEBREW_PREFIX/opt/postgresql@16/bin" ]]; then
+    export PATH="$HOMEBREW_PREFIX/opt/postgresql@16/bin:$PATH"
+  fi
 }
-add-zsh-hook chpwd gemini_auto_repo_config
-# --- GEMINI AUTO-CONFIG END ---
 
-# Check on startup too (for VS Code Integrated Terminal)
-gemini_auto_repo_config
+# ToggleTerm fast-start: keep startup smooth by deferring non-prompt setup until
+# the first accepted line (user command). The prompt/theme should be ready
+# immediately after sourcing Oh My Zsh; everything else can hydrate after.
+if [[ "${HUMOODAGEN_TOGGLETERM_FAST_SHELL:-}" = "1" ]]; then
+  export DISABLE_AUTO_UPDATE=true
+  export ZSH_DISABLE_COMPFIX=true
+  export DISABLE_UNTRACKED_FILES_DIRTY=true
 
-# bun completions
-[ -s "/Users/ahmedelamin/.bun/_bun" ] && source "/Users/ahmedelamin/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-# Neovim Aliases
-alias n="nvim"
-alias nv="nvim"
-
-# API Keys (Sourced from local secrets file - DO NOT PUSH)
-if [ -f "$HOME/.zsh_secrets" ]; then
-    source "$HOME/.zsh_secrets"
+  if command -v zle >/dev/null 2>&1; then
+    __humoodagen_toggleterm_accept_line_extras() {
+      zle -A .accept-line accept-line
+      __humoodagen_zshrc_extras
+      unset -f __humoodagen_toggleterm_accept_line_extras __humoodagen_zshrc_extras 2>/dev/null || :
+      zle .accept-line
+    }
+    zle -N accept-line __humoodagen_toggleterm_accept_line_extras
+  else
+    __humoodagen_zshrc_extras
+    unset -f __humoodagen_zshrc_extras 2>/dev/null || :
+  fi
+else
+  __humoodagen_zshrc_extras
+  unset -f __humoodagen_zshrc_extras 2>/dev/null || :
 fi
-
-# Switchb field lookup helper
-alias fieldfind="/Volumes/t7/repos/work/switchb/analytics-dash/scripts/find-field.sh"
-alias ff="/Volumes/t7/repos/work/switchb/analytics-dash/scripts/find-field.sh"
-export PATH="$(brew --prefix postgresql@16)/bin:$PATH"

@@ -1,0 +1,97 @@
+#!/usr/bin/env sh
+set -eu
+
+plist="${HOME}/Library/Preferences/com.apple.Terminal.plist"
+
+if [ ! -f "$plist" ]; then
+  echo "Terminal preferences not found: $plist" >&2
+  exit 1
+fi
+
+action="${1:-}"
+mode="apply"
+if [ "$action" = "--remove" ]; then
+  mode="remove"
+elif [ -n "$action" ]; then
+  echo "Usage: $0 [--remove]" >&2
+  exit 2
+fi
+
+backup() {
+  ts=$(date +%Y%m%d-%H%M%S)
+  cp -p "$plist" "${plist}.bak-${ts}"
+  echo "Backup: ${plist}.bak-${ts}"
+}
+
+ensure_keymap_dict() {
+  profile_name="$1"
+  if ! plutil -type "Window Settings.${profile_name}.keyMapBoundKeys" "$plist" >/dev/null 2>&1; then
+    plutil -insert "Window Settings.${profile_name}.keyMapBoundKeys" -dictionary "$plist" >/dev/null
+  fi
+}
+
+set_key() {
+  profile_name="$1"
+  key="$2"
+  value="$3"
+
+  keypath="Window Settings.${profile_name}.keyMapBoundKeys.${key}"
+  if plutil -type "$keypath" "$plist" >/dev/null 2>&1; then
+    plutil -replace "$keypath" -string "$value" "$plist" >/dev/null
+  else
+    plutil -insert "$keypath" -string "$value" "$plist" >/dev/null
+  fi
+}
+
+remove_key() {
+  profile_name="$1"
+  key="$2"
+
+  keypath="Window Settings.${profile_name}.keyMapBoundKeys.${key}"
+  if plutil -type "$keypath" "$plist" >/dev/null 2>&1; then
+    plutil -remove "$keypath" "$plist" >/dev/null
+  fi
+}
+
+patch_profile() {
+  profile_name="$1"
+  if [ -z "$profile_name" ]; then
+    return
+  fi
+
+  if [ "$mode" = "remove" ]; then
+    remove_key "$profile_name" "@0068"
+    remove_key "$profile_name" "@006A"
+    remove_key "$profile_name" "@006B"
+    remove_key "$profile_name" "@006C"
+    return
+  fi
+
+  ensure_keymap_dict "$profile_name"
+  set_key "$profile_name" "@0068" "\\033[18;3~"
+  set_key "$profile_name" "@006A" "\\033[19;3~"
+  set_key "$profile_name" "@006B" "\\033[20;3~"
+  set_key "$profile_name" "@006C" "\\033[21;3~"
+}
+
+backup
+
+default_profile=$(defaults read com.apple.Terminal "Default Window Settings" 2>/dev/null || true)
+startup_profile=$(defaults read com.apple.Terminal "Startup Window Settings" 2>/dev/null || true)
+
+echo "Terminal default profile: ${default_profile:-<unknown>}"
+patch_profile "$default_profile"
+
+if [ -n "$startup_profile" ] && [ "$startup_profile" != "$default_profile" ]; then
+  echo "Terminal startup profile: $startup_profile"
+  patch_profile "$startup_profile"
+fi
+
+killall cfprefsd >/dev/null 2>&1 || true
+
+if [ "$mode" = "remove" ]; then
+  echo "Removed Cmd+H/J/K/L key bindings. Restart Terminal.app."
+else
+  echo "Installed Cmd+H/J/K/L key bindings. Restart Terminal.app."
+fi
+

@@ -1,6 +1,7 @@
 return {
   {
     "JoosepAlviste/nvim-ts-context-commentstring",
+    event = "VeryLazy",
     config = function()
       -- Disable the deprecated module (if you haven’t already done this somewhere else)
       vim.g.skip_ts_context_commentstring_module = true
@@ -27,4 +28,3 @@ return {
     end,
   },
 }
-

@@ -1,4 +1,5 @@
 vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
 -- vim.keymap.set('n', '<leader>pv', vim.cmd.Ex)
 
 vim.keymap.set({ "n", "v" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
@@ -49,7 +50,10 @@ vim.keymap.set("n", "<leader>Y", [["+Y]])
 -- apparently dont go to Q ever? so disable it
 vim.keymap.set("n", "Q", "<nop>")
 
-vim.keymap.set("n", "<leader>f", vim.lsp.buf.format)
+vim.keymap.set({ "n", "v" }, "<leader>f", function()
+    require("humoodagen.format").format()
+end, { desc = "Format" })
+require("humoodagen.format").setup()
 
 -- make executable
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true })
@@ -772,11 +776,38 @@ vim.keymap.set(all_modes, "<F56>", jump_or_toggle_bottom_any_mode, { desc = "Jum
 vim.keymap.set(all_modes, "<F57>", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K ghostty)" })
 vim.keymap.set(all_modes, "<F58>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L ghostty)" })
 
+-- Karabiner-Elements can translate Cmd+H/J/K/L into function keys for Terminal.app.
+vim.keymap.set(all_modes, "<F13>", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H karabiner)" })
+vim.keymap.set(all_modes, "<F14>", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J karabiner)" })
+vim.keymap.set(all_modes, "<F15>", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K karabiner)" })
+vim.keymap.set(all_modes, "<F16>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L karabiner)" })
+vim.keymap.set(all_modes, "<S-F1>", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H karabiner alt)" })
+vim.keymap.set(all_modes, "<S-F2>", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J karabiner alt)" })
+vim.keymap.set(all_modes, "<S-F3>", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K karabiner alt)" })
+vim.keymap.set(all_modes, "<S-F4>", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Cmd+L karabiner alt)" })
+
+-- Terminal.app can't forward Cmd+... into a terminal PTY by default, so provide a
+-- terminal-friendly equivalent for pane jumps/toggles. If you want Terminal.app
+-- to behave like Neovide, install the profile keybindings from:
+-- `~/.dotfiles/.config/nvim/KEYBINDINGS_TERMINAL_APP.md`.
+vim.keymap.set(all_modes, "<C-b>h", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Ctrl+B h)" })
+vim.keymap.set(all_modes, "<C-b>j", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Ctrl+B j)" })
+vim.keymap.set(all_modes, "<C-b>k", jump_or_toggle_main_any_mode, { desc = "Focus editor (Ctrl+B k)" })
+vim.keymap.set(all_modes, "<C-b>l", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (Ctrl+B l)" })
+
 -- Raw ESC-prefixed sequences (mostly for terminal emulators) make a plain `Esc`
 -- ambiguous, which can add a noticeable delay when exiting Insert/Visual mode.
 -- Neovide sends proper `<D-…>` keycodes, so skip these there to keep `Esc`
 -- instant.
 if not vim.g.neovide then
+    -- Shift+F1..F4 (aka F13..F16). Karabiner-Elements can use these to provide
+    -- Terminal.app equivalents for Cmd+H/J/K/L without fighting macOS menu
+    -- shortcuts (e.g., Hide on Cmd+H).
+    vim.keymap.set(all_modes, esc .. "[1;2P", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (F13 raw)" })
+    vim.keymap.set(all_modes, esc .. "[1;2Q", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (F14 raw)" })
+    vim.keymap.set(all_modes, esc .. "[1;2R", jump_or_toggle_main_any_mode, { desc = "Focus editor (F15 raw)" })
+    vim.keymap.set(all_modes, esc .. "[1;2S", jump_or_toggle_right_any_mode, { desc = "Jump/toggle right terminal (F16 raw)" })
+
     vim.keymap.set(all_modes, esc .. "[18;3~", jump_or_toggle_filetree_any_mode, { desc = "Jump/toggle filetree (Cmd+H raw)" })
     vim.keymap.set(all_modes, esc .. "[19;3~", jump_or_toggle_bottom_any_mode, { desc = "Jump/toggle bottom terminal (Cmd+J raw)" })
     vim.keymap.set(all_modes, esc .. "[20;3~", jump_or_toggle_main_any_mode, { desc = "Focus editor (Cmd+K raw)" })
@@ -804,6 +835,23 @@ vim.keymap.set(all_modes, "<D-S-l>", function()
     save_current_pane_mode()
     call_toggleterm_any_mode("toggle_right")
 end, { desc = "Toggle right terminal (Cmd+Shift+L)" })
+
+vim.keymap.set(all_modes, "<C-b>H", function()
+    save_current_pane_mode()
+    toggle_nvim_tree_visibility_any_mode()
+end, { desc = "Toggle filetree (Ctrl+B H)" })
+vim.keymap.set(all_modes, "<C-b>J", function()
+    save_current_pane_mode()
+    call_toggleterm_any_mode("toggle_bottom")
+end, { desc = "Toggle bottom terminal (Ctrl+B J)" })
+vim.keymap.set(all_modes, "<C-b>K", function()
+    save_current_pane_mode()
+    call_toggleterm_any_mode("toggle_main_only")
+end, { desc = "Toggle file-only mode (Ctrl+B K)" })
+vim.keymap.set(all_modes, "<C-b>L", function()
+    save_current_pane_mode()
+    call_toggleterm_any_mode("toggle_right")
+end, { desc = "Toggle right terminal (Ctrl+B L)" })
 
 vim.keymap.set(all_modes, "<F19>", function()
     save_current_pane_mode()
@@ -914,6 +962,10 @@ vim.keymap.set(all_modes, "<F31>", resize_left, { desc = "Resize split left (Cmd
 vim.keymap.set(all_modes, "<F32>", resize_down, { desc = "Resize split down (Cmd+Ctrl+J ghostty)" })
 vim.keymap.set(all_modes, "<F33>", resize_up, { desc = "Resize split up (Cmd+Ctrl+K ghostty)" })
 vim.keymap.set(all_modes, "<F34>", resize_right, { desc = "Resize split right (Cmd+Ctrl+L ghostty)" })
+vim.keymap.set(all_modes, "<C-b><C-h>", resize_left, { desc = "Resize split left (Ctrl+B Ctrl+H)" })
+vim.keymap.set(all_modes, "<C-b><C-j>", resize_down, { desc = "Resize split down (Ctrl+B Ctrl+J)" })
+vim.keymap.set(all_modes, "<C-b><C-k>", resize_up, { desc = "Resize split up (Ctrl+B Ctrl+K)" })
+vim.keymap.set(all_modes, "<C-b><C-l>", resize_right, { desc = "Resize split right (Ctrl+B Ctrl+L)" })
 if not vim.g.neovide then
     vim.keymap.set(all_modes, esc .. "[18;5~", resize_left, { desc = "Resize split left (Cmd+Ctrl+H raw)" })
     vim.keymap.set(all_modes, esc .. "[19;5~", resize_down, { desc = "Resize split down (Cmd+Ctrl+J raw)" })

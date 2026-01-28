@@ -1,8 +1,8 @@
--- tailwind-tools.lua
 return {
   "luckasRanarison/tailwind-tools.nvim",
   name = "tailwind-tools",
   build = ":UpdateRemotePlugins",
+  ft = { "html", "css", "scss", "sass", "javascript", "javascriptreact", "typescript", "typescriptreact", "svelte", "vue", "astro", "php", "blade", "heex", "templ" },
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
     "nvim-telescope/telescope.nvim", -- optional

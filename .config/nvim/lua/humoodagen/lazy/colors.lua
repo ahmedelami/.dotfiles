@@ -58,6 +58,24 @@ return {
 
       vim.cmd.colorscheme("catppuccin")
 
+      -- Terminal prompt palette (match SwiftTerm/UT7 side panel + Ghostty config)
+      vim.g.terminal_color_0 = "#000000"
+      vim.g.terminal_color_1 = "#c23621"
+      vim.g.terminal_color_2 = "#25bc24"
+      vim.g.terminal_color_3 = "#adad27"
+      vim.g.terminal_color_4 = "#492ee1"
+      vim.g.terminal_color_5 = "#d338d3"
+      vim.g.terminal_color_6 = "#33bbc8"
+      vim.g.terminal_color_7 = "#cbcccd"
+      vim.g.terminal_color_8 = "#818383"
+      vim.g.terminal_color_9 = "#fc391f"
+      vim.g.terminal_color_10 = "#31e722"
+      vim.g.terminal_color_11 = "#eaec23"
+      vim.g.terminal_color_12 = "#5833ff"
+      vim.g.terminal_color_13 = "#f935f8"
+      vim.g.terminal_color_14 = "#14f0f0"
+      vim.g.terminal_color_15 = "#e9ebeb"
+
       -- Comments are the one place where dim grey is still useful. Keep them grey
       -- only in real file buffers so UI text that links to `Comment` stays black.
       local comment_ns = vim.api.nvim_create_namespace("HumoodagenFileComments")
@@ -185,6 +203,8 @@ return {
         if normal_fg ~= nil then
           winbar_hl.fg = normal_fg
         end
+        winbar_hl.underline = true
+        winbar_hl.sp = sep_hl.fg
         vim.api.nvim_set_hl(0, "WinBar", winbar_hl)
         vim.api.nvim_set_hl(0, "WinBarNC", winbar_hl)
 

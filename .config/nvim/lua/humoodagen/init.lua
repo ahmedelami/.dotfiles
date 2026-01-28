@@ -32,8 +32,14 @@ end
 vim.filetype.add({
     extension = {
         templ = 'templ',
+        cls = 'tex',
+        tikz = 'tex',
     }
 })
+
+if vim.g.tex_flavor == nil then
+    vim.g.tex_flavor = "latex"
+end
 
 autocmd('TextYankPost', {
     group = yank_group,
@@ -191,7 +197,12 @@ local function tmux_set_pane_option(args)
         return
     end
 
-    local cmd = { "tmux", "set-option", "-p", "-t", vim.env.TMUX_PANE }
+    local tmux_bin = vim.env.HUMOODAGEN_TMUX_BIN
+    if type(tmux_bin) ~= "string" or tmux_bin == "" then
+        tmux_bin = "tmux"
+    end
+
+    local cmd = { tmux_bin, "set-option", "-p", "-t", vim.env.TMUX_PANE }
     for _, part in ipairs(args) do
         table.insert(cmd, part)
     end
@@ -210,6 +221,38 @@ autocmd("VimLeavePre", {
     group = tmux_state_group,
     callback = function()
         tmux_set_pane_option({ "-u", "@pane_is_nvim" })
+    end,
+})
+
+local ghostty_group = augroup("HumoodagenGhosttyCwd", { clear = true })
+
+local function write_ghostty_cwd()
+    if vim.env.HUMOODAGEN_GHOSTTY ~= "1" then
+        return
+    end
+
+    local state_home = vim.env.XDG_STATE_HOME
+    if type(state_home) ~= "string" or state_home == "" then
+        state_home = (vim.env.HOME or "") .. "/.local/state"
+    end
+    if state_home == "" then
+        return
+    end
+
+    local dir = vim.fn.getcwd()
+    if type(dir) ~= "string" or dir == "" or vim.fn.isdirectory(dir) ~= 1 then
+        return
+    end
+
+    local out_dir = state_home .. "/humoodagen"
+    pcall(vim.fn.mkdir, out_dir, "p")
+    pcall(vim.fn.writefile, { dir }, out_dir .. "/ghostty-cwd", "b")
+end
+
+autocmd("VimLeavePre", {
+    group = ghostty_group,
+    callback = function()
+        write_ghostty_cwd()
     end,
 })
 

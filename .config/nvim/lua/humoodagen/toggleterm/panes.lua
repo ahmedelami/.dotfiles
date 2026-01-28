@@ -1,5 +1,15 @@
 local M = {}
 
+local function perf_mark(label, extra)
+  if vim.env.HUMOODAGEN_PERF ~= "1" then
+    return
+  end
+  local ok, perf = pcall(require, "humoodagen.perf")
+  if ok then
+    perf.mark(label, extra)
+  end
+end
+
 local function focus_main_insert_if_needed(origin_win, origin_mode)
   if not (origin_win and vim.api.nvim_win_is_valid(origin_win)) then
     return
@@ -264,39 +274,86 @@ function M.setup(state, mode, termset)
     end)
   end
 
-  local function open_horizontal_in_main(term)
-    local size = ui._resolve_size(ui.get_size(nil, term.direction), term)
-    local target_win = find_main_win()
-    if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
-      target_win = ensure_main_win()
-    end
-    if target_win and vim.api.nvim_win_is_valid(target_win) then
-      vim.api.nvim_set_current_win(target_win)
-    end
+	  local function open_horizontal_in_main(term)
+	    local size = ui._resolve_size(ui.get_size(nil, term.direction), term)
+	    local target_win = find_main_win()
+	    if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
+	      target_win = ensure_main_win()
+	    end
+	    if target_win and vim.api.nvim_win_is_valid(target_win) then
+	      vim.api.nvim_set_current_win(target_win)
+	    end
+	
+	    ui.set_origin_window()
+	    if type(size) == "number" and size > 0 then
+	      vim.cmd("rightbelow " .. tostring(size) .. "split")
+	    else
+	      vim.cmd("rightbelow split")
+	    end
 
-    ui.set_origin_window()
-    vim.cmd("rightbelow split")
-    ui.resize_split(term, size)
-
-    local win = vim.api.nvim_get_current_win()
-    local valid_buf = term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr)
-    local bufnr = valid_buf and term.bufnr or ui.create_buf()
-    vim.api.nvim_win_set_buf(win, bufnr)
-    term.window, term.bufnr = win, bufnr
-    term:__set_options()
+	    local win = vim.api.nvim_get_current_win()
+	    if type(size) == "number" and size > 0 then
+	      local ok_h, h = pcall(vim.api.nvim_win_get_height, win)
+	      if ok_h and h ~= size then
+	        ui.resize_split(term, size)
+	      end
+	    end
+	    local valid_buf = term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr)
+	    local bufnr = valid_buf and term.bufnr or ui.create_buf()
+	    vim.api.nvim_win_set_buf(win, bufnr)
+	    term.window, term.bufnr = win, bufnr
+	    term:__set_options()
 
     if not valid_buf then
+      perf_mark("toggleterm:term:spawn:begin", "id=" .. tostring(term.id))
       term:spawn()
+      perf_mark("toggleterm:term:spawn:done", "id=" .. tostring(term.id))
     else
       ui.switch_buf(bufnr)
     end
 
     ui.hl_term(term)
     vim.schedule(state.sync_toggleterm_inactive_highlight)
-    if term.on_open then
-      term:on_open()
-    end
-  end
+	    if term.on_open then
+	      term:on_open()
+	    end
+	  end
+
+	  local function open_horizontal_in_win(term, win)
+	    local size = ui._resolve_size(ui.get_size(nil, term.direction), term)
+	    if not (win and vim.api.nvim_win_is_valid(win)) then
+	      open_horizontal_in_main(term)
+	      return
+	    end
+
+	    vim.api.nvim_set_current_win(win)
+	    if type(size) == "number" and size > 0 then
+	      local ok_h, h = pcall(vim.api.nvim_win_get_height, win)
+	      if ok_h and h ~= size then
+	        ui.resize_split(term, size)
+	      end
+	    end
+
+	    local valid_buf = term.bufnr and vim.api.nvim_buf_is_valid(term.bufnr)
+	    local bufnr = valid_buf and term.bufnr or ui.create_buf()
+	    vim.api.nvim_win_set_buf(win, bufnr)
+	    term.window, term.bufnr = win, bufnr
+	    term:__set_options()
+
+	    if not valid_buf then
+	      perf_mark("toggleterm:term:spawn:begin", "id=" .. tostring(term.id))
+	      term:spawn()
+	      perf_mark("toggleterm:term:spawn:done", "id=" .. tostring(term.id))
+	    else
+	      ui.switch_buf(bufnr)
+	    end
+
+	    ui.hl_term(term)
+	    vim.schedule(state.sync_toggleterm_inactive_highlight)
+	    if term.on_open then
+	      term:on_open()
+	    end
+	  end
 
   local function toggle_bottom_terminal(term)
     if term:is_open() then
@@ -361,11 +418,11 @@ function M.setup(state, mode, termset)
     end)
   end
 
-  local function run_in_normal(fn)
-    local current_mode = vim.api.nvim_get_mode().mode
-    local mode_prefix = current_mode:sub(1, 1)
-    local was_term_job = mode_prefix == "t"
-    if mode_prefix == "t" then
+	  local function run_in_normal(fn, opts)
+	    local current_mode = vim.api.nvim_get_mode().mode
+	    local mode_prefix = current_mode:sub(1, 1)
+	    local was_term_job = mode_prefix == "t"
+	    if mode_prefix == "t" then
       local buf = vim.api.nvim_get_current_buf()
       if vim.bo[buf].filetype == "toggleterm" then
         vim.b[buf].humoodagen_term_mode = "t"
@@ -374,20 +431,26 @@ function M.setup(state, mode, termset)
     elseif mode_prefix == "c" then
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-c>", true, false, true), "n", false)
     end
-
-    vim.schedule(function()
-      local ok, err = pcall(fn)
-      if was_term_job then
-        local buf = vim.api.nvim_get_current_buf()
-        if vim.bo[buf].filetype == "toggleterm" then
-          vim.cmd("startinsert")
-        end
-      end
-      if not ok then
-        error(err)
-      end
-    end)
-  end
+	
+	    local function run()
+	      local ok, err = pcall(fn)
+	      if was_term_job then
+	        local buf = vim.api.nvim_get_current_buf()
+	        if vim.bo[buf].filetype == "toggleterm" then
+	          vim.cmd("startinsert")
+	        end
+	      end
+	      if not ok then
+	        error(err)
+	      end
+	    end
+	
+	    if opts and opts.immediate then
+	      run()
+	    else
+	      vim.schedule(run)
+	    end
+	  end
 
   local function focus_main_win()
     local target = state.last_main_win
@@ -497,7 +560,7 @@ function M.setup(state, mode, termset)
           set.current = prev
         end
 
-        switch_bottom_workspace(new_index, { focus = "term", update_terminal = true })
+        switch_bottom_workspace(new_index, { focus = "term", update_terminal = true, reset_main = true })
         open_or_focus_term(new_term)
 
         local buf = new_term.bufnr
@@ -791,6 +854,10 @@ function M.setup(state, mode, termset)
 
     local prev = term_sets.horizontal and term_sets.horizontal.current or 1
     capture_main_for_workspace(prev)
+    if opts.reset_main then
+      bottom_workspace_table()[index] = nil
+      bottom_workspace_view_table()[index] = nil
+    end
 
     local origin_mode = vim.api.nvim_get_mode().mode
     local term = ensure_bottom_term_tab(index)
@@ -950,19 +1017,23 @@ function M.setup(state, mode, termset)
     toggle_main_only = toggle_main_only,
   }
 
-  local startup_group = vim.api.nvim_create_augroup("HumoodagenToggletermStartup", { clear = true })
-  local function open_startup_terminals()
-    if #vim.api.nvim_list_uis() == 0 then
-      return
+	  local startup_group = vim.api.nvim_create_augroup("HumoodagenToggletermStartup", { clear = true })
+	  local function open_startup_terminals()
+	    if #vim.api.nvim_list_uis() == 0 then
+	      return
     end
     if vim.g.humoodagen_startup_terminals_opened then
       return
     end
-    vim.g.humoodagen_startup_terminals_opened = true
+	    vim.g.humoodagen_startup_terminals_opened = true
+	    perf_mark("toggleterm:startup:scheduled")
 
-    run_in_normal(function()
-      local desired_cwd = vim.loop.cwd()
-      local repos = vim.fn.expand("~/repos")
+	    local stable_layout = vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0
+
+	    run_in_normal(function()
+	      perf_mark("toggleterm:startup:begin")
+	      local desired_cwd = vim.loop.cwd()
+	      local repos = vim.fn.expand("~/repos")
       if vim.fn.isdirectory(repos) == 1 then
         local real_repos = vim.loop.fs_realpath(repos)
         if real_repos and real_repos == desired_cwd then
@@ -1004,25 +1075,128 @@ function M.setup(state, mode, termset)
         return false
       end
 
-      local bottom = termset.current_term(state, "horizontal")
-      if bottom then
-        bottom.dir = desired_cwd
-      end
+	      local bottom = termset.current_term(state, "horizontal")
+	      if bottom then
+	        bottom.dir = desired_cwd
+	      end
 
-      if bottom then
-        if focus_bottom then
-          open_or_focus_term(bottom)
-          if bottom.bufnr and vim.api.nvim_buf_is_valid(bottom.bufnr) then
-            vim.b[bottom.bufnr].humoodagen_term_mode = "t"
-            mode.cancel_pending_term_exit(state, bottom.bufnr)
+      if bottom and vim.env.HUMOODAGEN_FAST_START == "1" then
+        local marked = false
+        local prev_on_stdout = bottom.on_stdout
+        bottom.on_stdout = function(term, job, data, name)
+          if not marked then
+            marked = true
+            local count = type(data) == "table" and #data or 0
+            if vim.env.HUMOODAGEN_PERF == "1" then
+              perf_mark("toggleterm:stdout:first", "lines=" .. tostring(count))
+            end
+            if vim.g.humoodagen_toggleterm_prompt_ready ~= true then
+              vim.g.humoodagen_toggleterm_prompt_ready = true
+              vim.schedule(function()
+                pcall(vim.api.nvim_exec_autocmds, "User", { pattern = "HumoodagenToggletermPromptReady" })
+              end)
+            end
+            term.on_stdout = prev_on_stdout
           end
-          if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "t" then
-            vim.cmd("startinsert")
+          if prev_on_stdout then
+            pcall(prev_on_stdout, term, job, data, name)
           end
-        elseif not has_open_direction("horizontal") and not bottom:is_open() then
-          toggle_bottom_terminal(bottom)
         end
       end
+
+      if bottom and vim.env.HUMOODAGEN_FAST_START == "1" and vim.env.HUMOODAGEN_TOGGLETERM_STARTUP_FAST_SHELL ~= "0" then
+        bottom.cmd = "/bin/zsh -i"
+        if type(bottom.env) == "table" then
+          bottom.env.HUMOODAGEN_TOGGLETERM_FAST_INIT = "1"
+          bottom.env.HUMOODAGEN_TOGGLETERM_FAST_SHELL = "1"
+          bottom.env.PS1 = "%(?.%F{33}➜%f.%F{196}➜%f) %B%F{magenta}%c%f%b "
+          local zdotdir_orig = bottom.env.HUMOODAGEN_ZDOTDIR_ORIG or vim.env.ZDOTDIR or vim.env.HOME or ""
+          if zdotdir_orig ~= "" then
+            bottom.env.HISTFILE = zdotdir_orig .. "/.zsh_history"
+          end
+        end
+        perf_mark("toggleterm:startup:shell", bottom.cmd)
+      end
+
+	      local opened_bottom = false
+	      if bottom and focus_bottom and stable_layout and vim.env.HUMOODAGEN_NVIM_STABLE_LAYOUT ~= "0" then
+	        local main_win = find_main_win()
+	        if not (main_win and vim.api.nvim_win_is_valid(main_win)) then
+	          main_win = ensure_main_win()
+	        end
+	        if main_win and vim.api.nvim_win_is_valid(main_win) then
+	          vim.api.nvim_set_current_win(main_win)
+	        end
+
+	        local tree_win = vim.g.humoodagen_startup_tree_winid
+	        local bottom_win = vim.g.humoodagen_startup_bottom_winid
+
+	        if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+	          local width = math.floor(vim.o.columns * 0.15)
+	          if width < 10 then
+	            width = 10
+	          end
+	          vim.cmd("topleft " .. tostring(width) .. "vsplit")
+	          tree_win = vim.api.nvim_get_current_win()
+	          vim.g.humoodagen_startup_tree_winid = tree_win
+	        end
+
+	        local existing_tree_buf = nil
+	        if tree_win and vim.api.nvim_win_is_valid(tree_win) then
+	          existing_tree_buf = vim.api.nvim_win_get_buf(tree_win)
+	        end
+	        if not (existing_tree_buf and vim.api.nvim_buf_is_valid(existing_tree_buf) and vim.bo[existing_tree_buf].filetype == "NvimTree") then
+	          local tree_buf = vim.api.nvim_create_buf(false, true)
+	          vim.bo[tree_buf].buftype = "nofile"
+	          vim.bo[tree_buf].bufhidden = "wipe"
+	          vim.bo[tree_buf].swapfile = false
+	          vim.bo[tree_buf].modifiable = false
+	          vim.api.nvim_win_set_buf(tree_win, tree_buf)
+	          vim.wo[tree_win].number = false
+	          vim.wo[tree_win].relativenumber = false
+	          vim.wo[tree_win].signcolumn = "no"
+	          vim.wo[tree_win].winbar = ""
+	        end
+
+	        if not (bottom_win and vim.api.nvim_win_is_valid(bottom_win)) then
+	          if main_win and vim.api.nvim_win_is_valid(main_win) then
+	            vim.api.nvim_set_current_win(main_win)
+	          else
+	            vim.cmd("wincmd l")
+	          end
+
+	          local size = ui._resolve_size(ui.get_size(nil, bottom.direction), bottom)
+	          if type(size) == "number" and size > 0 then
+	            vim.cmd("rightbelow " .. tostring(size) .. "split")
+	          else
+	            vim.cmd("rightbelow split")
+	          end
+	          bottom_win = vim.api.nvim_get_current_win()
+	          vim.g.humoodagen_startup_bottom_winid = bottom_win
+	        end
+
+	        perf_mark("toggleterm:startup:open_horizontal_in_win:begin", "id=" .. tostring(bottom.id))
+	        open_horizontal_in_win(bottom, bottom_win)
+	        perf_mark("toggleterm:startup:open_horizontal_in_win:done", "id=" .. tostring(bottom.id))
+	        opened_bottom = true
+	      end
+
+	      if bottom then
+	        if focus_bottom then
+	          if not opened_bottom then
+	            open_or_focus_term(bottom)
+	          end
+	          if bottom.bufnr and vim.api.nvim_buf_is_valid(bottom.bufnr) then
+	            vim.b[bottom.bufnr].humoodagen_term_mode = "t"
+	            mode.cancel_pending_term_exit(state, bottom.bufnr)
+	          end
+	          if vim.api.nvim_get_mode().mode:sub(1, 1) ~= "t" then
+	            vim.cmd("startinsert")
+	          end
+	        elseif not has_open_direction("horizontal") and not bottom:is_open() then
+	          toggle_bottom_terminal(bottom)
+	        end
+	      end
 
       if not focus_bottom then
         if origin_win and vim.api.nvim_win_is_valid(origin_win) then
@@ -1046,17 +1220,19 @@ function M.setup(state, mode, termset)
         end
       end
 
-      vim.cmd("redrawstatus")
-      state.update_laststatus()
-    end)
-  end
+	      vim.cmd("redrawstatus")
+	      state.update_laststatus()
+	      perf_mark("toggleterm:startup:done")
+		      pcall(vim.api.nvim_exec_autocmds, "User", { pattern = "HumoodagenToggletermStartupDone" })
+		    end, { immediate = stable_layout and vim.env.HUMOODAGEN_NVIM_STABLE_LAYOUT ~= "0" })
+	  end
 
-  vim.api.nvim_create_autocmd("VimEnter", {
-    group = startup_group,
-    callback = function()
-      vim.schedule(open_startup_terminals)
-    end,
-  })
+	  vim.api.nvim_create_autocmd("VimEnter", {
+	    group = startup_group,
+	    callback = function()
+	      open_startup_terminals()
+	    end,
+	  })
 
   local function set_term_tab_keymaps(buf)
     if vim.b[buf].humoodagen_term_tab_keymaps_set then

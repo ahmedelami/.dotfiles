@@ -2,6 +2,7 @@ return {
     {
         'echasnovski/mini.nvim',
         version = false,
+        event = "VeryLazy",
         config = function()
             local icons = require('mini.icons')
             icons.setup({ style = 'glyph' })

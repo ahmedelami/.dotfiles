@@ -1,19 +1,45 @@
+local fast_start = vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0
+local is_ut7 = vim.env.__CFBundleIdentifier == "com.lifeanalytics.macos"
+
 return {
     "nvim-tree/nvim-tree.lua",
     version = "*",
-    lazy = false,
+    lazy = fast_start,
+    event = fast_start and { "User HumoodagenToggletermPromptReady", "VeryLazy" } or nil,
+    cmd = { "NvimTreeToggle", "NvimTreeOpen", "NvimTreeClose", "NvimTreeFindFileToggle", "NvimTreeFindFile" },
+    keys = {
+        { "<leader>pe", "<cmd>NvimTreeToggle<CR>", desc = "Toggle NvimTree" },
+        { "<leader>pv", "<cmd>NvimTreeFindFileToggle<CR>", desc = "NvimTree Find File" },
+    },
     dependencies = {
         "echasnovski/mini.nvim",
     },
     config = function()
         local function on_attach(bufnr)
             local api = require('nvim-tree.api')
-            local Input = require("nui.input")
             local undo = require("humoodagen.nvim_tree_undo")
+            local Input
+
+            local function require_input()
+                if Input then
+                    return Input
+                end
+                Input = require("nui.input")
+                return Input
+            end
 
             local function opts(desc)
                 return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
             end
+
+            -- [View] Group
+            vim.keymap.set('n', 'zw', function()
+                vim.wo.wrap = not vim.wo.wrap
+            end, opts('[View] Toggle Wrap'))
+
+            -- Keep j/k linewise in the tree even when wrapping is enabled.
+            vim.keymap.set('n', 'j', 'j', opts('[Nav] Down'))
+            vim.keymap.set('n', 'k', 'k', opts('[Nav] Up'))
 
             -- [Nav]igation Group
             vim.keymap.set('n', 'l', api.node.open.edit, opts('[Nav] Open/Expand'))
@@ -30,6 +56,8 @@ return {
             end, opts('[Nav] Collapse/Parent'))
             vim.keymap.set('n', '<D-o>', api.tree.change_root_to_node, opts('[Nav] Root to node'))
             vim.keymap.set('n', '<D-O>', api.tree.change_root_to_parent, opts('[Nav] Root up'))
+            vim.keymap.set('n', '<C-b>o', api.tree.change_root_to_node, opts('[Nav] Root to node (Ctrl+B o)'))
+            vim.keymap.set('n', '<C-b>O', api.tree.change_root_to_parent, opts('[Nav] Root up (Ctrl+B O)'))
             vim.keymap.set('n', '<CR>', api.node.open.edit, opts('[Nav] Open'))
             vim.keymap.set('n', 'W', api.tree.collapse_all, opts('[Nav] Collapse All'))
             vim.keymap.set('n', 'E', api.tree.expand_all, opts('[Nav] Expand All'))
@@ -102,6 +130,7 @@ return {
                 local original = vim.ui.input
 
                 vim.ui.input = function(input_opts, on_confirm)
+                    local Input = require_input()
                     local prompt = (input_opts and input_opts.prompt) or "Rename to "
                     local default_value = ""
                     if input_opts then
@@ -168,6 +197,7 @@ return {
                 if not node then
                     return
                 end
+                local Input = require_input()
 
                 local base_dir = node.absolute_path
                 if node.type ~= "directory" then
@@ -238,7 +268,7 @@ return {
 	                cmd = "trash", -- Requires 'trash-cli' or similar on your system
 	            },
 	            hijack_netrw = true,
-	            hijack_unnamed_buffer_when_opening = true,
+	            hijack_unnamed_buffer_when_opening = false,
 	            sync_root_with_cwd = true,
 	            update_focused_file = {
 	                enable = true,
@@ -250,12 +280,12 @@ return {
 	                    remove = false,
 	                    trash = false,
                 },
-            },
-            git = {
-                enable = true,
-                ignore = false,
-                timeout = 400,
-            },
+		            },
+		            git = {
+		                enable = vim.env.HUMOODAGEN_FAST_START ~= "1" and not is_ut7,
+		                ignore = false,
+		                timeout = 400,
+		            },
             actions = {
                 open_file = {
                     -- Don't force the tree back to `view.width` whenever a file is opened.
@@ -265,7 +295,7 @@ return {
             },
             view = {
                 number = true,
-                relativenumber = true,
+                relativenumber = vim.env.HUMOODAGEN_FAST_START ~= "1",
                 signcolumn = "no",
                 width = "15%",
             },
@@ -384,6 +414,23 @@ return {
                 undo.record_rename(payload.old_name, payload.new_name)
             end
         end)
+        events.subscribe(events.Event.TreeOpen, function()
+            local ok_view, view = pcall(require, "nvim-tree.view")
+            if not ok_view then
+                return
+            end
+            local win = view.get_winnr()
+            if win and vim.api.nvim_win_is_valid(win) then
+                local buf = vim.api.nvim_win_get_buf(win)
+                vim.wo[win].wrap = true
+                vim.wo[win].linebreak = true
+                vim.wo[win].breakindent = true
+                vim.wo[win].breakindentopt = "list:-1"
+                -- Make wrapped tree entries align under the filename (not at col 0).
+                -- Uses breakindentopt=list:-1 and a tree-specific formatlistpat.
+                vim.bo[buf].formatlistpat = "^\\%((│\\s\\|└\\s\\|  )\\+\\)\\ze\\S"
+            end
+        end)
 
         local function is_main_edit_win(win)
             if not (win and vim.api.nvim_win_is_valid(win)) then
@@ -433,32 +480,191 @@ return {
             end
         end
 
-        vim.keymap.set("n", "<leader>pe", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle NvimTree" })
-        vim.keymap.set("n", "<leader>pv", "<cmd>NvimTreeFindFileToggle<CR>", { desc = "NvimTree Find File" })
-
-        -- Open nvim-tree on startup if no file is specified
-        local function open_nvim_tree(data)
-            -- buffer is a [No Name]
-            local no_name = data.file == "" and vim.bo[data.buf].buftype == ""
-
-            -- buffer is a directory
-            local directory = vim.fn.isdirectory(data.file) == 1
-
-            if not no_name and not directory then
-                return
+	        local function perf_mark(label, extra)
+	            if vim.env.HUMOODAGEN_PERF ~= "1" then
+	                return
+	            end
+            local ok, perf = pcall(require, "humoodagen.perf")
+            if ok then
+                perf.mark(label, extra)
             end
+	        end
+	
+		        -- Open nvim-tree on startup if no file is specified
+		        local function open_nvim_tree(data)
+		            local no_args = data.file == ""
+		            local directory = vim.fn.isdirectory(data.file) == 1
+	
+	            if not no_args and not directory then
+	                return false
+	            end
+	
+	            perf_mark("nvim-tree:open:start", data.file)
+	
+	            -- change to the directory
+		            if directory then
+		                vim.cmd.cd(data.file)
+		            end
+		
+		            -- open the tree
+		            local origin_win = vim.api.nvim_get_current_win()
+		            local origin_mode = vim.api.nvim_get_mode().mode
 
-            -- change to the directory
-            if directory then
-                vim.cmd.cd(data.file)
-            end
+		            local function find_main_win()
+		                for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		                    local buf = vim.api.nvim_win_get_buf(win)
+		                    local ft = vim.bo[buf].filetype
+		                    if ft ~= "NvimTree" and ft ~= "toggleterm" then
+		                        return win
+		                    end
+		                end
+		                return nil
+		            end
 
-            -- open the tree
-            require("nvim-tree.api").tree.open({ focus = false })
-            ensure_main_edit_win()
-        end
+		            local function desired_tree_width()
+		                local ok_view, view = pcall(require, "nvim-tree.view")
+		                if not ok_view then
+		                    return nil
+		                end
 
-        vim.api.nvim_create_autocmd({ "VimEnter" }, { callback = open_nvim_tree })
+		                local width = view.View and view.View.width or nil
+		                if type(width) == "number" then
+		                    return width
+		                end
+		                if type(width) == "string" and width:sub(-1) == "%" then
+		                    local n = tonumber(width:sub(1, -2))
+		                    if n then
+		                        return math.floor(vim.o.columns * (n / 100))
+		                    end
+		                end
+		                return nil
+		            end
+
+		            local function open_tree_stable()
+		                local ok_view, view = pcall(require, "nvim-tree.view")
+		                local ok_api, api = pcall(require, "nvim-tree.api")
+		                if not ok_api then
+		                    return
+		                end
+
+		                if ok_view and view.is_visible() then
+		                    return
+		                end
+
+		                local target_win = vim.g.humoodagen_startup_tree_winid
+		                if not (target_win and vim.api.nvim_win_is_valid(target_win)) then
+		                    -- Create a full-height left split at the final width, then open the
+		                    -- tree inside that window without any extra reposition/resize.
+		                    local width = desired_tree_width()
+		                    if type(width) == "number" and width > 0 then
+		                        vim.cmd("topleft " .. tostring(width) .. "vsplit")
+		                    else
+		                        vim.cmd("topleft vsplit")
+		                    end
+		                    target_win = vim.api.nvim_get_current_win()
+		                end
+
+		                api.tree.open({ winid = target_win, focus = false })
+		                vim.g.humoodagen_startup_tree_opened = true
+		                vim.g.humoodagen_startup_tree_winid = nil
+		            end
+
+		            local main_win = find_main_win()
+		            if vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0 and main_win then
+		                pcall(vim.api.nvim_win_call, main_win, open_tree_stable)
+		            else
+		                require("nvim-tree.api").tree.open({ focus = false })
+		            end
+
+		            if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+		                vim.api.nvim_set_current_win(origin_win)
+		            end
+
+		            if type(origin_mode) == "string"
+		                and origin_mode:sub(1, 1) == "t"
+		                and vim.api.nvim_get_mode().mode:sub(1, 1) ~= "t"
+		            then
+		                vim.cmd("startinsert")
+		            end
+		            perf_mark("nvim-tree:open:done")
+		            return true
+		        end
+
+                local function schedule_fast_start_open()
+                    if not fast_start then
+                        return
+                    end
+                    if vim.g.humoodagen_startup_tree_opened == true then
+                        return
+                    end
+
+                    local buf = vim.api.nvim_get_current_buf()
+                    local startup_data = { file = "", buf = buf }
+                    local opened = false
+
+                    local function open_once(source)
+                        if opened then
+                            return
+                        end
+                        if open_nvim_tree(startup_data) then
+                            opened = true
+                            perf_mark("nvim-tree:open:source", source)
+                        end
+                    end
+
+                    if vim.g.humoodagen_toggleterm_prompt_ready == true then
+                        vim.schedule(function()
+                            open_once("prompt_ready")
+                        end)
+                        return
+                    end
+
+                    local group = vim.api.nvim_create_augroup("HumoodagenNvimTreeFastStartOpen", { clear = true })
+                    vim.api.nvim_create_autocmd("User", {
+                        group = group,
+                        pattern = "HumoodagenToggletermPromptReady",
+                        once = true,
+                        callback = function()
+                            vim.schedule(function()
+                                open_once("prompt_ready")
+                            end)
+                        end,
+                    })
+
+                    vim.defer_fn(function()
+                        open_once("fallback_delay")
+                    end, 300)
+                end
+
+                schedule_fast_start_open()
+	
+	        vim.api.nvim_create_autocmd("UIEnter", {
+	            once = true,
+	            callback = function()
+	                if fast_start then
+	                    return
+	                end
+	                if vim.g.humoodagen_startup_tree_opened == true then
+	                    return
+	                end
+	                local buf = vim.api.nvim_get_current_buf()
+	                local file = vim.fn.argc() > 0 and vim.fn.argv(0) or ""
+	                local startup_data = { file = file, buf = buf }
+	                local opened = false
+
+	                local function open_once(source)
+	                    if opened then
+	                        return
+	                    end
+	                    if open_nvim_tree(startup_data) then
+	                        opened = true
+	                        perf_mark("nvim-tree:open:source", source)
+	                    end
+	                end
+
+	                open_once("uienter")
+	            end,
+	        })
 
         local function ensure_nvim_tree_normal_mode()
             local buf = vim.api.nvim_get_current_buf()
@@ -503,7 +709,6 @@ return {
                 vim.opt_local.numberwidth = 1
                 vim.opt_local.signcolumn = "no"
                 vim.opt_local.winbar = ""
-                ensure_main_edit_win()
             end,
         })
     end,

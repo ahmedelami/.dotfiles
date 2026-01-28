@@ -455,10 +455,10 @@
             ],
             "description": "Naga Button 11"
           },
-          {
-            "description": "Naga Button 12",
-            "manipulators": [
-              {
+	          {
+	            "description": "Naga Button 12",
+	            "manipulators": [
+	              {
                 "to": [
                   {
                     "key_code": "close_bracket",
@@ -491,12 +491,257 @@
                       "any"
                     ]
                   }
-                }
-              }
-            ]
-          }
-        ]
-      },
+	                }
+	              }
+	            ]
+	          },
+		          {
+		            "description": "Terminal.app: Cmd+H/J/K/L → Neovim panes",
+		            "manipulators": [
+		              {
+		                "type": "basic",
+		                "from": {
+		                  "key_code": "h",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "left_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "h"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+		                    "type": "frontmost_application_if",
+		                    "bundle_identifiers": [
+		                      "^com\\.apple\\.Terminal$"
+		                    ]
+		                  }
+		                ]
+		              },
+		              {
+		                "type": "basic",
+		                "from": {
+		                  "key_code": "h",
+		                  "modifiers": {
+		                    "mandatory": [
+		                      "right_command"
+		                    ]
+		                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "h"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+		                    "type": "frontmost_application_if",
+		                    "bundle_identifiers": [
+		                      "^com\\.apple\\.Terminal$"
+		                    ]
+		                  }
+		                ]
+		              },
+		              {
+		                "type": "basic",
+		                "from": {
+		                  "key_code": "j",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "left_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "j"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+	                    "type": "frontmost_application_if",
+	                    "bundle_identifiers": [
+	                      "^com\\.apple\\.Terminal$"
+	                    ]
+	                  }
+	                ]
+	              },
+	              {
+	                "type": "basic",
+	                "from": {
+	                  "key_code": "j",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "right_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "j"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+	                    "type": "frontmost_application_if",
+	                    "bundle_identifiers": [
+	                      "^com\\.apple\\.Terminal$"
+	                    ]
+	                  }
+	                ]
+	              },
+	              {
+	                "type": "basic",
+	                "from": {
+	                  "key_code": "k",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "left_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "k"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+	                    "type": "frontmost_application_if",
+	                    "bundle_identifiers": [
+	                      "^com\\.apple\\.Terminal$"
+	                    ]
+	                  }
+	                ]
+	              },
+	              {
+	                "type": "basic",
+	                "from": {
+	                  "key_code": "k",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "right_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "k"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+	                    "type": "frontmost_application_if",
+	                    "bundle_identifiers": [
+	                      "^com\\.apple\\.Terminal$"
+	                    ]
+	                  }
+	                ]
+	              },
+	              {
+	                "type": "basic",
+	                "from": {
+	                  "key_code": "l",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "left_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "l"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+	                    "type": "frontmost_application_if",
+	                    "bundle_identifiers": [
+	                      "^com\\.apple\\.Terminal$"
+	                    ]
+	                  }
+	                ]
+	              },
+	              {
+	                "type": "basic",
+	                "from": {
+	                  "key_code": "l",
+	                  "modifiers": {
+	                    "mandatory": [
+	                      "right_command"
+	                    ]
+	                  }
+		                },
+		                "to": [
+		                  {
+		                    "key_code": "b",
+		                    "modifiers": [
+		                      "right_control"
+		                    ]
+		                  },
+		                  {
+		                    "key_code": "l"
+		                  }
+		                ],
+		                "conditions": [
+		                  {
+	                    "type": "frontmost_application_if",
+	                    "bundle_identifiers": [
+	                      "^com\\.apple\\.Terminal$"
+	                    ]
+	                  }
+	                ]
+	              }
+	            ]
+	          }
+	        ]
+	      },
       "devices": [
         {
           "identifiers": {

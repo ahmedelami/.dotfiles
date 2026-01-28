@@ -13,5 +13,24 @@ vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
     spec = "humoodagen.lazy",
-    change_detection = { notify = false }
+    change_detection = { notify = false },
+    performance = {
+      cache = {
+        enabled = true,
+      },
+      reset_packpath = true,
+      rtp = {
+        reset = true,
+        disabled_plugins = {
+          "gzip",
+          "matchit",
+          "matchparen",
+          "netrwPlugin",
+          "tarPlugin",
+          "tohtml",
+          "tutor",
+          "zipPlugin",
+        },
+      },
+    },
 })

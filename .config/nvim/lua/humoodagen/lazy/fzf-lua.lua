@@ -1,6 +1,11 @@
 return {
     "ibhagwan/fzf-lua",
     dependencies = { "echasnovski/mini.nvim" },
+    cmd = { "FzfLua" },
+    keys = {
+        { "<M-k>", mode = "n" },
+        { "<C-k>", mode = { "n", "v", "x" } },
+    },
     config = function()
         local fzf = require("fzf-lua")
         local actions = require("fzf-lua.actions")
