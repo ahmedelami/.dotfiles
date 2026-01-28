@@ -138,6 +138,17 @@ wait_for_stty_settle() {
     STTY_SETTLE_EXPECTED=""
   fi
 
+  if [[ -n "${expected_rows:-}" && -n "${expected_cols:-}" ]]; then
+    if [[ "$expected_rows" == "$TMUX_START_LINES" && "$expected_cols" == "$TMUX_START_COLS" ]]; then
+      STTY_SETTLE_FINAL="${TMUX_START_COLS}x${TMUX_START_LINES}"
+      STTY_SETTLE_MS="0"
+      STTY_SETTLE_TRIES="0"
+      STTY_SETTLE_CHANGED="0"
+      STTY_SETTLE_REASON="already_expected"
+      return
+    fi
+  fi
+
   local last_rows="$TMUX_START_LINES"
   local last_cols="$TMUX_START_COLS"
   local stable=0
