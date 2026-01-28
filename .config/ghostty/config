@@ -37,6 +37,13 @@ window-padding-y = 0
 confirm-close-surface = false
 window-save-state = never
 
+# Initial window size (terminal grid cells).
+# Setting this to match the typical AeroSpace-tiled size avoids a resize on
+# launch (which otherwise creates a visible "blank" frame before tmux/nvim
+# attaches).
+window-width = 96
+window-height = 40
+
 # Hide Native Tabs (We use Tmux for tabs)
 window-show-tab-bar = never
 
