@@ -20,6 +20,7 @@ fi
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 HUMOODAGEN_STATE_DIR="$STATE_HOME/humoodagen"
 HUMOODAGEN_GHOSTTY_PERF_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-perf-on"
+HUMOODAGEN_GHOSTTY_PERF_UI_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-perf-ui-on"
 HUMOODAGEN_GHOSTTY_TMUX_RS_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-use-tmux-rs"
 
 TMUX_BIN_TMUX="/opt/homebrew/bin/tmux"
@@ -115,7 +116,11 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
   export HUMOODAGEN_LAUNCH_TS_NS="$launch_ts_ns"
   export HUMOODAGEN_GHOSTTY_LAUNCH_LOG
   export HUMOODAGEN_PERF=1
-  export HUMOODAGEN_PERF_UI=1
+  PERF_UI=0
+  if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_UI_FLAG" ]]; then
+    PERF_UI=1
+  fi
+  export HUMOODAGEN_PERF_UI="$PERF_UI"
 
   open_ts_file="${HUMOODAGEN_STATE_DIR}/ghostty-open-ts-ns"
   open_ts=""
@@ -140,6 +145,7 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
       printf '%s | launcher:open_to_launcher | launch_ts_ns=%s | open_ts_ns=%s | delta_ns=%s\n' "$launch_ts_ns" "$launch_ts_ns" "$open_ts" "$open_delta_ns"
     fi
     printf '%s | launcher:perf=1 | launch_ts_ns=%s | session=%s\n' "$(ts_ns)" "$launch_ts_ns" "$SESSION_NAME"
+    printf '%s | launcher:perf_ui=%s | launch_ts_ns=%s\n' "$(ts_ns)" "$PERF_UI" "$launch_ts_ns"
     printf '%s | launcher:tmux_impl=%s | launch_ts_ns=%s | tmux_bin=%s\n' "$(ts_ns)" "$TMUX_IMPL" "$launch_ts_ns" "$TMUX_BIN"
     printf '%s | launcher:persist=%s | launch_ts_ns=%s\n' "$(ts_ns)" "$PERSIST" "$launch_ts_ns"
     printf '%s | launcher:exec-tmux | launch_ts_ns=%s | session=%s\n' "$(ts_ns)" "$launch_ts_ns" "$SESSION_NAME"
@@ -150,6 +156,7 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
       \; set-environment -g HUMOODAGEN_LAUNCH_TS_NS "$launch_ts_ns" \
       \; set-environment -g HUMOODAGEN_GHOSTTY_LAUNCH_LOG "$HUMOODAGEN_GHOSTTY_LAUNCH_LOG" \
       \; set-environment -g HUMOODAGEN_PERF 1 \
+      \; set-environment -g HUMOODAGEN_PERF_UI "$PERF_UI" \
       \; set-hook -g client-attached 'run-shell -b "$HOME/.dotfiles/ghostty_tmux_hook.sh tmux:client-attached"' \
       \; set-hook -g client-detached 'run-shell -b "$HOME/.dotfiles/ghostty_tmux_hook.sh tmux:client-detached"' \
       \; set-option -g destroy-unattached off \
@@ -163,7 +170,7 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
       -e "HUMOODAGEN_TMUX_IMPL=$TMUX_IMPL" \
       -e "HUMOODAGEN_TMUX_SESSION=$SESSION_NAME" \
       -e "HUMOODAGEN_PERF=1" \
-      -e "HUMOODAGEN_PERF_UI=1" \
+      -e "HUMOODAGEN_PERF_UI=$PERF_UI" \
       -c "$START_DIR" \
       -s "$SESSION_NAME" \
       -n nvim -- "$HOME/.dotfiles/ghostty_tmux_pane.sh"
@@ -173,6 +180,7 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
     \; set-environment -g HUMOODAGEN_LAUNCH_TS_NS "$launch_ts_ns" \
     \; set-environment -g HUMOODAGEN_GHOSTTY_LAUNCH_LOG "$HUMOODAGEN_GHOSTTY_LAUNCH_LOG" \
     \; set-environment -g HUMOODAGEN_PERF 1 \
+    \; set-environment -g HUMOODAGEN_PERF_UI "$PERF_UI" \
     \; set-hook -g client-attached 'run-shell -b "$HOME/.dotfiles/ghostty_tmux_hook.sh tmux:client-attached"' \
     \; set-hook -g client-detached 'run-shell -b "$HOME/.dotfiles/ghostty_tmux_hook.sh tmux:client-detached"' \
     \; set-option -g destroy-unattached on \
@@ -186,7 +194,7 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
     -e "HUMOODAGEN_TMUX_IMPL=$TMUX_IMPL" \
     -e "HUMOODAGEN_TMUX_SESSION=$SESSION_NAME" \
     -e "HUMOODAGEN_PERF=1" \
-    -e "HUMOODAGEN_PERF_UI=1" \
+    -e "HUMOODAGEN_PERF_UI=$PERF_UI" \
     -c "$START_DIR" \
     -s "$SESSION_NAME" \
     -n nvim -- "$HOME/.dotfiles/ghostty_tmux_pane.sh" \

@@ -90,6 +90,7 @@ Some macOS Cmd shortcuts never reach terminal apps. This setup forces `CMD + R` 
 This setup includes optional perf logs to measure where time is going (Ghostty → tmux → Neovim → toggleterm prompt).
 
 - Enable perf logging: `touch ~/.local/state/humoodagen/ghostty-perf-on`
+- Optional UI trace (more spammy; can impact smoothness during window resize): `touch ~/.local/state/humoodagen/ghostty-perf-ui-on`
 - Launch Ghostty with an “open timestamp” marker: `~/.dotfiles/ghostty_open_perf.sh`
 - Print latest report: `~/.dotfiles/ghostty_perf_report.py`
 
