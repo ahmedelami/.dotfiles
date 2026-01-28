@@ -340,6 +340,25 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
           printf '%s | launcher:persist:pre_attach_resized | launch_ts_ns=%s | pid=%s | stty=%sx%s | tmux_window_after=%s | window_size_restored=%s | restore_status=%s | window_size_effective=%s\n' \
             "$(ts_ns)" "$launch_ts_ns" "$$" "$TMUX_START_COLS" "$TMUX_START_LINES" "${tmux_window_after:-}" "$desired_window_size" "$restore_status" "${effective_window_size:-}"
         } >>"$HUMOODAGEN_GHOSTTY_LAUNCH_LOG" 2>/dev/null || true
+
+        # Prefill the new terminal surface with a snapshot of the tmux pane so
+        # Ghostty doesn't show a blank frame while the client attaches.
+        if [[ -t 1 ]]; then
+          prefill_start_ns="$(ts_ns)"
+          {
+            printf '\033[?1049h\033[H\033[2J\033[?25l'
+            TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" capture-pane -pe -t "$target_window" 2>/dev/null || true
+          } 2>/dev/null || true
+          prefill_end_ns="$(ts_ns)"
+          prefill_ms=""
+          if [[ "$prefill_start_ns" == <-> && "$prefill_end_ns" == <-> ]]; then
+            prefill_ms=$(( (prefill_end_ns - prefill_start_ns) / 1000000 ))
+          fi
+          {
+            printf '%s | launcher:persist:prefill | launch_ts_ns=%s | pid=%s | ms=%s\n' \
+              "$(ts_ns)" "$launch_ts_ns" "$$" "${prefill_ms:-}"
+          } >>"$HUMOODAGEN_GHOSTTY_LAUNCH_LOG" 2>/dev/null || true
+        fi
       fi
     fi
 
@@ -413,6 +432,13 @@ if (( PERSIST )); then
         -x "$TMUX_START_COLS" \
         -y "$TMUX_START_LINES" 2>/dev/null || true
       TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" set-option -w -t "$target_window" window-size "$desired_window_size" 2>/dev/null || true
+
+      if [[ -t 1 ]]; then
+        {
+          printf '\033[?1049h\033[H\033[2J\033[?25l'
+          TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" capture-pane -pe -t "$target_window" 2>/dev/null || true
+        } 2>/dev/null || true
+      fi
     fi
   fi
 

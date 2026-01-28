@@ -49,7 +49,7 @@ window-show-tab-bar = never
 
 # Launcher: default is a fresh tmux session per Ghostty pane (auto-nvim).
 # Optional persistent mode is controlled by: ~/.local/state/humoodagen/ghostty-persist-session
-command = /Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh
+command = direct:/Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh
 
 # Keybindings (Bridging to Tmux)
 # Using CTRL instead of CMD for terminal-level actions to avoid macOS conflicts
