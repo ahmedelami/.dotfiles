@@ -23,6 +23,7 @@ HUMOODAGEN_GHOSTTY_PERF_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-perf-on"
 HUMOODAGEN_GHOSTTY_PERF_UI_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-perf-ui-on"
 HUMOODAGEN_GHOSTTY_TMUX_RS_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-use-tmux-rs"
 HUMOODAGEN_GHOSTTY_LAST_SIZE_FILE="$HUMOODAGEN_STATE_DIR/ghostty-last-size"
+HUMOODAGEN_GHOSTTY_PREFILL_FILE="$HUMOODAGEN_STATE_DIR/ghostty-prefill.ansi"
 
 zmodload zsh/datetime 2>/dev/null || true
 
@@ -58,6 +59,27 @@ PERSIST_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-persist-session"
 PERSIST=0
 if [[ -f "$PERSIST_FLAG" ]]; then
   PERSIST=1
+fi
+
+PREFILL_DONE=0
+prefill_from_file() {
+  if [[ ! -t 1 ]]; then
+    return
+  fi
+  if [[ ! -s "$HUMOODAGEN_GHOSTTY_PREFILL_FILE" ]]; then
+    return
+  fi
+  # Draw something immediately so Ghostty doesn't show a blank surface
+  # while the tmux client attaches.
+  {
+    printf '\033[?1049h\033[H\033[2J\033[?25l'
+    cat "$HUMOODAGEN_GHOSTTY_PREFILL_FILE" 2>/dev/null || true
+  } 2>/dev/null || true
+  PREFILL_DONE=1
+}
+
+if (( PERSIST )); then
+  prefill_from_file
 fi
 
 TMUX_SERVER_NAME="humoodagen-ghostty"
@@ -341,14 +363,20 @@ if [[ -f "$HUMOODAGEN_GHOSTTY_PERF_FLAG" ]]; then
             "$(ts_ns)" "$launch_ts_ns" "$$" "$TMUX_START_COLS" "$TMUX_START_LINES" "${tmux_window_after:-}" "$desired_window_size" "$restore_status" "${effective_window_size:-}"
         } >>"$HUMOODAGEN_GHOSTTY_LAUNCH_LOG" 2>/dev/null || true
 
-        # Prefill the new terminal surface with a snapshot of the tmux pane so
-        # Ghostty doesn't show a blank frame while the client attaches.
-        if [[ -t 1 ]]; then
+        # Fallback prefill if we didn't already have a cached snapshot to draw.
+        # (Best-effort: still somewhat late, but it will also seed the cache for
+        # the next launch.)
+        if (( PREFILL_DONE == 0 )) && [[ -t 1 ]]; then
           prefill_start_ns="$(ts_ns)"
-          {
-            printf '\033[?1049h\033[H\033[2J\033[?25l'
-            TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" capture-pane -pe -t "$target_window" 2>/dev/null || true
-          } 2>/dev/null || true
+          prefill_tmp="${HUMOODAGEN_GHOSTTY_PREFILL_FILE}.$$"
+          umask 077
+          TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" capture-pane -pe -t "$target_window" >|"$prefill_tmp" 2>/dev/null || true
+          if [[ -s "$prefill_tmp" ]]; then
+            mv -f "$prefill_tmp" "$HUMOODAGEN_GHOSTTY_PREFILL_FILE" 2>/dev/null || true
+            prefill_from_file
+          else
+            rm -f "$prefill_tmp" 2>/dev/null || true
+          fi
           prefill_end_ns="$(ts_ns)"
           prefill_ms=""
           if [[ "$prefill_start_ns" == <-> && "$prefill_end_ns" == <-> ]]; then
@@ -433,17 +461,24 @@ if (( PERSIST )); then
         -y "$TMUX_START_LINES" 2>/dev/null || true
       TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" set-option -w -t "$target_window" window-size "$desired_window_size" 2>/dev/null || true
 
-      if [[ -t 1 ]]; then
-        {
-          printf '\033[?1049h\033[H\033[2J\033[?25l'
-          TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" capture-pane -pe -t "$target_window" 2>/dev/null || true
-        } 2>/dev/null || true
+      if (( PREFILL_DONE == 0 )) && [[ -t 1 ]]; then
+        prefill_tmp="${HUMOODAGEN_GHOSTTY_PREFILL_FILE}.$$"
+        umask 077
+        TMUX_SKIP_TPM=1 "$TMUX_BIN" -L "$TMUX_SERVER_NAME" capture-pane -pe -t "$target_window" >|"$prefill_tmp" 2>/dev/null || true
+        if [[ -s "$prefill_tmp" ]]; then
+          mv -f "$prefill_tmp" "$HUMOODAGEN_GHOSTTY_PREFILL_FILE" 2>/dev/null || true
+          prefill_from_file
+        else
+          rm -f "$prefill_tmp" 2>/dev/null || true
+        fi
       fi
     fi
   fi
 
   TMUX_SKIP_TPM=1 exec "$TMUX_BIN" -L "$TMUX_SERVER_NAME" start-server \
     \; set-option -g destroy-unattached off \
+    \; set-hook -g client-attached 'run-shell -b "$HOME/.dotfiles/ghostty_tmux_hook.sh tmux:client-attached"' \
+    \; set-hook -g client-detached 'run-shell -b "$HOME/.dotfiles/ghostty_tmux_hook.sh tmux:client-detached"' \
     \; new-session -A \
     -x "$TMUX_START_COLS" \
     -y "$TMUX_START_LINES" \
