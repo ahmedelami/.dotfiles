@@ -297,7 +297,7 @@ return {
                 number = true,
                 relativenumber = vim.env.HUMOODAGEN_FAST_START ~= "1",
                 signcolumn = "no",
-                width = "15%",
+                width = "7.5%",
             },
             renderer = {
                 add_trailing = false,
