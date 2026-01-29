@@ -1,16 +1,16 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
--- Cursor styles (terminal): block in normal/visual, bar in insert/cmdline.
+-- Cursor styles (terminal): block cursor with per-mode highlighting.
 vim.opt.guicursor = table.concat({
     "n-v:block-HumoodagenModeCursorNormal",
-    "i-ci:ver25-HumoodagenModeCursorInsert",
-    "c:ver25-HumoodagenModeCursorInsert",
-    "r-cr:hor20-HumoodagenModeCursorReplace",
+    "i-ci:block-HumoodagenModeCursorInsert",
+    "c:block-HumoodagenModeCursorInsert",
+    "r-cr:block-HumoodagenModeCursorReplace",
     "o:block-HumoodagenModeCursorNormal",
     "v-ve:block-HumoodagenModeCursorVisual",
     "sm:block-HumoodagenModeCursorNormal",
-    "t:ver25-HumoodagenModeCursorInsert",
+    "t:block-HumoodagenModeCursorInsert",
 }, ",")
 
 vim.opt.number = true
