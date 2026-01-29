@@ -72,8 +72,12 @@ prefill_from_file() {
   # Draw something immediately so Ghostty doesn't show a blank surface
   # while the tmux client attaches.
   {
-    printf '\033[?1049h\033[H\033[2J\033[?25l'
+    # Avoid doing a full-screen clear or switching screen buffers here: on
+    # some setups (tilers + live resize) that can produce a visible diagonal
+    # redraw. Just paint the cached frame in-place.
+    printf '\033[?2026h\033[H\033[?25l'
     cat "$HUMOODAGEN_GHOSTTY_PREFILL_FILE" 2>/dev/null || true
+    printf '\033[?2026l'
   } 2>/dev/null || true
   PREFILL_DONE=1
 }
