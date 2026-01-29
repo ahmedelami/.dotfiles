@@ -27,7 +27,7 @@ palette = 15=#e9ebeb
 
 # Font
 font-family = JetBrainsMono Nerd Font Mono
-font-size = 8.35
+font-size = 12.525
 
 # Window (Borderless Setup)
 window-decoration = false
@@ -41,8 +41,8 @@ window-save-state = never
 # Setting this to match the typical AeroSpace-tiled size avoids a resize on
 # launch (which otherwise creates a visible "blank" frame before tmux/nvim
 # attaches).
-window-width = 192
-window-height = 80
+window-width = 128
+window-height = 54
 
 # Hide Native Tabs (We use Tmux for tabs)
 window-show-tab-bar = never
