@@ -1,16 +1,16 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
--- Block cursor, with mode feedback drawn via `HumoodagenModeCursor*` highlights.
+-- Cursor styles (terminal): block in normal/visual, bar in insert/cmdline.
 vim.opt.guicursor = table.concat({
     "n-v:block-HumoodagenModeCursorNormal",
-    "i-ci:block-HumoodagenModeCursorInsert",
-    "c:block-HumoodagenModeCursorInsert",
-    "r-cr:block-HumoodagenModeCursorReplace",
+    "i-ci:ver25-HumoodagenModeCursorInsert",
+    "c:ver25-HumoodagenModeCursorInsert",
+    "r-cr:hor20-HumoodagenModeCursorReplace",
     "o:block-HumoodagenModeCursorNormal",
     "v-ve:block-HumoodagenModeCursorVisual",
     "sm:block-HumoodagenModeCursorNormal",
-    "t:block-HumoodagenModeCursorInsert",
+    "t:ver25-HumoodagenModeCursorInsert",
 }, ",")
 
 vim.opt.number = true

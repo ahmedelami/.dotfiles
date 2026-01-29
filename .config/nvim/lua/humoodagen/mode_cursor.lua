@@ -102,6 +102,15 @@ place = function(mode_override)
         clear()
         return
     end
+    if type(mode) == "string" and mode:sub(1, 1) == "i" then
+        vim.g.humoodagen_main_restore_cursor_override = nil
+        clear()
+        return
+    end
+    if type(mode) == "string" and mode:sub(1, 1) == "t" then
+        clear()
+        return
+    end
 
     local win = vim.api.nvim_get_current_win()
     local buf = vim.api.nvim_win_get_buf(win)
@@ -117,9 +126,7 @@ place = function(mode_override)
         end
     end
 
-    if type(mode) == "string" and mode:sub(1, 1) == "i" then
-        vim.g.humoodagen_main_restore_cursor_override = nil
-    elseif type(mode) == "string"
+    if type(mode) == "string"
         and mode:sub(1, 1) == "n"
         and vim.g.humoodagen_main_restore_cursor_override ~= nil
         and vim.bo[buf].buftype == ""
