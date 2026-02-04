@@ -53,6 +53,36 @@ return {
       -- Hide the extra inactive statusline bar under NvimTree.
       local augroup = vim.api.nvim_create_augroup("HumoodagenNvimTreeHighlights", { clear = true })
       local function fix_nvim_tree_statusline()
+        local function rgb_parts(color)
+          if type(color) ~= "number" then
+            return nil, nil, nil
+          end
+          local r = math.floor(color / 65536) % 256
+          local g = math.floor(color / 256) % 256
+          local b = color % 256
+          return r, g, b
+        end
+
+        local function rgb_join(r, g, b)
+          r = math.max(0, math.min(255, math.floor(r + 0.5)))
+          g = math.max(0, math.min(255, math.floor(g + 0.5)))
+          b = math.max(0, math.min(255, math.floor(b + 0.5)))
+          return r * 65536 + g * 256 + b
+        end
+
+        local function mix(a, b, t)
+          local ar, ag, ab = rgb_parts(a)
+          local br, bg, bb = rgb_parts(b)
+          if not (ar and ag and ab and br and bg and bb) then
+            return a
+          end
+          return rgb_join(
+            ar + (br - ar) * t,
+            ag + (bg - ag) * t,
+            ab + (bb - ab) * t
+          )
+        end
+
         local normal_bg = nil
         local normal_fg = nil
         local ok_hl, normal_hl = pcall(vim.api.nvim_get_hl, 0, { name = "Normal" })
@@ -98,22 +128,25 @@ return {
         if cursor_bg == nil then
           cursor_bg = vim.o.background == "light" and 0xf2f2f2 or 0x2a2d2e
         end
+        local base_bg = type(normal_bg) == "number" and normal_bg or (vim.o.background == "light" and 0xffffff or 0x000000)
+        cursor_bg = mix(cursor_bg, base_bg, 1 / 3)
 
         -- Keep cursorline-related backgrounds consistent across panes.
-        local cursorline_hl = { bg = cursor_bg }
-        vim.api.nvim_set_hl(0, "CursorLine", cursorline_hl)
+        local cursorline_bg_hl = { bg = cursor_bg }
+        vim.api.nvim_set_hl(0, "CursorLine", cursorline_bg_hl)
         local ok_linenr, linenr_hl = pcall(vim.api.nvim_get_hl, 0, { name = "LineNr", link = false })
+        local cursorline_nr_hl = { bg = cursor_bg }
         if ok_linenr and type(linenr_hl) == "table" and linenr_hl.fg ~= nil then
-          cursorline_hl.fg = linenr_hl.fg
+          cursorline_nr_hl.fg = linenr_hl.fg
         end
-        vim.api.nvim_set_hl(0, "CursorLineNr", cursorline_hl)
+        vim.api.nvim_set_hl(0, "CursorLineNr", cursorline_nr_hl)
         vim.api.nvim_set_hl(0, "LineNrAbove", { link = "LineNr" })
         vim.api.nvim_set_hl(0, "LineNrBelow", { link = "LineNr" })
-        vim.api.nvim_set_hl(0, "CursorLineSign", cursorline_hl)
-        vim.api.nvim_set_hl(0, "CursorLineFold", cursorline_hl)
-        vim.api.nvim_set_hl(0, "NvimTreeCursorLine", cursorline_hl)
-        vim.api.nvim_set_hl(0, "NvimTreeCursorLineNr", cursorline_hl)
-        vim.api.nvim_set_hl(0, "ColorColumn", cursorline_hl)
+        vim.api.nvim_set_hl(0, "CursorLineSign", cursorline_bg_hl)
+        vim.api.nvim_set_hl(0, "CursorLineFold", cursorline_bg_hl)
+        vim.api.nvim_set_hl(0, "NvimTreeCursorLine", cursorline_bg_hl)
+        vim.api.nvim_set_hl(0, "NvimTreeCursorLineNr", cursorline_nr_hl)
+        vim.api.nvim_set_hl(0, "ColorColumn", cursorline_bg_hl)
 
         -- Winbar (filename) should match the cursorline styling.
         local winbar_hl = { bg = cursor_bg }
