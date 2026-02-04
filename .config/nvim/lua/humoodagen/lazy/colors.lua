@@ -10,6 +10,10 @@ return {
       vscode.setup({
         -- Match VSCode "Default Dark+" / "Default Light+" depending on `background`.
         style = vim.o.background == "light" and "light" or "dark",
+        color_overrides = {
+          -- VSCode default line numbers are gray (not green) in the gutter.
+          vscLineNumber = vim.o.background == "light" and "#767676" or "#5A5A5A",
+        },
         transparent = false,
         italic_comments = false,
         disable_nvimtree_bg = true,
@@ -96,7 +100,13 @@ return {
         -- Keep cursorline-related backgrounds consistent across panes.
         local cursorline_hl = { bg = cursor_bg }
         vim.api.nvim_set_hl(0, "CursorLine", cursorline_hl)
+        local ok_linenr, linenr_hl = pcall(vim.api.nvim_get_hl, 0, { name = "LineNr", link = false })
+        if ok_linenr and type(linenr_hl) == "table" and linenr_hl.fg ~= nil then
+          cursorline_hl.fg = linenr_hl.fg
+        end
         vim.api.nvim_set_hl(0, "CursorLineNr", cursorline_hl)
+        vim.api.nvim_set_hl(0, "LineNrAbove", { link = "LineNr" })
+        vim.api.nvim_set_hl(0, "LineNrBelow", { link = "LineNr" })
         vim.api.nvim_set_hl(0, "CursorLineSign", cursorline_hl)
         vim.api.nvim_set_hl(0, "CursorLineFold", cursorline_hl)
         vim.api.nvim_set_hl(0, "NvimTreeCursorLine", cursorline_hl)
