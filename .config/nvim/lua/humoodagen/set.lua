@@ -34,8 +34,8 @@ vim.opt.breakindentopt = "list:-1"
 -- Better "hanging indent" when wrapping list items (e.g. "- item…" / "1. item…").
 vim.opt.formatlistpat = "^\\s*\\(\\d\\+[\\]:.)}\\t ]\\|[-*+]\\)\\s\\+"
 
--- Keep wrap off in terminals/special panes, but default it on for regular file
--- buffers and NvimTree (helps with long paths).
+-- Keep wrap off in terminals/special panes (and the file tree), but default it
+-- on for regular file buffers.
 local nowrap_group = vim.api.nvim_create_augroup("HumoodagenNoWrapSpecial", { clear = true })
 vim.api.nvim_create_autocmd({ "FileType", "TermOpen" }, {
     group = nowrap_group,
@@ -45,7 +45,7 @@ vim.api.nvim_create_autocmd({ "FileType", "TermOpen" }, {
         local ft = vim.bo[buf].filetype
 
         if ft == "NvimTree" then
-            vim.opt_local.wrap = true
+            vim.opt_local.wrap = false
             return
         end
 
