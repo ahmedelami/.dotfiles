@@ -459,8 +459,7 @@ return {
             vim.api.nvim_buf_clear_namespace(bufnr, open_pipe_ns, 0, -1)
 
             local ok_core, core = pcall(require, "nvim-tree.core")
-            local ok_utils, utils = pcall(require, "nvim-tree.utils")
-            if not ok_core or not ok_utils then
+            if not ok_core then
                 return
             end
 
@@ -479,7 +478,7 @@ return {
                 return
             end
 
-            local nodes_by_line = utils.get_nodes_by_line(explorer.nodes, start_line)
+            local nodes_by_line = explorer:get_nodes_by_line(start_line)
             if type(nodes_by_line) ~= "table" then
                 return
             end
