@@ -4,6 +4,8 @@ return {
     priority = 1000,
     lazy = false,
     config = function()
+      vim.o.background = "light"
+
       local vscode = require("vscode")
       vscode.setup({
         -- Match VSCode "Default Dark+" / "Default Light+" depending on `background`.
@@ -73,7 +75,7 @@ return {
         vim.api.nvim_set_hl(0, "NvimTreeStatuslineNC", { link = "NvimTreeNormal" })
 
         -- When ToggleTerm enables per-window statuslines for its tab bars, keep
-        -- non-ToggleTerm statuslines completely invisible against Latte.
+        -- non-ToggleTerm statuslines completely invisible against the main background.
         vim.api.nvim_set_hl(0, "StatusLine", { link = "Normal" })
         vim.api.nvim_set_hl(0, "StatusLineNC", { link = "Normal" })
 
