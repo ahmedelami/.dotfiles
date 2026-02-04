@@ -11,8 +11,10 @@ return {
         -- Match VSCode "Default Dark+" / "Default Light+" depending on `background`.
         style = vim.o.background == "light" and "light" or "dark",
         color_overrides = {
+          -- Make file text true black in the light theme.
+          vscFront = vim.o.background == "light" and "#000000" or "#D4D4D4",
           -- VSCode default line numbers are gray (not green) in the gutter.
-          vscLineNumber = vim.o.background == "light" and "#767676" or "#5A5A5A",
+          vscLineNumber = vim.o.background == "light" and "#A0A0A0" or "#5A5A5A",
         },
         transparent = false,
         italic_comments = false,
