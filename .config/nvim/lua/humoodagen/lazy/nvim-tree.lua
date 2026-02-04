@@ -432,6 +432,108 @@ return {
             end
         end)
 
+        local open_pipe_ns = vim.api.nvim_create_namespace("HumoodagenNvimTreeOpenPipes")
+
+        local function node_depth(node)
+            if not node or type(node) ~= "table" then
+                return 0
+            end
+
+            local depth = 0
+            local parent = node.parent
+            while parent and parent.parent do
+                depth = depth + 1
+                parent = parent.parent
+            end
+            return depth
+        end
+
+        local function apply_open_pipes(bufnr)
+            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+                return
+            end
+            if vim.bo[bufnr].filetype ~= "NvimTree" then
+                return
+            end
+
+            vim.api.nvim_buf_clear_namespace(bufnr, open_pipe_ns, 0, -1)
+
+            local ok_core, core = pcall(require, "nvim-tree.core")
+            local ok_utils, utils = pcall(require, "nvim-tree.utils")
+            if not ok_core or not ok_utils then
+                return
+            end
+
+            local explorer = core.get_explorer()
+            if not explorer or not explorer.opts or not explorer.opts.renderer then
+                return
+            end
+
+            local indent_width = tonumber(explorer.opts.renderer.indent_width) or 2
+            if indent_width < 1 then
+                indent_width = 1
+            end
+
+            local start_line = core.get_nodes_starting_line()
+            if type(start_line) ~= "number" or start_line < 1 then
+                return
+            end
+
+            local nodes_by_line = utils.get_nodes_by_line(explorer.nodes, start_line)
+            if type(nodes_by_line) ~= "table" then
+                return
+            end
+
+            local line_nums = {}
+            for lnum, _ in pairs(nodes_by_line) do
+                if type(lnum) == "number" then
+                    table.insert(line_nums, lnum)
+                end
+            end
+            table.sort(line_nums)
+
+            local depths = {}
+            local open_dirs = {}
+            for i, lnum in ipairs(line_nums) do
+                local node = nodes_by_line[lnum]
+                depths[i] = node_depth(node)
+                open_dirs[i] = (type(node) == "table" and type(node.nodes) == "table" and node.open == true)
+            end
+
+            local marks = {}
+            for i, lnum in ipairs(line_nums) do
+                if open_dirs[i] then
+                    local d = depths[i]
+                    local col = d * indent_width
+                    local j = i + 1
+                    while j <= #line_nums and depths[j] > d do
+                        local row = line_nums[j] - 1
+                        marks[row] = marks[row] or {}
+                        marks[row][col] = true
+                        j = j + 1
+                    end
+                end
+            end
+
+            for row, cols in pairs(marks) do
+                for col, _ in pairs(cols) do
+                    pcall(vim.api.nvim_buf_set_extmark, bufnr, open_pipe_ns, row, col, {
+                        virt_text = { { "▏", "NvimTreeIndentMarker" } },
+                        virt_text_pos = "overlay",
+                        hl_mode = "combine",
+                        priority = 200,
+                    })
+                end
+            end
+        end
+
+        events.subscribe(events.Event.TreeRendered, function(payload)
+            local bufnr = payload and payload.bufnr or nil
+            vim.schedule(function()
+                apply_open_pipes(bufnr)
+            end)
+        end)
+
         local function is_main_edit_win(win)
             if not (win and vim.api.nvim_win_is_valid(win)) then
                 return false
