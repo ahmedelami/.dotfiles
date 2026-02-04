@@ -340,7 +340,7 @@ return {
                     return "…/" .. tail
                 end,
                 indent_markers = {
-                    enable = true,
+                    enable = false,
                     inline_arrows = false,
                     icons = {
                         corner = "└",
@@ -373,12 +373,12 @@ return {
                         folder = {
                             arrow_closed = "",
                             arrow_open = "",
-                            default = "/",
-                            open = "/",
-                            empty = "/",
-                            empty_open = "/",
-                            symlink = "/",
-                            symlink_open = "/",
+                            default = "▏",
+                            open = "▏",
+                            empty = "▏",
+                            empty_open = "▏",
+                            symlink = "▏",
+                            symlink_open = "▏",
                         },
                         git = {
                             unstaged = "",
@@ -422,7 +422,7 @@ return {
             local win = view.get_winnr()
             if win and vim.api.nvim_win_is_valid(win) then
                 local buf = vim.api.nvim_win_get_buf(win)
-                vim.wo[win].wrap = true
+                vim.wo[win].wrap = false
                 vim.wo[win].linebreak = true
                 vim.wo[win].breakindent = true
                 vim.wo[win].breakindentopt = "list:-1"
