@@ -1,0 +1,117 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+{
+  "edit_predictions": {
+    "provider": "supermaven"
+  },
+  "vim_mode": true,
+  "language_models": {
+    "openai_compatible": {
+      "MULTIA": {
+        "api_url": "http://127.0.0.1:4317/v1",
+        "available_models": [
+          {
+            "name": "multia-chatgpt-instant",
+            "display_name": "ChatGPT (Web via CDP, Instant)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-auto",
+            "display_name": "ChatGPT (Web via CDP, Auto)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-thinking-light",
+            "display_name": "ChatGPT (Web via CDP, Thinking - Light)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-thinking-standard",
+            "display_name": "ChatGPT (Web via CDP, Thinking - Standard)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-thinking-extended",
+            "display_name": "ChatGPT (Web via CDP, Thinking - Extended)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-thinking-heavy",
+            "display_name": "ChatGPT (Web via CDP, Thinking - Heavy)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-pro",
+            "display_name": "ChatGPT (Web via CDP, Pro)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-gemini-fast",
+            "display_name": "Gemini (Web via CDP, Fast)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-gemini-thinking",
+            "display_name": "Gemini (Web via CDP, Thinking)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-gemini-pro",
+            "display_name": "Gemini (Web via CDP, Pro)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-gai-web",
+            "display_name": "Google AI Mode (Web via CDP)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-chatgpt-web",
+            "display_name": "ChatGPT (Web via CDP, Legacy)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          },
+          {
+            "name": "multia-gemini-web",
+            "display_name": "Gemini (Web via CDP, Legacy)",
+            "max_tokens": 8192,
+            "capabilities": { "tools": false }
+          }
+        ]
+      }
+    }
+  },
+  "agent": {
+    "default_model": { "provider": "openai_compatible", "model": "multia-chatgpt-thinking-standard" },
+    "inline_assistant_model": { "provider": "openai_compatible", "model": "multia-chatgpt-thinking-extended" },
+    "commit_message_model": { "provider": "openai_compatible", "model": "multia-chatgpt-instant" },
+    "thread_summary_model": { "provider": "openai_compatible", "model": "multia-chatgpt-instant" },
+  },
+  "terminal": {
+    "dock": "bottom"
+  },
+  "ui_font_size": 16,
+  "buffer_font_size": 15,
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "VScode Dark Plus",
+  },
+}

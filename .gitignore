@@ -8,18 +8,9 @@ secrets.zsh
 *.key
 *.pem
 
-# Local backups / noise
-*.bak.*
-*.bak-*
-.config/karabiner/automatic_backups/
-.config/karabiner/*.bak.*
-zsh/.zshrc.bak-*
-
 # App data (can include cookies/tokens and large debug dumps)
 .config/slack-terminal/
-.config/raycast/
 
 # Zed local state (databases, conversations)
 .config/zed/prompts/
 .config/zed/conversations/
-.config/zed/settings_backup.json
