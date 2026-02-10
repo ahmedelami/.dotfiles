@@ -29,145 +29,18 @@ palette = 15=#e9ebeb
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 12.525
 
-# Window (Borderless Setup)
-window-decoration = false
-macos-titlebar-style = hidden
-window-padding-x = 0
-window-padding-y = 0
-confirm-close-surface = false
-window-save-state = never
+# Shell
+command = /opt/homebrew/bin/nu
 
-# Initial window size (terminal grid cells).
-# Setting this to match the typical AeroSpace-tiled size avoids a resize on
-# launch (which otherwise creates a visible "blank" frame before tmux/nvim
-# attaches).
-window-width = 128
-window-height = 54
+# Working directory
+# Always start new windows/tabs in home (don't inherit the current tab's cwd).
+working-directory = home
+window-inherit-working-directory = false
 
-# Hide Native Tabs (We use Tmux for tabs)
-window-show-tab-bar = never
-
-# Launcher: default is a fresh tmux session per Ghostty pane (auto-nvim).
-# Optional persistent mode is controlled by: ~/.local/state/humoodagen/ghostty-persist-session
-command = direct:/Users/ahmedelamin/.dotfiles/ghostty_tmux_launcher.sh
-
-# Keybindings (Bridging to Tmux)
-# Using CTRL instead of CMD for terminal-level actions to avoid macOS conflicts
-
-# CTRL+T sends Prefix + t (New Tmux Window/Tab)
-keybind = ctrl+t=text:\x02t
-# CMD+T sends Prefix + t so Neovim can open terminal tabs
-keybind = super+t=unbind
-keybind = super+t=text:\x02t
-# CTRL+W is unbound so it can delete words in the shell/readline
-keybind = ctrl+w=unbind
-# CTRL+Q closes the Ghostty pane (isolated mode will auto-clean the tmux session;
-# persistent mode just detaches).
-keybind = ctrl+q=close_surface
-
-# CTRL+SHIFT+W closes the Ghostty pane (see note above).
-keybind = ctrl+shift+w=close_surface
-
-# Cmd+D toggles Neovim bottom terminal; disable split default.
-keybind = super+d=unbind
-keybind = super+d=text:\x1b[19;2~
-keybind = super+shift+d=unbind
-
-# Cmd+B / Cmd+R are intentionally unused (pane toggles are Cmd+Shift+H/J/K/L).
-keybind = super+b=unbind
-keybind = super+r=unbind
-
-# Pass CMD+H/J/K/L through for Neovim focus
-keybind = super+h=unbind
-keybind = super+j=unbind
-keybind = super+k=unbind
-keybind = super+l=unbind
-keybind = super+h=text:\x1b[18;3~
-keybind = super+j=text:\x1b[19;3~
-keybind = super+k=text:\x1b[20;3~
-keybind = super+l=text:\x1b[21;3~
-
-# Pass CMD+SHIFT+H/J/K/L through for Neovim pane toggles
-keybind = super+shift+h=unbind
-keybind = super+shift+j=unbind
-keybind = super+shift+k=unbind
-keybind = super+shift+l=unbind
-keybind = super+shift+up=unbind
-keybind = super+shift+down=unbind
-keybind = super+shift+h=text:\x1b[18;2~
-keybind = super+shift+j=text:\x1b[19;2~
-keybind = super+shift+k=text:\x1b[20;2~
-keybind = super+shift+l=text:\x1b[21;2~
-keybind = super+shift+up=text:\x1b[23;2~
-keybind = super+shift+down=text:\x1b[24;2~
-
-# Pass CMD+CTRL+H/J/K/L through for Neovim split resizing
-keybind = super+ctrl+h=unbind
-keybind = super+ctrl+j=unbind
-keybind = super+ctrl+k=unbind
-keybind = super+ctrl+l=unbind
-keybind = super+ctrl+h=text:\x1b[18;5~
-keybind = super+ctrl+j=text:\x1b[19;5~
-keybind = super+ctrl+k=text:\x1b[20;5~
-keybind = super+ctrl+l=text:\x1b[21;5~
-
-# CTRL+D should be passed through so shells/Neovim can handle it (e.g. exit).
-keybind = ctrl+d=text:\x04
-
-
-# Switch Tmux Windows (Tabs) within the focused pane
-# Ghostty has built-in Cmd+1..9 bindings for tab switching; unbind them and
-# rebind to send tmux prefix so tmux can conditionally pass through to Neovim.
-keybind = super+1=unbind
-keybind = super+2=unbind
-keybind = super+3=unbind
-keybind = super+4=unbind
-keybind = super+5=unbind
-keybind = super+6=unbind
-keybind = super+7=unbind
-keybind = super+8=unbind
-keybind = super+9=unbind
-
-keybind = super+digit_1=unbind
-keybind = super+digit_2=unbind
-keybind = super+digit_3=unbind
-keybind = super+digit_4=unbind
-keybind = super+digit_5=unbind
-keybind = super+digit_6=unbind
-keybind = super+digit_7=unbind
-keybind = super+digit_8=unbind
-keybind = super+digit_9=unbind
-
-keybind = super+1=text:\x02\x31
-keybind = super+2=text:\x02\x32
-keybind = super+3=text:\x02\x33
-keybind = super+4=text:\x02\x34
-keybind = super+5=text:\x02\x35
-keybind = super+6=text:\x02\x36
-keybind = super+7=text:\x02\x37
-keybind = super+8=text:\x02\x38
-keybind = super+9=text:\x02\x39
-
-keybind = super+digit_1=text:\x02\x31
-keybind = super+digit_2=text:\x02\x32
-keybind = super+digit_3=text:\x02\x33
-keybind = super+digit_4=text:\x02\x34
-keybind = super+digit_5=text:\x02\x35
-keybind = super+digit_6=text:\x02\x36
-keybind = super+digit_7=text:\x02\x37
-keybind = super+digit_8=text:\x02\x38
-keybind = super+digit_9=text:\x02\x39
-
-
-# Undo last close (tab/split/window)
-keybind = super+z=undo
-keybind = super+shift+z=redo
-
-
-# Clear screen is handled globally by Tmux using CTRL+/ (C-_)
-# keybind = ctrl+slash=clear_screen
-# keybind = ctrl+underscore=clear_screen
-# keybind = ctrl+shift+slash=clear_screen
+# Window (macOS defaults: traffic lights + native tabs)
+window-decoration = auto
+macos-titlebar-style = transparent
+maximize = true
 
 # Mouse
 mouse-hide-while-typing = true
