@@ -1075,6 +1075,11 @@ function M.setup(state, mode, termset)
         return false
       end
 
+      local right = termset.current_term(state, "vertical")
+      if right then
+        right.dir = desired_cwd
+      end
+
 	      local bottom = termset.current_term(state, "horizontal")
 	      if bottom then
 	        bottom.dir = desired_cwd
@@ -1198,6 +1203,13 @@ function M.setup(state, mode, termset)
 	        end
 	      end
 
+        if right and not has_open_direction("vertical") and not right:is_open() then
+          open_or_focus_term(right)
+          if focus_bottom and bottom then
+            open_or_focus_term(bottom)
+          end
+        end
+
       if not focus_bottom then
         if origin_win and vim.api.nvim_win_is_valid(origin_win) then
           vim.api.nvim_set_current_win(origin_win)
@@ -1230,6 +1242,9 @@ function M.setup(state, mode, termset)
 	  vim.api.nvim_create_autocmd("VimEnter", {
 	    group = startup_group,
 	    callback = function()
+	      if vim.g.humoodagen_profile ~= "ide_like_exp" then
+	        return
+	      end
 	      open_startup_terminals()
 	    end,
 	  })

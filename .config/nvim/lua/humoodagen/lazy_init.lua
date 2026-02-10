@@ -21,7 +21,8 @@ require("lazy").setup({
       reset_packpath = true,
       rtp = {
         reset = true,
-        disabled_plugins = {
+        disabled_plugins = (function()
+          local disabled = {
           "gzip",
           "matchit",
           "matchparen",
@@ -30,7 +31,10 @@ require("lazy").setup({
           "tohtml",
           "tutor",
           "zipPlugin",
-        },
+          }
+
+          return disabled
+        end)(),
       },
     },
 })

@@ -1,0 +1,36 @@
+# Starship prompt configuration (Nushell)
+#
+# Aim: match the oh-my-zsh `robbyrussell-light` theme:
+#   ➜  <cwd> git:(<branch>) ✗
+#
+# Colors: match `robbyrussell-light`:
+# - Arrow (success): xterm 033 (#0087FF)
+# - Arrow (error):   xterm 196 (#FF0000)
+# - Directory:       bold purple (terminal palette)
+# - Git prefix/suffix: xterm 021 (#0000FF)
+# - Git branch/dirty:  xterm 160 (#D70000)
+add_newline = false
+
+format = "$character  $directory$git_branch$custom"
+
+[character]
+format = "$symbol"
+success_symbol = "[➜](fg:#0087FF)"
+error_symbol = "[➜](fg:#FF0000)"
+
+[directory]
+style = "bold purple"
+format = "[$path]($style) "
+truncation_length = 1
+truncation_symbol = ""
+read_only = ""
+
+[git_branch]
+format = '[git:\(](fg:#0000FF)[$branch](fg:#D70000)[\) ](fg:#0000FF)'
+
+[custom.git_dirty]
+when = 'test -n "$(git status --porcelain 2>/dev/null)"'
+command = "echo ✗"
+format = "[$output]($style) "
+style = "fg:#D70000"
+shell = ["sh"]

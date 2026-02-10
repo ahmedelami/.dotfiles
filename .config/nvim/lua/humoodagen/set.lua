@@ -1,6 +1,9 @@
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
+-- Netrw: hide the big top banner/quick-help block (still accessible via :help).
+vim.g.netrw_banner = 0
+
 -- Cursor styles (terminal): block cursor with per-mode highlighting.
 vim.opt.guicursor = table.concat({
     "n-v:block-HumoodagenModeCursorNormal",
@@ -93,15 +96,13 @@ vim.opt.wildoptions = "pum"
 
 vim.opt.shortmess:append("IS")
 
-vim.opt.cmdheight = 0
-vim.g.humoodagen_base_laststatus = 0
-if vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0 then
-  -- Avoid a visible 1-row layout shift when ToggleTerm turns the statusline on.
-  -- (We still restore to `base_laststatus` when ToggleTerm is fully closed.)
-  vim.opt.laststatus = 2
-  vim.go.statusline = " "
+vim.opt.cmdheight = 1
+if vim.g.humoodagen_profile == "ide_like_exp" then
+    vim.g.humoodagen_base_laststatus = 2
+    vim.opt.laststatus = 2
 else
-  vim.opt.laststatus = 0
+    vim.g.humoodagen_base_laststatus = 0
+    vim.opt.laststatus = 0
 end
 
 -- Show the current file name at the top of the window (winbar) instead of using
@@ -164,27 +165,40 @@ vim.api.nvim_create_autocmd("InsertEnter", {
     end,
 })
 
--- With `cmdheight=0`, the cmdline/search UI is drawn over the bottom-most split,
--- which can look like the cursor "jumps" into whichever pane is on the bottom.
--- Temporarily increase cmdheight while the cmdline is active so it gets its own row.
+-- Keep the classic bottom cmdline (no floating cmdline UI).
 local cmdheight_group = vim.api.nvim_create_augroup("HumoodagenCmdheight", { clear = true })
-local cmdheight_restore = nil
+local enforcing_cmdheight = false
+
+local function enforce_cmdheight()
+    if enforcing_cmdheight then
+        return
+    end
+    if vim.o.cmdheight ~= 1 then
+        enforcing_cmdheight = true
+        vim.o.cmdheight = 1
+        enforcing_cmdheight = false
+    end
+end
+
+vim.api.nvim_create_autocmd({ "VimEnter", "UIEnter" }, {
+    group = cmdheight_group,
+    callback = function()
+        enforce_cmdheight()
+    end,
+})
+
 vim.api.nvim_create_autocmd("CmdlineEnter", {
     group = cmdheight_group,
     callback = function()
-        if vim.o.cmdheight == 0 then
-            cmdheight_restore = vim.o.cmdheight
-            vim.o.cmdheight = 1
-        end
+        enforce_cmdheight()
     end,
 })
-vim.api.nvim_create_autocmd("CmdlineLeave", {
+
+vim.api.nvim_create_autocmd("OptionSet", {
     group = cmdheight_group,
+    pattern = "cmdheight",
     callback = function()
-        if cmdheight_restore ~= nil then
-            vim.o.cmdheight = cmdheight_restore
-            cmdheight_restore = nil
-        end
+        enforce_cmdheight()
     end,
 })
 
@@ -248,6 +262,9 @@ vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "CursorHoldI", "FocusGai
 -- Fast-start: pre-create the final pane layout (tree + main + bottom) as early
 -- as possible so the first visible frame is already "stable".
 local function humoodagen_startup_overlay_should_show()
+    if vim.g.humoodagen_profile ~= "ide_like_exp" then
+        return false
+    end
     if vim.env.HUMOODAGEN_GHOSTTY ~= "1" then
         return false
     end
@@ -313,6 +330,9 @@ end
 
 local function humoodagen_precreate_startup_layout()
     if vim.g.humoodagen_startup_layout_precreated then
+        return
+    end
+    if vim.g.humoodagen_profile ~= "ide_like_exp" then
         return
     end
     if vim.env.HUMOODAGEN_FAST_START ~= "1" then
@@ -393,7 +413,7 @@ end
 
 humoodagen_startup_overlay_show()
 humoodagen_precreate_startup_layout()
-if vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0 then
+if vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0 and vim.g.humoodagen_profile == "ide_like_exp" then
     vim.api.nvim_create_autocmd("UIEnter", {
         once = true,
         callback = function()

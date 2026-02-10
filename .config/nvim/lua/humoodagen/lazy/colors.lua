@@ -22,6 +22,14 @@ return {
       })
       vscode.load()
 
+      -- Command line & messages: keep text readable in the bottom cmdline area.
+      local ui_fg = vim.o.background == "light" and "#000000" or "#ffffff"
+      local ui_bg = vim.o.background == "light" and "#ffffff" or "#000000"
+      vim.api.nvim_set_hl(0, "MsgArea", { fg = ui_fg, bg = ui_bg })
+      vim.api.nvim_set_hl(0, "Cmdline", { fg = ui_fg, bg = ui_bg })
+      vim.api.nvim_set_hl(0, "ModeMsg", { fg = ui_fg, bg = ui_bg })
+      vim.api.nvim_set_hl(0, "MsgSeparator", { fg = ui_fg, bg = ui_bg })
+
       vim.api.nvim_set_hl(0, "HumoodagenModeCursorNormal", { fg = "#ffffff", bg = "#f28c28" })
       vim.api.nvim_set_hl(0, "HumoodagenModeCursorInsert", { fg = "#ffffff", bg = "#000000" })
       vim.api.nvim_set_hl(0, "HumoodagenModeCursorVisual", { fg = "#ffffff", bg = "#7a4cff" })
@@ -112,8 +120,10 @@ return {
 
         -- When ToggleTerm enables per-window statuslines for its tab bars, keep
         -- non-ToggleTerm statuslines completely invisible against the main background.
-        vim.api.nvim_set_hl(0, "StatusLine", { link = "Normal" })
-        vim.api.nvim_set_hl(0, "StatusLineNC", { link = "Normal" })
+        if vim.g.humoodagen_profile == "ide_like_exp" then
+          vim.api.nvim_set_hl(0, "StatusLine", { link = "Normal" })
+          vim.api.nvim_set_hl(0, "StatusLineNC", { link = "Normal" })
+        end
 
         -- Don't dim inactive terminal panes.
         vim.api.nvim_set_hl(0, "TermNormal", { link = "Normal" })

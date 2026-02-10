@@ -1,3 +1,5 @@
+require("humoodagen.profile").setup()
+
 require("humoodagen.set")
 require("humoodagen.views")
 require("humoodagen.neovide")

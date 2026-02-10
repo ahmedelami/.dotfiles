@@ -69,22 +69,38 @@ local function ensure_toggleterm_statuslines(state)
 end
 
 function M.update_laststatus(state)
+  if vim.g.humoodagen_profile ~= "ide_like_exp" then
+    vim.o.laststatus = state.base_laststatus
+    vim.go.statusline = state.base_statusline
+
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_is_valid(win) then
+        local local_statusline = vim.wo[win].statusline
+        if local_statusline == "%!v:lua.HumoodagenToggletermStatusline()" or local_statusline == "%!v:lua.HumoodagenPaneBorderStatusline()" then
+          vim.wo[win].statusline = ""
+        end
+      end
+    end
+    return
+  end
+
   if any_toggleterm_window(state) then
     vim.g.humoodagen_seen_toggleterm_window = true
     vim.o.laststatus = 2
     vim.go.statusline = " "
     ensure_toggleterm_statuslines(state)
   else
-    if vim.env.HUMOODAGEN_FAST_START == "1"
-      and vim.fn.argc() == 0
-      and vim.g.humoodagen_seen_toggleterm_window ~= true
-    then
-      vim.o.laststatus = 2
-      vim.go.statusline = " "
-      return
-    end
     vim.o.laststatus = state.base_laststatus
     vim.go.statusline = state.base_statusline
+
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_is_valid(win) then
+        local local_statusline = vim.wo[win].statusline
+        if local_statusline == "%!v:lua.HumoodagenToggletermStatusline()" or local_statusline == "%!v:lua.HumoodagenPaneBorderStatusline()" then
+          vim.wo[win].statusline = ""
+        end
+      end
+    end
   end
 end
 

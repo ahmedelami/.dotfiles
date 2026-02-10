@@ -151,3 +151,5 @@ $env.PROMPT_COMMAND = {||
 # ----
 # Prompt (starship): git-aware prompt like oh-my-zsh
 source ($nu.config-path | path dirname | path join "starship.nu")
+
+alias n = nvim

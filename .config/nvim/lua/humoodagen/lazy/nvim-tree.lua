@@ -1,4 +1,5 @@
-local fast_start = vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0
+local ide_like = vim.g.humoodagen_profile == "ide_like_exp"
+local fast_start = ide_like and vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0
 local is_ut7 = vim.env.__CFBundleIdentifier == "com.lifeanalytics.macos"
 
 return {
@@ -282,7 +283,7 @@ return {
                 },
 		            },
 		            git = {
-		                enable = vim.env.HUMOODAGEN_FAST_START ~= "1" and not is_ut7,
+		                enable = (not fast_start) and not is_ut7,
 		                ignore = false,
 		                timeout = 400,
 		            },
@@ -295,9 +296,9 @@ return {
             },
             view = {
                 number = true,
-                relativenumber = vim.env.HUMOODAGEN_FAST_START ~= "1",
+                relativenumber = not fast_start,
                 signcolumn = "no",
-                width = "7.5%",
+                width = "25%",
             },
             renderer = {
                 add_trailing = false,
@@ -555,16 +556,16 @@ return {
         end
 
         local function ensure_main_edit_win()
-            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-                if is_main_edit_win(win) then
-                    return
-                end
-            end
-
             local view = require("nvim-tree.view")
             local tree_win = view.get_winnr()
             if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
                 return
+            end
+
+            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                if win ~= tree_win and is_main_edit_win(win) then
+                    return
+                end
             end
 
             vim.api.nvim_set_current_win(tree_win)
@@ -671,13 +672,18 @@ return {
 		            end
 
 		            local main_win = find_main_win()
-		            if vim.env.HUMOODAGEN_FAST_START == "1" and vim.fn.argc() == 0 and main_win then
+		            if fast_start and main_win then
 		                pcall(vim.api.nvim_win_call, main_win, open_tree_stable)
 		            else
 		                require("nvim-tree.api").tree.open({ focus = false })
 		            end
 
-		            if origin_win and vim.api.nvim_win_is_valid(origin_win) then
+		            pcall(ensure_main_edit_win)
+
+		            local focus_win = find_main_win()
+		            if focus_win and vim.api.nvim_win_is_valid(focus_win) then
+		                vim.api.nvim_set_current_win(focus_win)
+		            elseif origin_win and vim.api.nvim_win_is_valid(origin_win) then
 		                vim.api.nvim_set_current_win(origin_win)
 		            end
 
@@ -764,6 +770,23 @@ return {
 	                end
 
 	                open_once("uienter")
+
+                    -- When Neovim starts with a directory arg, nvim-tree can
+                    -- hijack it before UIEnter and replace the argv entry with
+                    -- "NvimTree_1". In that case `open_nvim_tree()` won't run,
+                    -- but we still want a main edit window to the right.
+                    if not opened then
+                        local ok_view, view = pcall(require, "nvim-tree.view")
+                        if ok_view and view.is_visible() then
+                            pcall(ensure_main_edit_win)
+                            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                                if is_main_edit_win(win) then
+                                    vim.api.nvim_set_current_win(win)
+                                    break
+                                end
+                            end
+                        end
+                    end
 	            end,
 	        })
 

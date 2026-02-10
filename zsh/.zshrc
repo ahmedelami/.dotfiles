@@ -1,95 +1,3 @@
-if alias n >/dev/null 2>&1; then
-  unalias n
-fi
-
-typeset -g __N_MRU_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/nvim-mru"
-typeset -gi __N_MRU_MAX=2000
-
-__n_mru_add() {
-  local path="$1"
-  [[ -n $path ]] || return 0
-
-  local dir=${__N_MRU_FILE:h}
-  [[ -d $dir ]] || mkdir -p -- "$dir" 2>/dev/null || return 0
-  print -r -- "${path:A}" >>| "$__N_MRU_FILE" 2>/dev/null
-}
-
-__n_mru_prune() {
-  [[ -f $__N_MRU_FILE ]] || return 0
-  local -i lines
-  lines=$(wc -l < "$__N_MRU_FILE" 2>/dev/null) || return 0
-  (( lines <= __N_MRU_MAX )) && return 0
-
-  local tmp="$__N_MRU_FILE.tmp.$$"
-  tail -n "$__N_MRU_MAX" "$__N_MRU_FILE" >| "$tmp" 2>/dev/null \
-    && mv -f -- "$tmp" "$__N_MRU_FILE" 2>/dev/null \
-    || rm -f -- "$tmp" 2>/dev/null
-}
-
-__n_mru_resolve_basename() {
-  local -r name="$1"
-  [[ -f $__N_MRU_FILE ]] || return 1
-
-  local -a lines
-  lines=("${(@f)$(<"$__N_MRU_FILE")}")
-
-  local p
-  for (( i=${#lines}; i>=1; i-- )); do
-    p="${lines[i]}"
-    [[ ${p:t} == "$name" ]] || continue
-    print -r -- "$p"
-    return 0
-  done
-  return 1
-}
-
-n() {
-  local -a args
-  args=("$@")
-
-  # If it's a single bare filename not found in cwd, open the most recent match.
-  if (( $# == 1 )) && [[ "$1" != */* ]] && [[ ! -e "$1" ]]; then
-    local hit
-    hit="$(__n_mru_resolve_basename "$1")"
-    [[ -n $hit ]] && args=("$hit")
-  fi
-
-  # Record any path-like args (skip flags/+cmd). Avoid recording directories.
-  local a
-  local -i seen_end=0
-  local -i skip_next=0
-  for a in "${args[@]}"; do
-    if (( skip_next )); then
-      skip_next=0
-      continue
-    fi
-
-    if (( ! seen_end )); then
-      if [[ $a == -- ]]; then
-        seen_end=1
-        continue
-      fi
-
-      case "$a" in
-        -c|--cmd|-S|-u|-i|-s|-W|-w|-o|-O|-p|-t)
-          skip_next=1
-          continue
-          ;;
-      esac
-
-      if [[ $a == -* || $a == +* ]]; then
-        continue
-      fi
-    fi
-
-    [[ -d $a ]] && continue
-    __n_mru_add "$a"
-  done
-  __n_mru_prune
-
-  command nvim "${args[@]}"
-}
-
 export PATH="/opt/homebrew/bin:$PATH"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
 
@@ -112,7 +20,7 @@ if [[ -n "${PS1:-}" ]] \
   fi
 fi
 
-if command -v tmux &> /dev/null && [ -z "$DISABLE_TMUX_AUTO" ] && [ -z "$WEZTERM_PANE" ] && [ -n "$PS1" ] && [[ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
+if command -v tmux &> /dev/null && [ -z "$DISABLE_TMUX_AUTO" ] && [ -z "$WEZTERM_PANE" ] && [ -n "$PS1" ] && [[ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]] && [[ ! "${TERM_PROGRAM:-}" =~ [Gg]hostty ]] && [[ ! "${TERM:-}" =~ ghostty ]] && [ -z "${GHOSTTY_RESOURCES_DIR:-}" ] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
   # Load the safety wrapper first so manual calls are also protected
   source "$HOME/.tmux_safety_wrapper.zsh"
 
@@ -499,10 +407,6 @@ JSON
   # bun
   export BUN_INSTALL="$HOME/.bun"
   export PATH="$BUN_INSTALL/bin:$PATH"
-
-  # Neovim Aliases
-  alias n="nvim"
-  alias nv="nvim"
 
   # API Keys (Sourced from local secrets file - DO NOT PUSH)
   if [ -f "$HOME/.zsh_secrets" ]; then

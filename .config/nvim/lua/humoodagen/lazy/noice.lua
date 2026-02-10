@@ -1,5 +1,8 @@
+local ide_like = vim.g.humoodagen_profile == "ide_like_exp"
+
 return {
   "folke/noice.nvim",
+  enabled = ide_like,
   event = "VeryLazy",
   dependencies = {
     "MunifTanjim/nui.nvim",
@@ -12,6 +15,12 @@ return {
     })
 
     require("noice").setup({
+      cmdline = {
+        enabled = false,
+      },
+      popupmenu = {
+        enabled = false,
+      },
       lsp = {
         -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
         override = {
@@ -23,7 +32,7 @@ return {
       -- you can enable a preset for easier configuration
       presets = {
         bottom_search = true,         -- use a classic bottom cmdline for search
-        command_palette = true,       -- position the cmdline and popupmenu together
+        command_palette = false,      -- keep the default Neovim cmdline (bottom)
         long_message_to_split = true, -- long messages will be sent to a split
         inc_rename = false,           -- enables an input dialog for inc-rename.nvim
         lsp_doc_border = true,        -- add a border to hover docs and signature help
