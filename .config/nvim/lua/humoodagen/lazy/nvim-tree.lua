@@ -267,11 +267,14 @@ return {
 	            on_attach = on_attach,
 	            trash = {
 	                cmd = "trash", -- Requires 'trash-cli' or similar on your system
-	            },
-	            hijack_netrw = true,
-	            hijack_unnamed_buffer_when_opening = false,
-	            sync_root_with_cwd = true,
-	            update_focused_file = {
+		            },
+		            hijack_netrw = false,
+		            hijack_directories = {
+		                enable = false,
+		            },
+		            hijack_unnamed_buffer_when_opening = false,
+		            sync_root_with_cwd = true,
+		            update_focused_file = {
 	                enable = true,
 	                update_root = false,
 	            },
@@ -592,21 +595,15 @@ return {
             end
 	        end
 	
-		        -- Open nvim-tree on startup if no file is specified
-		        local function open_nvim_tree(data)
-		            local no_args = data.file == ""
-		            local directory = vim.fn.isdirectory(data.file) == 1
-	
-	            if not no_args and not directory then
-	                return false
-	            end
-	
-	            perf_mark("nvim-tree:open:start", data.file)
-	
-	            -- change to the directory
-		            if directory then
-		                vim.cmd.cd(data.file)
+			        -- Open nvim-tree on startup when launching with no args.
+			        local function open_nvim_tree(data)
+			            local no_args = data.file == ""
+		
+		            if not no_args then
+		                return false
 		            end
+		
+		            perf_mark("nvim-tree:open:start", data.file)
 		
 		            -- open the tree
 		            local origin_win = vim.api.nvim_get_current_win()

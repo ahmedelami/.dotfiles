@@ -14,3 +14,6 @@ secrets.zsh
 # Zed local state (databases, conversations)
 .config/zed/prompts/
 .config/zed/conversations/
+
+# History exports: allow the sanitized snapshot, but ignore any backups.
+history/*.bak-*

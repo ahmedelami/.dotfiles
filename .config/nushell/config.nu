@@ -26,6 +26,12 @@
 source ~/.config/nushell/zoxide.nu
 
 # ----
+# History
+# Keep plaintext history so it can be shared with zsh (see ~/.zshrc HISTFILE).
+$env.config.history.file_format = "plaintext"
+$env.config.history.sync_on_enter = true
+
+# ----
 # Hide the Nushell welcome banner (the ASCII art + links + startup stats).
 $env.config.show_banner = false
 

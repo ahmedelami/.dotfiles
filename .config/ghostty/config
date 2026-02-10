@@ -47,3 +47,21 @@ mouse-hide-while-typing = true
 
 # Unfocused state (make inactive panes dimmer)
 unfocused-split-opacity = 0.6
+
+# Panes (Ghostty splits)
+#
+# Vim-style focus movement between Ghostty splits.
+# Note: this overrides macOS Cmd+H (Hide) and Ghostty's default Cmd+K (Clear Screen).
+keybind = super+h=goto_split:left
+keybind = super+j=goto_split:down
+keybind = super+k=goto_split:up
+keybind = super+l=goto_split:right
+
+# Vim-style split creation in a specific direction.
+keybind = super+shift+h=new_split:left
+keybind = super+shift+j=new_split:down
+keybind = super+shift+k=new_split:up
+keybind = super+shift+l=new_split:right
+
+# Preserve the default clear-screen behavior on a new key.
+keybind = super+ctrl+k=clear_screen

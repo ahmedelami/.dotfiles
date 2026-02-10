@@ -22,16 +22,15 @@ require("lazy").setup({
       rtp = {
         reset = true,
         disabled_plugins = (function()
-          local disabled = {
-          "gzip",
-          "matchit",
-          "matchparen",
-          "netrwPlugin",
-          "tarPlugin",
-          "tohtml",
-          "tutor",
-          "zipPlugin",
-          }
+	          local disabled = {
+	          "gzip",
+	          "matchit",
+	          "matchparen",
+	          "tarPlugin",
+	          "tohtml",
+	          "tutor",
+	          "zipPlugin",
+	          }
 
           return disabled
         end)(),

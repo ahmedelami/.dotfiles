@@ -1,6 +1,3 @@
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
-
 -- Netrw: hide the big top banner/quick-help block (still accessible via :help).
 vim.g.netrw_banner = 0
 

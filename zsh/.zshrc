@@ -1,6 +1,23 @@
 export PATH="/opt/homebrew/bin:$PATH"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
 
+# ----
+# Shared history (zsh + Nushell)
+#
+# Use Nushell's plaintext history file so zsh autosuggestions and Nushell hints
+# share the same command history.
+#
+# NOTE: Oh My Zsh enables EXTENDED_HISTORY (timestamps) by default; we disable it
+# after loading OMZ so this stays plaintext and Nushell-compatible.
+if [[ "$OSTYPE" == darwin* ]]; then
+  export HISTFILE="$HOME/Library/Application Support/nushell/history.txt"
+else
+  export HISTFILE="${XDG_DATA_HOME:-$HOME/.local/share}/nushell/history.txt"
+fi
+mkdir -p -- "${HISTFILE%/*}"
+HISTSIZE=100000
+SAVEHIST=100000
+
 # Terminal.app startup: default to ~/repos and auto-launch nvim once.
 # (Terminal.app can't forward Cmd+... to terminal apps anyway, so this gives a
 # consistent "open Terminal -> land in Neovim" flow.)
@@ -121,6 +138,9 @@ ZSH_THEME="robbyrussell-light"
 plugins=(git direnv)
 
 source $ZSH/oh-my-zsh.sh
+
+# Keep shared history plaintext (compatible with Nushell history.txt).
+unsetopt extended_history
 
 # Tab-complete `n` from Neovim MRU (plus normal file completion).
 if (( $+functions[compdef] )); then
