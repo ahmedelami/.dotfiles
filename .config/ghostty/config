@@ -52,16 +52,47 @@ unfocused-split-opacity = 0.6
 #
 # Vim-style focus movement between Ghostty splits.
 # Note: this overrides macOS Cmd+H (Hide) and Ghostty's default Cmd+K (Clear Screen).
+#
+# We bind both:
+# - the produced character (layout-aware), and
+# - the physical key (layout-agnostic).
 keybind = super+h=goto_split:left
 keybind = super+j=goto_split:down
 keybind = super+k=goto_split:up
 keybind = super+l=goto_split:right
+keybind = super+key_h=goto_split:left
+keybind = super+key_j=goto_split:down
+keybind = super+key_k=goto_split:up
+keybind = super+key_l=goto_split:right
 
 # Vim-style split creation in a specific direction.
 keybind = super+shift+h=new_split:left
 keybind = super+shift+j=new_split:down
 keybind = super+shift+k=new_split:up
 keybind = super+shift+l=new_split:right
+keybind = super+shift+key_h=new_split:left
+keybind = super+shift+key_j=new_split:down
+keybind = super+shift+key_k=new_split:up
+keybind = super+shift+key_l=new_split:right
+
+# Alternate bindings (Cmd+Opt) in case Cmd+Shift letter combos are grabbed by the OS/app.
+keybind = super+alt+h=goto_split:left
+keybind = super+alt+j=goto_split:down
+keybind = super+alt+k=goto_split:up
+keybind = super+alt+l=goto_split:right
+keybind = super+alt+key_h=goto_split:left
+keybind = super+alt+key_j=goto_split:down
+keybind = super+alt+key_k=goto_split:up
+keybind = super+alt+key_l=goto_split:right
+
+keybind = super+alt+shift+h=new_split:left
+keybind = super+alt+shift+j=new_split:down
+keybind = super+alt+shift+k=new_split:up
+keybind = super+alt+shift+l=new_split:right
+keybind = super+alt+shift+key_h=new_split:left
+keybind = super+alt+shift+key_j=new_split:down
+keybind = super+alt+shift+key_k=new_split:up
+keybind = super+alt+shift+key_l=new_split:right
 
 # Preserve the default clear-screen behavior on a new key.
 keybind = super+ctrl+k=clear_screen
