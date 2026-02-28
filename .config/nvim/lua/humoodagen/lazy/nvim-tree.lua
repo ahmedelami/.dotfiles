@@ -10,10 +10,11 @@ return {
     cmd = { "NvimTreeToggle", "NvimTreeOpen", "NvimTreeClose", "NvimTreeFindFileToggle", "NvimTreeFindFile" },
     keys = {
         { "<leader>pe", "<cmd>NvimTreeToggle<CR>", desc = "Toggle NvimTree" },
-        { "<leader>pv", "<cmd>NvimTreeFindFileToggle<CR>", desc = "NvimTree Find File" },
+        { "<leader>pV", "<cmd>NvimTreeFindFileToggle<CR>", desc = "NvimTree Find File" },
     },
     dependencies = {
         "echasnovski/mini.nvim",
+        "nvim-tree/nvim-web-devicons",
     },
     config = function()
         local function on_attach(bufnr)
@@ -268,11 +269,11 @@ return {
 	            trash = {
 	                cmd = "trash", -- Requires 'trash-cli' or similar on your system
 		            },
-		            hijack_netrw = false,
+		            hijack_netrw = true,
 		            hijack_directories = {
-		                enable = false,
+		                enable = true,
 		            },
-		            hijack_unnamed_buffer_when_opening = false,
+		            hijack_unnamed_buffer_when_opening = true,
 		            sync_root_with_cwd = true,
 		            update_focused_file = {
 	                enable = true,
@@ -295,6 +296,7 @@ return {
                     -- Don't force the tree back to `view.width` whenever a file is opened.
                     -- This keeps manual `:vertical resize` adjustments stable.
                     resize_window = false,
+                    quit_on_open = true,
                 },
             },
             view = {
@@ -303,10 +305,11 @@ return {
                 signcolumn = "no",
                 width = "25%",
             },
-            renderer = {
-                add_trailing = false,
-                group_empty = true,
-                highlight_git = "name",
+		            renderer = {
+		                add_trailing = false,
+		                group_empty = false,
+		                indent_width = 3,
+		                highlight_git = "name",
                 -- Show only the last folder segment (e.g. "/analytics-dash") in
                 -- the tree header instead of the full path, and truncate to
                 -- avoid wrapping in narrow tree widths.
@@ -357,18 +360,14 @@ return {
                 icons = {
                     git_placement = "after",
                     web_devicons = {
-                        file = { enable = false, color = false },
-                        -- mini.icons can mock `nvim-web-devicons` for files, but
-                        -- the devicons API can't tell "folder vs file name".
-                        -- Keep folders on nvim-tree glyphs, and use devicons
-                        -- only for file icons.
+                        file = { enable = true, color = true },
                         folder = { enable = false },
                     },
                     padding = {
-                        icon = "",
+                        icon = " ",
                     },
                     show = {
-                        file = false,
+                        file = true,
                         folder = true,
                         folder_arrow = false,
                         git = false,
@@ -377,12 +376,12 @@ return {
                         folder = {
                             arrow_closed = "",
                             arrow_open = "",
-                            default = "▏",
-                            open = "▏",
-                            empty = "▏",
-                            empty_open = "▏",
-                            symlink = "▏",
-                            symlink_open = "▏",
+                            default = "▕",
+                            open = "▕",
+                            empty = "▕",
+                            empty_open = "▕",
+                            symlink = "▕",
+                            symlink_open = "▕",
                         },
                         git = {
                             unstaged = "",
@@ -398,6 +397,12 @@ return {
             },
             filters = {
                 dotfiles = false,
+            },
+            tab = {
+                sync = {
+                    open = false,
+                    close = false,
+                },
             },
         })
 
@@ -418,25 +423,6 @@ return {
                 undo.record_rename(payload.old_name, payload.new_name)
             end
         end)
-        events.subscribe(events.Event.TreeOpen, function()
-            local ok_view, view = pcall(require, "nvim-tree.view")
-            if not ok_view then
-                return
-            end
-            local win = view.get_winnr()
-            if win and vim.api.nvim_win_is_valid(win) then
-                local buf = vim.api.nvim_win_get_buf(win)
-                vim.wo[win].wrap = false
-                vim.wo[win].linebreak = true
-                vim.wo[win].breakindent = true
-                vim.wo[win].breakindentopt = "list:-1"
-                -- Make wrapped tree entries align under the filename (not at col 0).
-                -- Uses breakindentopt=list:-1 and a tree-specific formatlistpat.
-                vim.bo[buf].formatlistpat = "^\\%((│\\s\\|└\\s\\|  )\\+\\)\\ze\\S"
-            end
-        end)
-
-        local open_pipe_ns = vim.api.nvim_create_namespace("HumoodagenNvimTreeOpenPipes")
 
         local function node_depth(node)
             if not node or type(node) ~= "table" then
@@ -451,6 +437,601 @@ return {
             end
             return depth
         end
+
+	        local function expand_tree_levels(levels)
+	            local ok_api, api = pcall(require, "nvim-tree.api")
+	            if not ok_api then
+	                return
+	            end
+
+	            local n = tonumber(levels) or 0
+	            if n <= 1 then
+	                return
+	            end
+
+	            local function contains(tbl, value)
+	                if type(tbl) ~= "table" then
+	                    return false
+	                end
+	                for _, v in ipairs(tbl) do
+	                    if v == value then
+	                        return true
+	                    end
+	                end
+	                return false
+	            end
+
+	            local function is_git_ignored_or_untracked_dir(node)
+	                if type(node) ~= "table" or node.type ~= "directory" then
+	                    return false
+	                end
+
+	                local status = node.git_status
+	                if type(status) ~= "table" then
+	                    return false
+	                end
+
+	                if status.file == "!!" or status.file == "??" then
+	                    return true
+	                end
+
+	                local dir = status.dir
+	                if type(dir) ~= "table" then
+	                    return false
+	                end
+
+	                return contains(dir.direct, "??") or contains(dir.indirect, "??")
+	            end
+
+	            local expand_depth = n - 1
+	            api.tree.expand_all(nil, {
+	                expand_until = function(_, node)
+	                    if not node or node.type ~= "directory" then
+	                        return false
+	                    end
+
+	                    local name = type(node.name) == "string" and node.name or ""
+	                    if name == "node_modules" then
+	                        return false
+	                    end
+	                    if name:sub(1, 1) == "." then
+	                        return false
+	                    end
+	                    if is_git_ignored_or_untracked_dir(node) then
+	                        return false
+	                    end
+
+	                    return node_depth(node) < expand_depth
+	                end,
+	            })
+	        end
+
+	        events.subscribe(events.Event.TreeOpen, function()
+	            local ok_view, view = pcall(require, "nvim-tree.view")
+	            if not ok_view then
+	                return
+	            end
+            local win = view.get_winnr()
+            if win and vim.api.nvim_win_is_valid(win) then
+                local buf = vim.api.nvim_win_get_buf(win)
+                vim.wo[win].wrap = false
+                vim.wo[win].linebreak = true
+                -- VS Code-style scrolling in the tree (no top/bottom margins).
+                -- This also keeps the sticky header logic stable, because the
+                -- top visible row stays inside the currently-selected subtree.
+                vim.wo[win].scrolloff = 0
+                vim.wo[win].sidescrolloff = 0
+                vim.wo[win].breakindent = true
+                vim.wo[win].breakindentopt = "list:-1"
+                -- Make wrapped tree entries align under the filename (not at col 0).
+                -- Uses breakindentopt=list:-1 and a tree-specific formatlistpat.
+                vim.bo[buf].formatlistpat = "^\\%((│\\s\\|└\\s\\|  )\\+\\)\\ze\\S"
+	            end
+	
+	            vim.schedule(function()
+	                local levels = vim.g.humoodagen_nvim_tree_expand_levels
+	                if levels == nil then
+	                    levels = vim.env.HUMOODAGEN_NVIM_TREE_EXPAND_LEVELS
+	                end
+	                if levels == nil or levels == "" then
+	                    levels = 1
+	                end
+
+	                expand_tree_levels(levels)
+	            end)
+        end)
+
+	        local open_pipe_ns = vim.api.nvim_create_namespace("HumoodagenNvimTreeOpenPipes")
+	        local sticky_header_ns = vim.api.nvim_create_namespace("HumoodagenNvimTreeStickyHeader")
+	        local sticky_overlay_ns = vim.api.nvim_create_namespace("HumoodagenNvimTreeStickyOverlay")
+	        local nvim_tree_cache = {}
+
+	        local sticky_overlay_state = {}
+
+        local function sticky_header_lnums(bufnr, top_lnum)
+            local cache = nvim_tree_cache[bufnr]
+            if type(cache) ~= "table" then
+                return nil, "no_cache"
+            end
+
+            local w0 = tonumber(top_lnum) or 0
+            local start_line = tonumber(cache.start_line) or 1
+            if w0 < start_line then
+                return nil, "above_start_line:" .. tostring(start_line)
+            end
+
+            local nodes_by_line = cache.nodes_by_line
+            if type(nodes_by_line) ~= "table" then
+                return nil, "no_nodes_by_line"
+            end
+
+            local line_for_path = cache.line_for_path
+            if type(line_for_path) ~= "table" then
+                return nil, "no_line_for_path"
+            end
+
+            local node = nodes_by_line[w0]
+            local node_lnum = w0
+            if type(node) ~= "table" then
+                -- In rare cases the topline can be on a non-node row (e.g. blank
+                -- padding at the end). Prefer the next node down, otherwise the
+                -- nearest node up.
+                for delta = 1, 12 do
+                    local down_lnum = w0 + delta
+                    local down = nodes_by_line[down_lnum]
+                    if type(down) == "table" then
+                        node = down
+                        node_lnum = down_lnum
+                        break
+                    end
+
+                    local up_lnum = w0 - delta
+                    if up_lnum >= start_line then
+                        local up = nodes_by_line[up_lnum]
+                        if type(up) == "table" then
+                            node = up
+                            node_lnum = up_lnum
+                            break
+                        end
+                    end
+                end
+            end
+            if type(node) ~= "table" then
+                return nil, "no_node_near:" .. tostring(w0)
+            end
+
+            -- Prefer the node parent chain for stacking: it's O(depth) and avoids
+            -- edge cases where indentation-based ranges get out of sync.
+            --
+            -- VS Code-style: only "stick" directories once their own row has scrolled
+            -- above the top visible line (lnum < w0).
+            local lnums = {}
+            local seen = {}
+            local cur = node
+            while type(cur) == "table" do
+                if cur.type == "directory" then
+                    local path = cur.absolute_path
+                    if type(path) == "string" then
+                        local lnum = line_for_path[path]
+                        if type(lnum) == "number" and lnum < node_lnum and not seen[lnum] then
+                            lnums[#lnums + 1] = lnum
+                            seen[lnum] = true
+                        end
+                    end
+                end
+                cur = cur.parent
+            end
+
+            if #lnums == 0 then
+                return nil, "no_dirs"
+            end
+
+            table.sort(lnums)
+            return lnums, "ok"
+        end
+
+        local function sticky_header_virt_lines(bufnr, lnums)
+            if type(lnums) ~= "table" or #lnums == 0 then
+                return nil
+            end
+
+            local cache = nvim_tree_cache[bufnr]
+            if type(cache) ~= "table" then
+                return nil
+            end
+
+            local marks = cache.pipe_marks
+            local blue_pipe = "▕"
+            local grey_pipe = "│"
+
+            local virt_lines = {}
+            for _, lnum in ipairs(lnums) do
+                local row = lnum - 1
+                local base = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+                local first_non_space = base:find("%S")
+                local icon_col = (first_non_space and (first_non_space - 1)) or 0
+
+                local row_marks = (type(marks) == "table") and marks[row] or nil
+                local prefix_cells = {}
+                for _ = 1, icon_col do
+                    prefix_cells[#prefix_cells + 1] = " "
+                end
+                if type(row_marks) == "table" then
+                    for col, kind in pairs(row_marks) do
+                        if type(col) == "number" and col >= 0 and col < icon_col then
+                            prefix_cells[col + 1] = (kind == "blue") and blue_pipe or grey_pipe
+                        end
+                    end
+                end
+
+                local icon_charidx = vim.str_utfindex(base, icon_col)
+                local icon = vim.fn.strcharpart(base, icon_charidx, 1)
+                local name = vim.fn.strcharpart(base, icon_charidx + 2)
+                if icon == "" then
+                    icon = blue_pipe
+                end
+
+                local segments = {}
+                for _, cell in ipairs(prefix_cells) do
+                    if cell == blue_pipe then
+                        segments[#segments + 1] = { blue_pipe, "NvimTreeFolderIcon" }
+                    elseif cell == grey_pipe then
+                        segments[#segments + 1] = { grey_pipe, "NvimTreeIndentMarker" }
+                    else
+                        segments[#segments + 1] = { " ", "NvimTreeNormal" }
+                    end
+                end
+
+                segments[#segments + 1] = { icon, "NvimTreeFolderIcon" }
+                segments[#segments + 1] = { " ", "NvimTreeNormal" }
+                if name ~= "" then
+                    segments[#segments + 1] = { name, "NvimTreeFolderName" }
+                end
+
+                virt_lines[#virt_lines + 1] = segments
+            end
+
+            return virt_lines
+        end
+
+	        local function get_overlay_state(tree_win)
+	            local state = sticky_overlay_state[tree_win]
+	            if type(state) ~= "table" then
+	                state = {}
+	                sticky_overlay_state[tree_win] = state
+	            end
+	            return state
+	        end
+
+	        local function overlay_close(tree_win)
+	            local state = sticky_overlay_state[tree_win]
+	            if type(state) ~= "table" then
+	                return
+	            end
+
+	            if state.win and vim.api.nvim_win_is_valid(state.win) then
+	                pcall(vim.api.nvim_win_close, state.win, true)
+	            end
+	            state.win = nil
+	        end
+
+	        local function overlay_ensure_buf(state)
+	            if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
+	                return state.buf
+	            end
+
+	            local buf = vim.api.nvim_create_buf(false, true)
+	            vim.bo[buf].buftype = "nofile"
+	            vim.bo[buf].bufhidden = "hide"
+	            vim.bo[buf].swapfile = false
+	            vim.bo[buf].modifiable = false
+	            vim.bo[buf].filetype = "NvimTreeStickyHeader"
+	            state.buf = buf
+	            return buf
+	        end
+
+	        local function overlay_ensure_win(tree_win, state, width, height)
+	            if state.win and vim.api.nvim_win_is_valid(state.win) then
+	                pcall(vim.api.nvim_win_set_config, state.win, {
+	                    relative = "win",
+	                    win = tree_win,
+	                    row = 0,
+	                    col = 0,
+	                    width = width,
+	                    height = height,
+	                    style = "minimal",
+	                    focusable = false,
+	                    zindex = 251,
+	                })
+	                return state.win
+	            end
+
+	            local buf = overlay_ensure_buf(state)
+	            local win = vim.api.nvim_open_win(buf, false, {
+	                relative = "win",
+	                win = tree_win,
+	                row = 0,
+	                col = 0,
+	                width = width,
+	                height = height,
+	                style = "minimal",
+	                focusable = false,
+	                noautocmd = true,
+	                zindex = 251,
+	            })
+	            state.win = win
+
+	            vim.wo[win].wrap = false
+	            vim.wo[win].cursorline = false
+	            vim.wo[win].number = false
+	            vim.wo[win].relativenumber = false
+	            vim.wo[win].signcolumn = "no"
+	            vim.wo[win].foldcolumn = "0"
+	            vim.wo[win].winblend = 0
+	            vim.wo[win].winhl = "Normal:NvimTreeNormal,NormalNC:NvimTreeNormal,EndOfBuffer:NvimTreeNormal"
+
+	            return win
+	        end
+
+	        local function overlay_render(tree_win, bufnr, topline, lnums, width, textoff)
+	            if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+	                overlay_close(tree_win)
+	                sticky_overlay_state[tree_win] = nil
+	                return
+	            end
+	            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+	                overlay_close(tree_win)
+	                sticky_overlay_state[tree_win] = nil
+	                return
+	            end
+	            if vim.bo[bufnr].filetype ~= "NvimTree" then
+	                overlay_close(tree_win)
+	                sticky_overlay_state[tree_win] = nil
+	                return
+	            end
+
+	            local state = get_overlay_state(tree_win)
+	            local cache = nvim_tree_cache[bufnr]
+	            if type(cache) ~= "table" then
+	                overlay_close(tree_win)
+	                return
+	            end
+
+	            if type(lnums) ~= "table" or #lnums == 0 then
+	                overlay_close(tree_win)
+	                return
+	            end
+
+	            local height = #lnums
+	            width = tonumber(width) or vim.api.nvim_win_get_width(tree_win)
+	            textoff = tonumber(textoff) or 0
+
+	            overlay_ensure_win(tree_win, state, width, height)
+	            local header_buf = overlay_ensure_buf(state)
+	            vim.api.nvim_buf_clear_namespace(header_buf, sticky_overlay_ns, 0, -1)
+
+	            local gutter = (textoff > 0) and string.rep(" ", textoff) or ""
+	            local marks = cache.pipe_marks
+	            local blue_pipe = "▕"
+	            local grey_pipe = "│"
+
+	            local lines = {}
+	            local highlights = {}
+
+	            for idx, lnum in ipairs(lnums) do
+	                local row = lnum - 1
+	                local base = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+	                local first_non_space = base:find("%S")
+	                local icon_col = (first_non_space and (first_non_space - 1)) or 0
+
+	                local row_marks = (type(marks) == "table") and marks[row] or nil
+	                local prefix_cells = {}
+	                for _ = 1, icon_col do
+	                    prefix_cells[#prefix_cells + 1] = " "
+	                end
+	                if type(row_marks) == "table" then
+	                    for col, kind in pairs(row_marks) do
+	                        if type(col) == "number" and col >= 0 and col < icon_col then
+	                            prefix_cells[col + 1] = (kind == "blue") and blue_pipe or grey_pipe
+	                        end
+	                    end
+	                end
+
+	                local icon_charidx = vim.str_utfindex(base, icon_col)
+	                local icon = vim.fn.strcharpart(base, icon_charidx, 1)
+	                local name = vim.fn.strcharpart(base, icon_charidx + 2)
+	                if icon == "" then
+	                    icon = blue_pipe
+	                end
+
+	                local prefix = table.concat(prefix_cells)
+	                lines[#lines + 1] = gutter .. prefix .. icon .. " " .. name
+
+	                local line_idx = idx - 1
+	                local col = #gutter
+	                for _, cell in ipairs(prefix_cells) do
+	                    local bytes = #cell
+	                    if cell == blue_pipe then
+	                        highlights[#highlights + 1] = { hl = "NvimTreeFolderIcon", line = line_idx, start_col = col, end_col = col + bytes }
+	                    elseif cell == grey_pipe then
+	                        highlights[#highlights + 1] = { hl = "NvimTreeIndentMarker", line = line_idx, start_col = col, end_col = col + bytes }
+	                    end
+	                    col = col + bytes
+	                end
+
+	                local icon_bytes = #icon
+	                highlights[#highlights + 1] = { hl = "NvimTreeFolderIcon", line = line_idx, start_col = col, end_col = col + icon_bytes }
+	                col = col + icon_bytes
+	                col = col + 1
+
+	                local name_bytes = #name
+	                if name_bytes > 0 then
+	                    highlights[#highlights + 1] = { hl = "NvimTreeFolderName", line = line_idx, start_col = col, end_col = col + name_bytes }
+	                end
+	            end
+
+	            vim.bo[header_buf].modifiable = true
+	            vim.api.nvim_buf_set_lines(header_buf, 0, -1, false, lines)
+	            vim.bo[header_buf].modifiable = false
+
+	            for _, h in ipairs(highlights) do
+	                pcall(vim.api.nvim_buf_add_highlight, header_buf, sticky_overlay_ns, h.hl, h.line, h.start_col, h.end_col)
+	            end
+
+	            state.last_key = state.key
+	            state.last_topline = topline
+	        end
+
+	        local function overlay_schedule(tree_win)
+	            local state = sticky_overlay_state[tree_win]
+	            if type(state) ~= "table" then
+	                return
+	            end
+	            if state.scheduled then
+	                return
+	            end
+	            state.scheduled = true
+	            vim.schedule(function()
+	                state.scheduled = false
+	                if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+	                    sticky_overlay_state[tree_win] = nil
+	                    return
+	                end
+	                overlay_render(tree_win, state.bufnr, state.topline, state.lnums, state.width, state.textoff)
+	            end)
+	        end
+
+	        local sticky_runtime = {}
+	        local sticky_log_path = vim.fn.stdpath("cache") .. "/humoodagen_nvim_tree_sticky.log"
+
+	        local function sticky_log(line)
+	            local ok_stat, stat = pcall(vim.loop.fs_stat, sticky_log_path)
+	            if ok_stat and stat and stat.size and stat.size > 200000 then
+	                pcall(vim.fn.writefile, {}, sticky_log_path)
+	            end
+	            pcall(vim.fn.writefile, { line }, sticky_log_path, "a")
+	        end
+
+	        local function sticky_refresh(tree_win)
+	            local ok = pcall(function()
+	                if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+	                    return
+                end
+
+                local bufnr = vim.api.nvim_win_get_buf(tree_win)
+                if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
+                    return
+                end
+                if vim.bo[bufnr].filetype ~= "NvimTree" then
+                    overlay_close(tree_win)
+                    return
+                end
+
+                local window_w0 = vim.api.nvim_win_call(tree_win, function()
+                    return vim.fn.line("w0")
+                end)
+	                if type(window_w0) ~= "number" or window_w0 < 1 then
+	                    overlay_close(tree_win)
+	                    return
+	                end
+
+	                -- Compute sticky stack relative to the first *visible* row under the
+	                -- overlay. Without this, the sticky headers can appear "late" when
+	                -- the overlay is already covering the next lines.
+	                local probe = window_w0
+	                local lnums, why
+	                local lines = 0
+	                for _ = 1, 6 do
+	                    local new_lnums, new_why = sticky_header_lnums(bufnr, probe)
+	                    local new_lines = (type(new_lnums) == "table") and #new_lnums or 0
+	                    local new_probe = window_w0 + new_lines
+	                    lnums, why, lines = new_lnums, new_why, new_lines
+	                    if new_probe == probe then
+	                        break
+	                    end
+	                    probe = new_probe
+	                end
+
+	                local key = table.concat({
+	                    tostring(bufnr),
+	                    tostring(window_w0),
+	                    tostring(probe),
+	                    (type(lnums) == "table" and table.concat(lnums, ",") or ""),
+	                }, ":")
+
+	                local rt = sticky_runtime[tree_win]
+	                if type(rt) ~= "table" then
+	                    rt = {}
+	                    sticky_runtime[tree_win] = rt
+	                end
+
+	                if type(lnums) ~= "table" or #lnums == 0 then
+	                    overlay_close(tree_win)
+	                else
+	                    local state = get_overlay_state(tree_win)
+	                    state.bufnr = bufnr
+	                    state.topline = window_w0
+	                    state.lnums = lnums
+	                    state.width = vim.api.nvim_win_get_width(tree_win)
+	                    local ok_info, info = pcall(vim.fn.getwininfo, tree_win)
+	                    state.textoff = (ok_info and type(info) == "table" and type(info[1]) == "table" and type(info[1].textoff) == "number")
+	                            and info[1].textoff
+	                        or 0
+	                    state.key = key
+
+	                    local overlay_ok = state.win and vim.api.nvim_win_is_valid(state.win)
+	                    if state.last_key ~= key or not overlay_ok then
+	                        overlay_schedule(tree_win)
+	                    end
+	                end
+
+	                local log_key = table.concat({ tostring(key), tostring(why), tostring(lines) }, "|")
+	                if rt.log_key ~= log_key then
+	                    rt.log_key = log_key
+	                    local overlay_state = sticky_overlay_state[tree_win]
+	                    local overlay_win = overlay_state and overlay_state.win or nil
+	                    sticky_log(table.concat({
+	                        os.date("%H:%M:%S"),
+	                        "win=" .. tostring(tree_win),
+	                        "buf=" .. tostring(bufnr),
+	                        "w0=" .. tostring(window_w0),
+	                        "probe=" .. tostring(probe),
+	                        "why=" .. tostring(why),
+	                        "lines=" .. tostring(lines),
+	                        "overlay=" .. tostring(overlay_win and vim.api.nvim_win_is_valid(overlay_win) or false),
+	                    }, " "))
+	                end
+	            end)
+
+            if not ok then
+                -- Best effort: avoid sticky artifacts if something goes wrong.
+                if tree_win and vim.api.nvim_win_is_valid(tree_win) then
+                    overlay_close(tree_win)
+                end
+            end
+        end
+
+        local sticky_group = vim.api.nvim_create_augroup("HumoodagenNvimTreeStickyHeaders", { clear = true })
+        vim.api.nvim_create_autocmd({ "WinScrolled", "WinResized", "BufWinEnter" }, {
+            group = sticky_group,
+            callback = function()
+                local win = (vim.v.event and vim.v.event.winid) or vim.api.nvim_get_current_win()
+                sticky_refresh(win)
+            end,
+        })
+
+        -- Fallback: some setups don't reliably fire WinScrolled for the tree (e.g. certain
+        -- mouse/scroll mappings). The decoration provider runs on redraw, so it keeps the
+        -- sticky header in sync even in those cases.
+        vim.api.nvim_set_decoration_provider(sticky_header_ns, {
+            on_win = function(_, tree_win, bufnr, topline, botline)
+                if vim.bo[bufnr].filetype ~= "NvimTree" then
+                    return false
+                end
+                sticky_refresh(tree_win)
+                return false
+            end,
+        })
 
         local function apply_open_pipes(bufnr)
             if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
@@ -472,7 +1053,7 @@ return {
                 return
             end
 
-            local indent_width = tonumber(explorer.opts.renderer.indent_width) or 2
+            local indent_width = tonumber(explorer.opts.renderer.indent_width) or 3
             if indent_width < 1 then
                 indent_width = 1
             end
@@ -495,47 +1076,117 @@ return {
             end
             table.sort(line_nums)
 
-            local depths = {}
-            local open_dirs = {}
-            for i, lnum in ipairs(line_nums) do
+            local open_dirs_by_lnum = {}
+            local icon_col_by_lnum = {}
+            for _, lnum in ipairs(line_nums) do
                 local node = nodes_by_line[lnum]
-                depths[i] = node_depth(node)
-                open_dirs[i] = (type(node) == "table" and type(node.nodes) == "table" and node.open == true)
+                open_dirs_by_lnum[lnum] = (type(node) == "table" and node.type == "directory" and node.open == true and type(node.nodes) == "table")
+
+                local row = lnum - 1
+                local text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+                local first_non_space = text:find("%S")
+                icon_col_by_lnum[lnum] = (first_non_space and (first_non_space - 1)) or 0
             end
 
-            local marks = {}
-            for i, lnum in ipairs(line_nums) do
-                if open_dirs[i] then
-                    local d = depths[i]
-                    local col = d * indent_width
-                    local j = i + 1
-                    while j <= #line_nums and depths[j] > d do
-                        local row = line_nums[j] - 1
-                        marks[row] = marks[row] or {}
-                        marks[row][col] = true
-                        j = j + 1
+            local line_for_path = {}
+            for _, lnum in ipairs(line_nums) do
+                local node = nodes_by_line[lnum]
+                if type(node) == "table" and type(node.absolute_path) == "string" then
+                    line_for_path[node.absolute_path] = lnum
+                end
+            end
+
+            local end_line_by_line = {}
+            do
+                local stack = {}
+                for idx, lnum in ipairs(line_nums) do
+                    local col = icon_col_by_lnum[lnum] or 0
+                    while #stack > 0 do
+                        local prev_lnum = line_nums[stack[#stack]]
+                        local prev_col = icon_col_by_lnum[prev_lnum] or 0
+                        if col > prev_col then
+                            break
+                        end
+                        local popped = table.remove(stack)
+                        end_line_by_line[line_nums[popped]] = line_nums[idx - 1] or line_nums[popped]
                     end
+                    table.insert(stack, idx)
+                end
+
+                local last = line_nums[#line_nums]
+                for _, idx in ipairs(stack) do
+                    end_line_by_line[line_nums[idx]] = last
                 end
             end
 
-            for row, cols in pairs(marks) do
-                for col, _ in pairs(cols) do
-                    pcall(vim.api.nvim_buf_set_extmark, bufnr, open_pipe_ns, row, col, {
-                        virt_text = { { "▏", "NvimTreeIndentMarker" } },
-                        virt_text_pos = "overlay",
-                        hl_mode = "combine",
-                        priority = 200,
-                    })
-                end
+			            local marks = {}
+			            for i, lnum in ipairs(line_nums) do
+			                if open_dirs_by_lnum[lnum] then
+			                    local icon_col = icon_col_by_lnum[lnum] or 0
+			                    local pipe_col = icon_col + math.max(0, indent_width - 1)
+			                    local end_lnum = end_line_by_line[lnum] or lnum
+			                    local j = i + 1
+			                    while j <= #line_nums and line_nums[j] <= end_lnum do
+			                        local row = line_nums[j] - 1
+			                        marks[row] = marks[row] or {}
+			                        -- Continue the folder "blue line" down through its open subtree.
+			                        marks[row][icon_col] = "blue"
+			                        -- Also draw the indented guide under the folder name column.
+			                        marks[row][pipe_col] = "grey"
+			                        j = j + 1
+			                    end
+			                end
+			            end
+
+			            local blue_pipe = "▕"
+			            local grey_pipe = "│"
+
+			            for row, cols in pairs(marks) do
+			                local line = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
+			                for col, kind in pairs(cols) do
+			                    local byte = line:sub(col + 1, col + 1)
+			                    -- Only draw over indentation whitespace; never overwrite
+			                    -- icons/labels (keeps folder icons stable).
+			                    if byte == " " or byte == "\t" then
+			                        local pipe = (kind == "blue") and blue_pipe or grey_pipe
+			                        local hl = (kind == "blue") and "NvimTreeFolderIcon" or "NvimTreeIndentMarker"
+			                        pcall(vim.api.nvim_buf_set_extmark, bufnr, open_pipe_ns, row, col, {
+			                            virt_text = { { pipe, hl } },
+			                            virt_text_pos = "overlay",
+			                            hl_mode = "combine",
+			                            priority = 200,
+			                        })
+			                    end
+			                end
+			            end
+
+            local cache = nvim_tree_cache[bufnr]
+            if type(cache) ~= "table" then
+                cache = {}
+                nvim_tree_cache[bufnr] = cache
             end
+            cache.start_line = start_line
+            cache.nodes_by_line = nodes_by_line
+            cache.line_for_path = line_for_path
+            cache.end_line_by_line = end_line_by_line
+            cache.pipe_marks = marks
+            cache.rev = (tonumber(cache.rev) or 0) + 1
         end
 
-        events.subscribe(events.Event.TreeRendered, function(payload)
-            local bufnr = payload and payload.bufnr or nil
-            vim.schedule(function()
-                apply_open_pipes(bufnr)
-            end)
-        end)
+	        events.subscribe(events.Event.TreeRendered, function(payload)
+	            local bufnr = payload and payload.bufnr or nil
+	            vim.schedule(function()
+	                apply_open_pipes(bufnr)
+	                if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+	                    local wins = vim.fn.win_findbuf(bufnr)
+	                    if type(wins) == "table" then
+	                        for _, win in ipairs(wins) do
+	                            sticky_refresh(win)
+	                        end
+	                    end
+	                end
+	            end)
+	        end)
 
         local function is_main_edit_win(win)
             if not (win and vim.api.nvim_win_is_valid(win)) then
@@ -693,6 +1344,9 @@ return {
 		            perf_mark("nvim-tree:open:done")
 		            return true
 		        end
+
+                -- Don't auto-open nvim-tree on startup; netrw handles the startup explorer.
+                vim.g.humoodagen_startup_tree_opened = true
 
                 local function schedule_fast_start_open()
                     if not fast_start then
