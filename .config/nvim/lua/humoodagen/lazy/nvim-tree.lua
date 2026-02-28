@@ -308,7 +308,7 @@ return {
 		            renderer = {
 		                add_trailing = false,
 		                group_empty = false,
-		                indent_width = 3,
+		                indent_width = 1,
 		                highlight_git = "name",
                 -- Show only the last folder segment (e.g. "/analytics-dash") in
                 -- the tree header instead of the full path, and truncate to
@@ -357,35 +357,35 @@ return {
                         none = " ",
                     },
                 },
-                icons = {
-                    git_placement = "after",
-                    web_devicons = {
-                        file = { enable = true, color = true },
-                        folder = { enable = false },
-                    },
+		                icons = {
+		                    git_placement = "after",
+		                    web_devicons = {
+		                        file = { enable = true, color = true },
+		                        folder = { enable = false },
+		                    },
                     padding = {
                         icon = " ",
                     },
-                    show = {
-                        file = true,
-                        folder = true,
-                        folder_arrow = false,
-                        git = false,
-                    },
-                    glyphs = {
-                        folder = {
-                            arrow_closed = "",
-                            arrow_open = "",
-                            default = "▕",
-                            open = "▕",
-                            empty = "▕",
-                            empty_open = "▕",
-                            symlink = "▕",
-                            symlink_open = "▕",
-                        },
-                        git = {
-                            unstaged = "",
-                            staged = "",
+		                    show = {
+		                        file = true,
+		                        folder = true,
+		                        folder_arrow = false,
+		                        git = false,
+		                    },
+			                    glyphs = {
+			                        folder = {
+			                            arrow_closed = "",
+			                            arrow_open = "",
+			                            default = "",
+			                            open = "",
+			                            empty = "",
+			                            empty_open = "",
+			                            symlink = "",
+			                            symlink_open = "",
+			                        },
+			                        git = {
+			                            unstaged = "",
+	                            staged = "",
                             unmerged = "",
                             renamed = "",
                             untracked = "",
@@ -546,6 +546,7 @@ return {
 	        local sticky_overlay_ns = vim.api.nvim_create_namespace("HumoodagenNvimTreeStickyOverlay")
 	        local nvim_tree_cache = {}
 
+	        local enable_open_pipes = true
 	        local sticky_overlay_state = {}
 
         local function sticky_header_lnums(bufnr, top_lnum)
@@ -670,6 +671,11 @@ return {
                 if icon == "" then
                     icon = blue_pipe
                 end
+	                local icon_hl = (icon == "" and "NvimTreeClosedFolderIcon")
+	                    or (icon == "" and "NvimTreeOpenedFolderIcon")
+	                    or (icon == "" and "NvimTreeFolderArrowClosed")
+	                    or (icon == "" and "NvimTreeFolderArrowOpen")
+	                    or "NvimTreeFolderIcon"
 
                 local segments = {}
                 for _, cell in ipairs(prefix_cells) do
@@ -682,7 +688,7 @@ return {
                     end
                 end
 
-                segments[#segments + 1] = { icon, "NvimTreeFolderIcon" }
+                segments[#segments + 1] = { icon, icon_hl }
                 segments[#segments + 1] = { " ", "NvimTreeNormal" }
                 if name ~= "" then
                     segments[#segments + 1] = { name, "NvimTreeFolderName" }
@@ -843,6 +849,11 @@ return {
 	                if icon == "" then
 	                    icon = blue_pipe
 	                end
+	                local icon_hl = (icon == "" and "NvimTreeClosedFolderIcon")
+	                    or (icon == "" and "NvimTreeOpenedFolderIcon")
+	                    or (icon == "" and "NvimTreeFolderArrowClosed")
+	                    or (icon == "" and "NvimTreeFolderArrowOpen")
+	                    or "NvimTreeFolderIcon"
 
 	                local prefix = table.concat(prefix_cells)
 	                lines[#lines + 1] = gutter .. prefix .. icon .. " " .. name
@@ -860,7 +871,7 @@ return {
 	                end
 
 	                local icon_bytes = #icon
-	                highlights[#highlights + 1] = { hl = "NvimTreeFolderIcon", line = line_idx, start_col = col, end_col = col + icon_bytes }
+	                highlights[#highlights + 1] = { hl = icon_hl, line = line_idx, start_col = col, end_col = col + icon_bytes }
 	                col = col + icon_bytes
 	                col = col + 1
 
@@ -1076,6 +1087,30 @@ return {
             end
             table.sort(line_nums)
 
+            local line_for_path = {}
+            for _, lnum in ipairs(line_nums) do
+                local node = nodes_by_line[lnum]
+                if type(node) == "table" and type(node.absolute_path) == "string" then
+                    line_for_path[node.absolute_path] = lnum
+                end
+            end
+
+            local cache = nvim_tree_cache[bufnr]
+            if type(cache) ~= "table" then
+                cache = {}
+                nvim_tree_cache[bufnr] = cache
+            end
+            cache.start_line = start_line
+            cache.nodes_by_line = nodes_by_line
+            cache.line_for_path = line_for_path
+            cache.end_line_by_line = nil
+            cache.pipe_marks = nil
+            cache.rev = (tonumber(cache.rev) or 0) + 1
+
+            if not enable_open_pipes then
+                return
+            end
+
             local open_dirs_by_lnum = {}
             local icon_col_by_lnum = {}
             for _, lnum in ipairs(line_nums) do
@@ -1086,14 +1121,6 @@ return {
                 local text = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1] or ""
                 local first_non_space = text:find("%S")
                 icon_col_by_lnum[lnum] = (first_non_space and (first_non_space - 1)) or 0
-            end
-
-            local line_for_path = {}
-            for _, lnum in ipairs(line_nums) do
-                local node = nodes_by_line[lnum]
-                if type(node) == "table" and type(node.absolute_path) == "string" then
-                    line_for_path[node.absolute_path] = lnum
-                end
             end
 
             local end_line_by_line = {}
@@ -1123,16 +1150,15 @@ return {
 			            for i, lnum in ipairs(line_nums) do
 			                if open_dirs_by_lnum[lnum] then
 			                    local icon_col = icon_col_by_lnum[lnum] or 0
-			                    local pipe_col = icon_col + math.max(0, indent_width - 1)
 			                    local end_lnum = end_line_by_line[lnum] or lnum
 			                    local j = i + 1
 			                    while j <= #line_nums and line_nums[j] <= end_lnum do
 			                        local row = line_nums[j] - 1
 			                        marks[row] = marks[row] or {}
-			                        -- Continue the folder "blue line" down through its open subtree.
-			                        marks[row][icon_col] = "blue"
-			                        -- Also draw the indented guide under the folder name column.
-			                        marks[row][pipe_col] = "grey"
+			                        -- VS Code-style: only grey indent guides (no blue folder
+			                        -- "open subtree" line). Draw the guide under the folder
+			                        -- chevron column (not under the first letter of the name).
+			                        marks[row][icon_col] = "grey"
 			                        j = j + 1
 			                    end
 			                end
@@ -1160,17 +1186,8 @@ return {
 			                end
 			            end
 
-            local cache = nvim_tree_cache[bufnr]
-            if type(cache) ~= "table" then
-                cache = {}
-                nvim_tree_cache[bufnr] = cache
-            end
-            cache.start_line = start_line
-            cache.nodes_by_line = nodes_by_line
-            cache.line_for_path = line_for_path
             cache.end_line_by_line = end_line_by_line
             cache.pipe_marks = marks
-            cache.rev = (tonumber(cache.rev) or 0) + 1
         end
 
 	        events.subscribe(events.Event.TreeRendered, function(payload)

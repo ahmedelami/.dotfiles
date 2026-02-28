@@ -4,6 +4,7 @@ require("humoodagen.set")
 require("humoodagen.views")
 require("humoodagen.neovide")
 require("humoodagen.remap")
+require("humoodagen.tabline").setup()
 require("humoodagen.commands")
 require("humoodagen.lazy_init")
 local debug = require("humoodagen.debug")
@@ -54,11 +55,165 @@ autocmd('TextYankPost', {
     end,
 })
 
-autocmd({"BufWritePre"}, {
+autocmd("BufWritePre", {
     group = ThePrimeagenGroup,
     pattern = "*",
-    command = [[%s/\s\+$//e]],
+    callback = function()
+        local view = vim.fn.winsaveview()
+        vim.cmd([[silent! keepjumps keeppatterns %s/\s\+$//e]])
+        vim.fn.winrestview(view)
+    end,
 })
+
+local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = true })
+
+	local function apply_nvim_tree_highlights()
+	    local function strip_bg(group)
+	        local ok_hl, hl = pcall(vim.api.nvim_get_hl, 0, { name = group, link = false })
+	        if not ok_hl or type(hl) ~= "table" or next(hl) == nil then
+	            return
+	        end
+
+	        if hl.bg == nil and hl.ctermbg == nil then
+	            return
+	        end
+
+	        local cleaned = {}
+	        for k, v in pairs(hl) do
+	            if k ~= "bg" and k ~= "ctermbg" and k ~= "default" and k ~= "link" then
+	                cleaned[k] = v
+	            end
+	        end
+
+	        pcall(vim.api.nvim_set_hl, 0, group, cleaned)
+	    end
+
+	    -- Treat "new/untracked" nodes as dim (same as ignored) to keep the tree calm.
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitFileNewHL", { link = "NvimTreeGitFileIgnoredHL" })
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitFolderNewHL", { link = "NvimTreeGitFolderIgnoredHL" })
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitNewIcon", { link = "NvimTreeGitIgnoredIcon" })
+
+    -- The vscode.nvim theme gives opened folders a grey background; make it match
+    -- normal folders so expanded nodes don't look "selected".
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedFolderName", { link = "NvimTreeFolderName" })
+
+	    -- Make the folder chevrons black (and not bold).
+	    local arrow_fg = "#000000"
+	    local arrow_hl = { fg = arrow_fg, ctermfg = 0, bold = false, nocombine = true }
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeFolderArrowClosed", arrow_hl)
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeFolderArrowOpen", arrow_hl)
+	    -- We render chevrons as folder icons, so also update those groups.
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeFolderIcon", arrow_hl)
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedFolderIcon", arrow_hl)
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeClosedFolderIcon", arrow_hl)
+
+	    -- Some themes set a background on these groups (often white), which makes
+	    -- CursorLine look like it "skips" over blue entries in the tree.
+	    strip_bg("NvimTreeFolderName")
+	    strip_bg("NvimTreeOpenedFolderName")
+	    strip_bg("NvimTreeEmptyFolderName")
+	    strip_bg("NvimTreeExecFile")
+	    strip_bg("NvimTreeSymlinkFolderName")
+	end
+
+	autocmd("ColorScheme", {
+	    group = nvim_tree_hl_group,
+	    callback = function()
+	        vim.schedule(apply_nvim_tree_highlights)
+	    end,
+	})
+
+	autocmd("FileType", {
+	    group = nvim_tree_hl_group,
+	    pattern = "NvimTree",
+	    callback = function()
+	        vim.schedule(apply_nvim_tree_highlights)
+	    end,
+	})
+
+	apply_nvim_tree_highlights()
+	vim.schedule(apply_nvim_tree_highlights)
+
+local guide_hl_group = augroup("HumoodagenGuideHighlights", { clear = true })
+
+local function guide_mix_towards(base, target, divisor)
+    if type(base) ~= "number" or type(target) ~= "number" then
+        return nil
+    end
+    divisor = tonumber(divisor) or 2
+    if divisor <= 0 then
+        divisor = 2
+    end
+
+    local function chan(c, shift)
+        return math.floor(c / shift) % 256
+    end
+
+    local br = chan(base, 0x10000)
+    local bg = chan(base, 0x100)
+    local bb = chan(base, 0x1)
+
+    local tr = chan(target, 0x10000)
+    local tg = chan(target, 0x100)
+    local tb = chan(target, 0x1)
+
+    local function mix(b, t)
+        return math.min(255, math.max(0, math.floor(t + (b - t) / divisor + 0.5)))
+    end
+
+    local r = mix(br, tr)
+    local g = mix(bg, tg)
+    local b = mix(bb, tb)
+    return (r * 0x10000) + (g * 0x100) + b
+end
+
+	local function apply_guide_highlights()
+	    local ok_normal, normal = pcall(vim.api.nvim_get_hl, 0, { name = "Normal", link = false })
+	    local normal_bg = ok_normal and type(normal) == "table" and normal.bg or nil
+	    local normal_fg = ok_normal and type(normal) == "table" and normal.fg or nil
+	    if type(normal_bg) ~= "number" then
+	        return
+	    end
+
+	    local function set_bg(group, bg)
+	        if type(bg) ~= "number" then
+	            return
+	        end
+	        local ok_hl, hl = pcall(vim.api.nvim_get_hl, 0, { name = group, link = false })
+	        if not ok_hl or type(hl) ~= "table" then
+	            hl = {}
+	        end
+	        hl.bg = bg
+	        pcall(vim.api.nvim_set_hl, 0, group, hl)
+	    end
+
+	    -- Current line + column guide background.
+	    -- Keep it a subtle neutral grey derived from Normal fg/bg (not almost-white).
+	    local cursor_bg = (type(normal_fg) == "number") and guide_mix_towards(normal_fg, normal_bg, 16) or nil
+	    set_bg("CursorLine", cursor_bg)
+	    set_bg("NvimTreeCursorLine", cursor_bg)
+	    set_bg("ColorColumn", cursor_bg)
+
+	    -- Make the gutter line numbers a neutral light grey (theme defaults them
+	    -- to green-ish in vscode light).
+	    if type(normal_fg) == "number" then
+	        local line_nr_fg = guide_mix_towards(normal_fg, normal_bg, 4)
+	        if type(line_nr_fg) == "number" then
+	            local line_nr_hl = { fg = line_nr_fg, bg = normal_bg }
+	            pcall(vim.api.nvim_set_hl, 0, "LineNr", line_nr_hl)
+	            pcall(vim.api.nvim_set_hl, 0, "LineNrAbove", line_nr_hl)
+	            pcall(vim.api.nvim_set_hl, 0, "LineNrBelow", line_nr_hl)
+	            pcall(vim.api.nvim_set_hl, 0, "FoldColumn", line_nr_hl)
+	        end
+	    end
+	end
+
+autocmd("ColorScheme", {
+    group = guide_hl_group,
+    callback = apply_guide_highlights,
+})
+
+apply_guide_highlights()
 
 local pane_mode_group = augroup("HumoodagenPaneModeRestore", { clear = true })
 
@@ -255,6 +410,110 @@ autocmd("VimLeavePre", {
     group = ghostty_group,
     callback = function()
         write_ghostty_cwd()
+    end,
+})
+
+local startup_tree_group = augroup("HumoodagenStartupTree", { clear = true })
+
+local function is_empty_unnamed_buffer(buf)
+    if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+        return false
+    end
+    if vim.bo[buf].buftype ~= "" then
+        return false
+    end
+    if vim.api.nvim_buf_get_name(buf) ~= "" then
+        return false
+    end
+    if vim.bo[buf].modified then
+        return false
+    end
+
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    if #lines == 0 then
+        return true
+    end
+    if #lines == 1 and lines[1] == "" then
+        return true
+    end
+    return false
+end
+
+local function focus_existing_nvim_tree_window()
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_is_valid(win) then
+            local buf = vim.api.nvim_win_get_buf(win)
+            if vim.bo[buf].filetype == "NvimTree" then
+                vim.api.nvim_set_current_win(win)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function close_empty_unnamed_windows_except_tree()
+    local tree_win = nil
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        if vim.api.nvim_win_is_valid(win) then
+            local buf = vim.api.nvim_win_get_buf(win)
+            if vim.bo[buf].filetype == "NvimTree" then
+                tree_win = win
+                break
+            end
+        end
+    end
+    if not tree_win then
+        return
+    end
+
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        if win ~= tree_win and vim.api.nvim_win_is_valid(win) then
+            local buf = vim.api.nvim_win_get_buf(win)
+            if is_empty_unnamed_buffer(buf) then
+                pcall(vim.api.nvim_win_close, win, true)
+            end
+        end
+    end
+
+    if vim.api.nvim_win_is_valid(tree_win) then
+        vim.api.nvim_set_current_win(tree_win)
+    end
+end
+
+local function open_startup_tree()
+    if not focus_existing_nvim_tree_window() then
+        local ok_api, api = pcall(require, "nvim-tree.api")
+        if ok_api then
+            api.tree.open({ focus = true })
+        else
+            pcall(vim.cmd, "NvimTreeOpen")
+            pcall(vim.cmd, "NvimTreeFocus")
+        end
+    end
+
+    vim.schedule(function()
+        close_empty_unnamed_windows_except_tree()
+    end)
+end
+
+autocmd("VimEnter", {
+    group = startup_tree_group,
+    once = true,
+    callback = function()
+        if vim.env.HUMOODAGEN_NO_STARTUP_NETRW == "1" then
+            return
+        end
+        if vim.fn.argc() ~= 0 then
+            return
+        end
+        if #vim.api.nvim_list_uis() == 0 then
+            return
+        end
+
+        vim.defer_fn(function()
+            open_startup_tree()
+        end, 40)
     end,
 })
 
