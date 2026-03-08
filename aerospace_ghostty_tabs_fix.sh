@@ -1,56 +1,40 @@
-#!/bin/zsh
-set -euo pipefail
+#!/opt/homebrew/bin/nu
 
-AEROSPACE_BIN="/opt/homebrew/bin/aerospace"
+def main [] {
+    let aerospace_bin = '/opt/homebrew/bin/aerospace'
+    if not ($aerospace_bin | path exists) {
+        exit 0
+    }
 
-if [[ ! -x "$AEROSPACE_BIN" ]]; then
-  exit 0
-fi
+    let lock_dir = (($env.TMPDIR? | default '/tmp') | path join 'aerospace-native-tabs-fix.lock')
+    let lock_result = (^/bin/mkdir $lock_dir | complete)
+    if $lock_result.exit_code != 0 {
+        exit 0
+    }
 
-# Debounce: on-focus-changed can fire a lot; ensure only one instance runs.
-lock_dir="${TMPDIR:-/tmp}/aerospace-native-tabs-fix.lock"
-if ! mkdir "$lock_dir" 2>/dev/null; then
-  exit 0
-fi
-trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
+    let focused_bundle_id = ((^$aerospace_bin list-windows --focused --format '%{app-bundle-id}' | complete).stdout | str trim)
+    let is_target = ($focused_bundle_id == 'com.mitchellh.ghostty' or $focused_bundle_id == 'com.apple.Terminal')
 
-focused_bundle_id="$("$AEROSPACE_BIN" list-windows --focused --format '%{app-bundle-id}' 2>/dev/null || true)"
-case "$focused_bundle_id" in
-  com.mitchellh.ghostty|com.apple.Terminal) ;;
-  *) exit 0 ;;
-esac
+    if $is_target {
+        let workspace = ((^$aerospace_bin list-windows --focused --format '%{workspace}' | complete).stdout | str trim)
+        if ($workspace | is-not-empty) {
+            let root_layout = ((^$aerospace_bin list-windows --focused --format '%{workspace-root-container-layout}' | complete).stdout | str trim)
+            if ($root_layout in ['h_tiles', 'v_tiles', 'h_accordion', 'v_accordion']) {
+                let tabbed_app_count = (((^$aerospace_bin list-windows --workspace $workspace --app-bundle-id $focused_bundle_id --count | complete).stdout | str trim) | default '0')
+                let total_count = (((^$aerospace_bin list-windows --workspace $workspace --count | complete).stdout | str trim) | default '0')
 
-tabbed_app_bundle_id="$focused_bundle_id"
+                if $tabbed_app_count == $total_count {
+                    if (($tabbed_app_count | into int) >= 1) {
+                        match $root_layout {
+                            'h_tiles' => { do -i { ^$aerospace_bin layout h_accordion } }
+                            'v_tiles' => { do -i { ^$aerospace_bin layout v_accordion } }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-workspace="$("$AEROSPACE_BIN" list-windows --focused --format '%{workspace}' 2>/dev/null || true)"
-if [[ -z "$workspace" ]]; then
-  exit 0
-fi
-
-root_layout="$("$AEROSPACE_BIN" list-windows --focused --format '%{workspace-root-container-layout}' 2>/dev/null || true)"
-case "$root_layout" in
-  h_tiles|v_tiles|h_accordion|v_accordion) ;;
-  *) exit 0 ;;
-esac
-
-tabbed_app_count="$("$AEROSPACE_BIN" list-windows --workspace "$workspace" --app-bundle-id "$tabbed_app_bundle_id" --count 2>/dev/null || echo 0)"
-total_count="$("$AEROSPACE_BIN" list-windows --workspace "$workspace" --count 2>/dev/null || echo 0)"
-
-# Only auto-switch when the workspace contains only this app. This avoids turning
-# a mixed-app workspace into a global accordion layout unexpectedly.
-if [[ "$tabbed_app_count" != "$total_count" ]]; then
-  exit 0
-fi
-
-# macOS native "tabs" can surface as multiple windows. In a tiling layout, that
-# creates a blank half because only the focused tab-window draws. Switching to
-# accordion stacks them like tabs.
-# Keep the workspace in accordion even when only one window exists.
-# This pre-switch prevents the brief "half width / blank half" flash that can
-# happen the first time a second tab-window appears (before this hook runs).
-if (( tabbed_app_count >= 1 )); then
-  case "$root_layout" in
-    h_tiles) "$AEROSPACE_BIN" layout h_accordion >/dev/null 2>&1 || true ;;
-    v_tiles) "$AEROSPACE_BIN" layout v_accordion >/dev/null 2>&1 || true ;;
-  esac
-fi
+    rm -rf $lock_dir
+}

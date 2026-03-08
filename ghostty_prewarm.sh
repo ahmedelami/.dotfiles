@@ -1,19 +1,16 @@
-#!/bin/zsh -f
-set -euo pipefail
+#!/opt/homebrew/bin/nu
 
-# Prewarm Ghostty without creating an initial window so subsequent opens are
-# "warm" (the process is already running).
+def main [] {
+    let app = '/Applications/Ghostty.app'
+    let existing = (^/usr/bin/pgrep -x ghostty | complete)
+    if $existing.exit_code == 0 {
+        exit 0
+    }
 
-if pgrep -x ghostty >/dev/null 2>&1; then
-  exit 0
-fi
+    if not ($app | path exists) {
+        print --stderr $"ghostty_prewarm: not found: ($app)"
+        exit 1
+    }
 
-APP="/Applications/Ghostty.app"
-if [[ ! -d "$APP" ]]; then
-  print -r -- "ghostty_prewarm: not found: $APP" >&2
-  exit 1
-fi
-
-exec /usr/bin/open -gj -a "$APP" --args \
-  --initial-window=false \
-  --quit-after-last-window-closed=false
+    ^/usr/bin/open -gj -a $app --args --initial-window=false --quit-after-last-window-closed=false
+}

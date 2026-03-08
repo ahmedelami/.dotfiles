@@ -1,27 +1,30 @@
-#!/bin/zsh -f
-set -euo pipefail
+#!/opt/homebrew/bin/nu
 
-STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-HUMOODAGEN_STATE_DIR="$STATE_HOME/humoodagen"
-PERSIST_FLAG="$HUMOODAGEN_STATE_DIR/ghostty-persist-session"
+def try-kill [bin?: string] {
+    if ($bin | is-empty) {
+        return
+    }
+    if not ($bin | path exists) {
+        return
+    }
 
-rm -f "$PERSIST_FLAG" 2>/dev/null || true
-
-TMUX_SERVER_NAME="humoodagen-ghostty-persist"
-
-try_kill() {
-  local bin="$1"
-  if [[ -z "${bin:-}" ]]; then
-    return 0
-  fi
-  if [[ ! -x "$bin" ]]; then
-    return 0
-  fi
-  TMUX_SKIP_TPM=1 "$bin" -L "$TMUX_SERVER_NAME" kill-server 2>/dev/null || true
+    with-env { TMUX_SKIP_TPM: '1' } {
+        do -i { ^$bin -L humoodagen-ghostty-persist kill-server }
+    }
 }
 
-try_kill "$HOME/.cargo/bin/tmux-rs"
-try_kill "/opt/homebrew/bin/tmux"
-try_kill "$(command -v tmux || true)"
+def main [] {
+    let state_home = ($env.XDG_STATE_HOME? | default ($nu.home-path | path join '.local' 'state'))
+    let state_dir = ($state_home | path join 'humoodagen')
+    let persist_flag = ($state_dir | path join 'ghostty-persist-session')
 
-print -r -- "ghostty persistent mode disabled (flag removed) and tmux server stopped: $TMUX_SERVER_NAME"
+    rm -f $persist_flag
+
+    try-kill ($nu.home-path | path join '.cargo' 'bin' 'tmux-rs')
+    try-kill /opt/homebrew/bin/tmux
+
+    let tmux_path = (which tmux | get -o 0.path | default '')
+    try-kill $tmux_path
+
+    print "ghostty persistent mode disabled (flag removed) and tmux server stopped: humoodagen-ghostty-persist"
+}

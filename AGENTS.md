@@ -6,8 +6,10 @@
 - Managed XDG config directories live under `.config/`:
   - `.config/nvim`
   - `.config/ghostty`
+  - `.config/nushell`
   - `.config/jj`
   - `.config/git`
+  - `.config/starship.toml`
 - `~/.config` is a normal directory. Only selected subdirectories are symlinked back into this repo. Do not assume the whole `~/.config` tree is repo-managed.
 - Shell and terminal files live at the repo root and under `zsh/`, `.tmux/`, and `bin/`.
 - Small utilities and automation scripts live at the repo root, `bin/`, `launchd/`, and `history/`.

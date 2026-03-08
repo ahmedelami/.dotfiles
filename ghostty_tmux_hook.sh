@@ -1,59 +1,55 @@
-#!/bin/sh
-set -u
+#!/opt/homebrew/bin/nu
 
-STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
-HUMOODAGEN_STATE_DIR="$STATE_HOME/humoodagen"
-PREFILL_FILE="$HUMOODAGEN_STATE_DIR/ghostty-prefill.ansi"
-
-update_prefill_snapshot() {
-  # Only capture a snapshot for the persistent session when it becomes
-  # unattached. This lets the next Ghostty launch immediately draw the last
-  # known screen instead of a blank surface.
-  if ! tmux has-session -t ghostty 2>/dev/null; then
-    return 0
-  fi
-
-  clients="$(tmux list-clients -t ghostty 2>/dev/null | wc -l | tr -d '[:space:]')"
-  if [ "${clients:-0}" != "0" ]; then
-    return 0
-  fi
-
-  mkdir -p "$HUMOODAGEN_STATE_DIR" 2>/dev/null || true
-  umask 077
-  tmp="${PREFILL_FILE}.$$"
-  tmux capture-pane -pe -t ghostty: >"$tmp" 2>/dev/null || true
-  if [ -s "$tmp" ]; then
-    mv -f "$tmp" "$PREFILL_FILE" 2>/dev/null || true
-  else
-    rm -f "$tmp" 2>/dev/null || true
-  fi
+def ts-ns [] {
+    (^python3 -c 'import time; print(time.time_ns())' | complete).stdout | str trim
 }
 
-ts_ns() {
-  python3 -c 'import time; print(time.time_ns())' 2>/dev/null || echo ""
+def update-prefill-snapshot [] {
+    let state_home = ($env.XDG_STATE_HOME? | default ($nu.home-path | path join '.local' 'state'))
+    let state_dir = ($state_home | path join 'humoodagen')
+    let prefill_file = ($state_dir | path join 'ghostty-prefill.ansi')
+
+    let has_session = (^tmux has-session -t ghostty | complete)
+    if $has_session.exit_code != 0 {
+        return
+    }
+
+    let clients = (((^tmux list-clients -t ghostty | complete).stdout | lines | length) | into string)
+    if $clients != '0' {
+        return
+    }
+
+    mkdir $state_dir
+    let tmp = $"($prefill_file).($nu.pid)"
+    do -i { ^tmux capture-pane -pe -t 'ghostty:' | save -f $tmp }
+    if (($tmp | path exists) and ((ls -s $tmp | get 0.size) > 0b)) {
+        mv -f $tmp $prefill_file
+    } else {
+        rm -f $tmp
+    }
 }
 
-log_event() {
-  # Only log when perf mode is enabled (so normal startups stay untouched).
-  if [ "${HUMOODAGEN_PERF:-}" != "1" ]; then
-    return 0
-  fi
-  if [ -z "${HUMOODAGEN_GHOSTTY_LAUNCH_LOG:-}" ]; then
-    return 0
-  fi
-  now="$(ts_ns)"
-  if [ -z "$now" ]; then
-    return 0
-  fi
-  printf '%s | %s | launch_ts_ns=%s | pid=%s\n' \
-    "$now" "${1:-tmux:hook}" "${HUMOODAGEN_LAUNCH_TS_NS:-}" "$$" >>"${HUMOODAGEN_GHOSTTY_LAUNCH_LOG}" 2>/dev/null || true
+def log-event [event: string] {
+    if (($env.HUMOODAGEN_PERF? | default '') != '1') {
+        return
+    }
+    let launch_log = ($env.HUMOODAGEN_GHOSTTY_LAUNCH_LOG? | default '')
+    if ($launch_log | is-empty) {
+        return
+    }
+
+    let now = (ts-ns)
+    if ($now | is-empty) {
+        return
+    }
+
+    $"($now) | ($event) | launch_ts_ns=($env.HUMOODAGEN_LAUNCH_TS_NS? | default '') | pid=($nu.pid)" | save --append $launch_log
 }
 
-EVENT="${1:-tmux:hook}"
-case "$EVENT" in
-  tmux:client-detached)
-    update_prefill_snapshot
-    ;;
-esac
-
-log_event "$EVENT"
+def main [event?: string] {
+    let actual_event = ($event | default 'tmux:hook')
+    if $actual_event == 'tmux:client-detached' {
+        update-prefill-snapshot
+    }
+    log-event $actual_event
+}

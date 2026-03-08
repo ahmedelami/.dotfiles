@@ -30,7 +30,11 @@ font-family = JetBrainsMono Nerd Font Mono
 font-size = 12.525
 
 # Shell
-command = /opt/homebrew/bin/nu
+command = "direct:/opt/homebrew/bin/nu -l"
+
+# Disable Ghostty's Nushell auto-injection for now. The bundled `use ghostty *`
+# path is currently breaking launch on this machine.
+shell-integration = none
 
 # Working directory
 # Always start new windows/tabs in home (don't inherit the current tab's cwd).

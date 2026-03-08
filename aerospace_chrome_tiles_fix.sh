@@ -1,32 +1,29 @@
-#!/bin/zsh
-set -euo pipefail
+#!/opt/homebrew/bin/nu
 
-AEROSPACE_BIN="/opt/homebrew/bin/aerospace"
+def main [] {
+    let aerospace_bin = '/opt/homebrew/bin/aerospace'
+    if not ($aerospace_bin | path exists) {
+        exit 0
+    }
 
-if [[ ! -x "$AEROSPACE_BIN" ]]; then
-  exit 0
-fi
+    let lock_dir = (($env.TMPDIR? | default '/tmp') | path join 'aerospace-chrome-tiles-fix.lock')
+    let lock_result = (^/bin/mkdir $lock_dir | complete)
+    if $lock_result.exit_code != 0 {
+        exit 0
+    }
 
-# Debounce: on-focus-changed can fire a lot; ensure only one instance runs.
-lock_dir="${TMPDIR:-/tmp}/aerospace-chrome-tiles-fix.lock"
-if ! mkdir "$lock_dir" 2>/dev/null; then
-  exit 0
-fi
-trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
+    let focused_bundle_id = ((^$aerospace_bin list-windows --focused --format '%{app-bundle-id}' | complete).stdout | str trim)
+    if ($focused_bundle_id | str starts-with 'com.google.Chrome') {
+        let workspace = ((^$aerospace_bin list-windows --focused --format '%{workspace}' | complete).stdout | str trim)
+        if ($workspace | is-not-empty) {
+            let root_layout = ((^$aerospace_bin list-windows --focused --format '%{workspace-root-container-layout}' | complete).stdout | str trim)
+            match $root_layout {
+                'h_accordion' => { do -i { ^$aerospace_bin layout h_tiles } }
+                'v_accordion' => { do -i { ^$aerospace_bin layout v_tiles } }
+                _ => {}
+            }
+        }
+    }
 
-focused_bundle_id="$("$AEROSPACE_BIN" list-windows --focused --format '%{app-bundle-id}' 2>/dev/null || true)"
-case "$focused_bundle_id" in
-  com.google.Chrome*) ;;
-  *) exit 0 ;;
-esac
-
-workspace="$("$AEROSPACE_BIN" list-windows --focused --format '%{workspace}' 2>/dev/null || true)"
-if [[ -z "$workspace" ]]; then
-  exit 0
-fi
-
-root_layout="$("$AEROSPACE_BIN" list-windows --focused --format '%{workspace-root-container-layout}' 2>/dev/null || true)"
-case "$root_layout" in
-  h_accordion) "$AEROSPACE_BIN" layout h_tiles >/dev/null 2>&1 || true ;;
-  v_accordion) "$AEROSPACE_BIN" layout v_tiles >/dev/null 2>&1 || true ;;
-esac
+    rm -rf $lock_dir
+}

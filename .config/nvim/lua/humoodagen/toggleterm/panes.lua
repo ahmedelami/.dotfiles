@@ -1110,15 +1110,11 @@ function M.setup(state, mode, termset)
       end
 
       if bottom and vim.env.HUMOODAGEN_FAST_START == "1" and vim.env.HUMOODAGEN_TOGGLETERM_STARTUP_FAST_SHELL ~= "0" then
-        bottom.cmd = "/bin/zsh -i"
+        bottom.cmd = "/opt/homebrew/bin/nu -l"
         if type(bottom.env) == "table" then
           bottom.env.HUMOODAGEN_TOGGLETERM_FAST_INIT = "1"
           bottom.env.HUMOODAGEN_TOGGLETERM_FAST_SHELL = "1"
-          bottom.env.PS1 = "%(?.%F{33}➜%f.%F{196}➜%f) %B%F{magenta}%c%f%b "
-          local zdotdir_orig = bottom.env.HUMOODAGEN_ZDOTDIR_ORIG or vim.env.ZDOTDIR or vim.env.HOME or ""
-          if zdotdir_orig ~= "" then
-            bottom.env.HISTFILE = zdotdir_orig .. "/.zsh_history"
-          end
+          bottom.env.INSIDE_NU = "1"
         end
         perf_mark("toggleterm:startup:shell", bottom.cmd)
       end

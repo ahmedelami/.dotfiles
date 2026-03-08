@@ -1,0 +1,38 @@
+add_newline = false
+format = "$character$directory$git_branch$git_status"
+
+[character]
+success_symbol = "[➜](green) "
+error_symbol = "[➜](red) "
+vicmd_symbol = "[➜](yellow) "
+
+[directory]
+style = "green bold"
+truncation_length = 3
+truncate_to_repo = false
+
+[git_branch]
+format = " [git:($branch)]($style)"
+style = "red"
+
+[git_status]
+format = "[$all_status$ahead_behind]($style)"
+style = "red"
+
+[cmd_duration]
+disabled = true
+
+[package]
+disabled = true
+
+[nodejs]
+disabled = true
+
+[python]
+disabled = true
+
+[rust]
+disabled = true
+
+[golang]
+disabled = true

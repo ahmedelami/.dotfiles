@@ -7,9 +7,8 @@
 
     <key>ProgramArguments</key>
     <array>
-      <string>/bin/zsh</string>
-      <string>-lc</string>
-      <string>$HOME/.dotfiles/ghostty_prewarm.sh</string>
+      <string>/opt/homebrew/bin/nu</string>
+      <string>/Users/ahmedelamin/.dotfiles/ghostty_prewarm.sh</string>
     </array>
 
     <key>RunAtLoad</key>

@@ -1,31 +1,33 @@
-#!/bin/sh
-set -u
+#!/opt/homebrew/bin/nu
 
-ts_ns() {
-  python3 -c 'import time; print(time.time_ns())' 2>/dev/null || echo ""
+def ts-ns [] {
+    (^python3 -c 'import time; print(time.time_ns())' | complete).stdout | str trim
 }
 
-log_event() {
-  # Only log when perf mode is enabled (so normal startups stay untouched).
-  if [ "${HUMOODAGEN_PERF:-}" != "1" ]; then
-    return 0
-  fi
-  if [ -z "${HUMOODAGEN_GHOSTTY_LAUNCH_LOG:-}" ]; then
-    return 0
-  fi
-  now="$(ts_ns)"
-  if [ -z "$now" ]; then
-    return 0
-  fi
-  printf '%s | %s | launch_ts_ns=%s | pid=%s\n' \
-    "$now" "${1:-event}" "${HUMOODAGEN_LAUNCH_TS_NS:-}" "$$" >>"${HUMOODAGEN_GHOSTTY_LAUNCH_LOG}" 2>/dev/null || true
+def log-event [event: string] {
+    if (($env.HUMOODAGEN_PERF? | default '') != '1') {
+        return
+    }
+    let launch_log = ($env.HUMOODAGEN_GHOSTTY_LAUNCH_LOG? | default '')
+    if ($launch_log | is-empty) {
+        return
+    }
+
+    let now = (ts-ns)
+    if ($now | is-empty) {
+        return
+    }
+
+    $"($now) | ($event) | launch_ts_ns=($env.HUMOODAGEN_LAUNCH_TS_NS? | default '') | pid=($nu.pid)" | save --append $launch_log
 }
 
-log_event "tmux:cmd:start"
+def main [] {
+    log-event 'tmux:cmd:start'
 
-HUMOODAGEN_FAST_START=1 nvim
-status=$?
+    let result = (with-env { HUMOODAGEN_FAST_START: '1' } { ^nvim | complete })
+    let status = $result.exit_code
 
-log_event "tmux:cmd:nvim_exit status=$status"
+    log-event $"tmux:cmd:nvim_exit status=($status)"
 
-exec /bin/zsh -l
+    ^/opt/homebrew/bin/nu -l
+}

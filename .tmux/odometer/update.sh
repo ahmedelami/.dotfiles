@@ -1,75 +1,78 @@
-#!/usr/bin/env bash
+#!/opt/homebrew/bin/nu
 
-# Directory setup
-DIR="$HOME/.tmux/odometer"
-TOTAL_FILE="$DIR/total_seconds"
-LAST_RUN_FILE="$DIR/last_run"
-STATE_FILE="$DIR/current_state"
-LOCK_DIR="$DIR/lock"
+def epoch-seconds [] {
+    ((^date +%s | complete).stdout | str trim | into int)
+}
 
-# Configuration
-TIMEOUT_SECONDS=1
+def read-int [path: string, default_value: int] {
+    if ($path | path exists) {
+        do -i { open $path | str trim | into int } | default $default_value
+    } else {
+        $default_value
+    }
+}
 
-# --- TEXT COLOR STATUS ---
-# Active: Dark Green (28)
-C_ON="28"
-# Idle: Bright Red (196)
-C_OFF="196"
+def main [] {
+    let dir = ($nu.home-path | path join '.tmux' 'odometer')
+    let total_file = ($dir | path join 'total_seconds')
+    let last_run_file = ($dir | path join 'last_run')
+    let state_file = ($dir | path join 'current_state')
+    let lock_dir = ($dir | path join 'lock')
 
-# Initialize
-if [ ! -f "$TOTAL_FILE" ]; then echo "0" > "$TOTAL_FILE"; fi
-if [ ! -f "$LAST_RUN_FILE" ]; then date +%s > "$LAST_RUN_FILE"; fi
-if [ ! -f "$STATE_FILE" ]; then echo "" > "$STATE_FILE"; fi
+    let timeout_seconds = 1
+    let color_on = '28'
+    let color_off = '196'
 
-# Self-Heal Lock
-if [ -d "$LOCK_DIR" ]; then
-    NOW=$(date +%s)
-    LAST_MOD=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo "$NOW")
-    AGE=$((NOW - LAST_MOD))
-    if [ "$AGE" -gt 3 ]; then rmdir "$LOCK_DIR" 2>/dev/null; fi
-fi
+    mkdir $dir
+    if not ($total_file | path exists) { '0' | save -f $total_file }
+    if not ($last_run_file | path exists) { ((epoch-seconds) | into string) | save -f $last_run_file }
+    if not ($state_file | path exists) { '' | save -f $state_file }
 
-# Update Logic
-if mkdir "$LOCK_DIR" 2>/dev/null; then
-    trap 'rmdir "$LOCK_DIR"' EXIT
-    NOW=$(date +%s)
-    LAST=$(cat "$LAST_RUN_FILE")
-    TOTAL=$(cat "$TOTAL_FILE")
-    DELTA=$((NOW - LAST))
+    if ($lock_dir | path exists) {
+        let now = (epoch-seconds)
+        let last_mod = (do -i { (^stat -f %m $lock_dir | complete).stdout | str trim | into int } | default $now)
+        let age = ($now - $last_mod)
+        if $age > 3 {
+            do -i { rmdir $lock_dir }
+        }
+    }
 
-    if [ "$DELTA" -gt 0 ] && [ "$DELTA" -lt 10 ]; then
-        LAST_ACTIVITY_TS=$(tmux list-clients -F "#{client_activity}" 2>/dev/null | sort -nr | head -n 1)
-        if [ -z "$LAST_ACTIVITY_TS" ]; then LAST_ACTIVITY_TS=0; fi
-        IDLE_TIME=$((NOW - LAST_ACTIVITY_TS))
-        if [ "$IDLE_TIME" -lt 0 ]; then IDLE_TIME=0; fi
+    let lock_result = (^mkdir $lock_dir | complete)
+    if $lock_result.exit_code == 0 {
+        let now = (epoch-seconds)
+        let last = (read-int $last_run_file $now)
+        mut total = (read-int $total_file 0)
+        let delta = ($now - $last)
+        mut style = $"#[fg=colour($color_off),bold]"
 
-        if [ "$IDLE_TIME" -lt "$TIMEOUT_SECONDS" ]; then
-            TOTAL=$((TOTAL + DELTA))
-            echo "$TOTAL" > "$TOTAL_FILE"
-            
-            # ACTIVE: Set Color to Green
-            STYLE="#[fg=colour${C_ON},bold]"
-        else
-            # IDLE: Set Color to Red
-            STYLE="#[fg=colour${C_OFF},bold]"
-        fi
-    else
-        # LAG: Treat as Idle (Red) to avoid flashing yellow
-        STYLE="#[fg=colour${C_OFF},bold]"
-    fi
+        if ($delta > 0 and $delta < 10) {
+            let client_activity = ((^tmux list-clients -F '#{client_activity}' | complete).stdout | lines | each {|line|
+                do -i { $line | str trim | into int } | default 0
+            })
+            let last_activity_ts = if ($client_activity | is-empty) { 0 } else { $client_activity | sort --reverse | get 0 }
+            mut idle_time = ($now - $last_activity_ts)
+            if $idle_time < 0 {
+                $idle_time = 0
+            }
 
-    echo "${STYLE}" > "$STATE_FILE"
-    echo "$NOW" > "$LAST_RUN_FILE"
-fi
+            if $idle_time < $timeout_seconds {
+                $total += $delta
+                ($total | into string) | save -f $total_file
+                $style = $"#[fg=colour($color_on),bold]"
+            }
+        }
 
-TOTAL=$(cat "$TOTAL_FILE")
-STYLE=$(cat "$STATE_FILE")
+        $style | save -f $state_file
+        ($now | into string) | save -f $last_run_file
+        do -i { rmdir $lock_dir }
+    }
 
-HOURS=$((TOTAL / 3600))
-REMAINDER=$((TOTAL % 3600))
-MINUTES=$((REMAINDER / 60))
-SECONDS=$((REMAINDER % 60))
+    let total = (read-int $total_file 0)
+    let style = if ($state_file | path exists) { open $state_file | str trim } else { '' }
+    let hours = ($total // 3600)
+    let remainder = ($total mod 3600)
+    let minutes = ($remainder // 60)
+    let seconds = ($remainder mod 60)
 
-# Print the Time directly in the calculated color.
-# Note the trailing space.
-printf "%s%dh %dm %ds " "$STYLE" "$HOURS" "$MINUTES" "$SECONDS"
+    print -n $"($style)($hours)h ($minutes)m ($seconds)s "
+}
