@@ -1,5 +1,9 @@
 local M = {}
 
+local function escape_statusline(text)
+  return (text or ""):gsub("%%", "%%%%")
+end
+
 local function set_toggleterm_status_hl()
   vim.api.nvim_set_hl(0, "HumoodagenToggletermTabActive", { fg = "#ffffff", bg = "#005eff", bold = true })
   vim.api.nvim_set_hl(0, "HumoodagenToggletermTabInactive", { fg = "#000000", bg = "#d6d6d6", bold = true })
@@ -61,8 +65,11 @@ local function ensure_toggleterm_statuslines(state)
       if state.is_toggleterm_buf(buf) then
         vim.wo[win].statusline = "%!v:lua.HumoodagenToggletermStatusline()"
         vim.wo[win].winbar = ""
-      elseif vim.bo[buf].buftype == "" and vim.bo[buf].filetype ~= "NvimTree" then
-        vim.wo[win].statusline = "%!v:lua.HumoodagenPaneBorderStatusline()"
+      else
+        local local_statusline = vim.wo[win].statusline
+        if local_statusline == "%!v:lua.HumoodagenPaneBorderStatusline()" then
+          vim.wo[win].statusline = ""
+        end
       end
     end
   end
@@ -86,8 +93,8 @@ function M.update_laststatus(state)
 
   if any_toggleterm_window(state) then
     vim.g.humoodagen_seen_toggleterm_window = true
-    vim.o.laststatus = 2
-    vim.go.statusline = " "
+    vim.o.laststatus = math.max(2, state.base_laststatus or 0)
+    vim.go.statusline = state.base_statusline
     ensure_toggleterm_statuslines(state)
   else
     vim.o.laststatus = state.base_laststatus
@@ -251,7 +258,21 @@ function M.setup(state, termset)
     end
 
     table.insert(parts, "%#Normal#")
-    return table.concat(parts)
+
+    local win = vim.g.statusline_winid
+    local buf = (win and win ~= 0 and vim.api.nvim_win_is_valid(win)) and vim.api.nvim_win_get_buf(win) or nil
+    local dir = buf and vim.b[buf].humoodagen_osc7_dir or nil
+    if type(dir) ~= "string" or dir == "" or vim.fn.isdirectory(dir) == 0 then
+      dir = vim.fn.getcwd()
+      if type(dir) ~= "string" or dir == "" or vim.fn.isdirectory(dir) == 0 then
+        dir = nil
+      end
+    end
+
+    local right = dir and vim.fn.fnamemodify(dir, ":~") or "terminal"
+    right = escape_statusline(right)
+
+    return table.concat(parts) .. "%=" .. right .. " %l,%c%V %P"
   end
 end
 

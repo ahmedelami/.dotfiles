@@ -164,6 +164,9 @@ local function close_tree_before_session()
 end
 
 local function restore_tree_after_session(state)
+    if vim.env.HUMOODAGEN_SESSION_RESTORE_TREE ~= "1" then
+        return
+    end
     if type(state) ~= "table" then
         return
     end

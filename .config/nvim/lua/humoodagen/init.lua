@@ -88,24 +88,81 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	        pcall(vim.api.nvim_set_hl, 0, group, cleaned)
 	    end
 
+	    local function set_bold(group)
+	        local ok_hl, hl = pcall(vim.api.nvim_get_hl, 0, { name = group, link = true })
+	        if not ok_hl or type(hl) ~= "table" or next(hl) == nil then
+	            pcall(vim.api.nvim_set_hl, 0, group, { bold = true })
+	            return
+	        end
+
+	        local patched = {}
+	        for k, v in pairs(hl) do
+	            if k ~= "default" and k ~= "link" then
+	                patched[k] = v
+	            end
+	        end
+	        patched.bold = true
+	        pcall(vim.api.nvim_set_hl, 0, group, patched)
+	    end
+
+	    local function set_fg(group, fg, ctermfg, extra)
+	        local ok_hl, hl = pcall(vim.api.nvim_get_hl, 0, { name = group, link = true })
+	        local patched = {}
+
+	        if ok_hl and type(hl) == "table" then
+	            for k, v in pairs(hl) do
+	                if k ~= "default" and k ~= "link" then
+	                    patched[k] = v
+	                end
+	            end
+	        end
+
+	        patched.fg = fg
+	        patched.ctermfg = ctermfg
+
+	        if type(extra) == "table" then
+	            for k, v in pairs(extra) do
+	                patched[k] = v
+	            end
+	        end
+
+	        pcall(vim.api.nvim_set_hl, 0, group, patched)
+	    end
+
 	    -- Treat "new/untracked" nodes as dim (same as ignored) to keep the tree calm.
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitFileNewHL", { link = "NvimTreeGitFileIgnoredHL" })
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitFolderNewHL", { link = "NvimTreeGitFolderIgnoredHL" })
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitNewIcon", { link = "NvimTreeGitIgnoredIcon" })
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeSpecialFile", { link = "NvimTreeNormal" })
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeExecFile", { link = "NvimTreeNormal" })
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeImageFile", { link = "NvimTreeNormal" })
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedHL", { link = "NvimTreeNormal" })
 
     -- The vscode.nvim theme gives opened folders a grey background; make it match
     -- normal folders so expanded nodes don't look "selected".
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedFolderName", { link = "NvimTreeFolderName" })
 
-	    -- Make the folder chevrons black (and not bold).
-	    local arrow_fg = "#000000"
-	    local arrow_hl = { fg = arrow_fg, ctermfg = 0, bold = false, nocombine = true }
-	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeFolderArrowClosed", arrow_hl)
-	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeFolderArrowOpen", arrow_hl)
+	    local folder_fg = "#2f67d8"
+	    local folder_ctermfg = 68
+
+	    set_fg("NvimTreeFolderArrowClosed", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
+	    set_fg("NvimTreeFolderArrowOpen", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
 	    -- We render chevrons as folder icons, so also update those groups.
-	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeFolderIcon", arrow_hl)
-	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedFolderIcon", arrow_hl)
-	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeClosedFolderIcon", arrow_hl)
+	    set_fg("NvimTreeFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
+	    set_fg("NvimTreeOpenedFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
+	    set_fg("NvimTreeClosedFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
+	    set_fg("NvimTreeFolderName", folder_fg, folder_ctermfg)
+	    set_fg("NvimTreeOpenedFolderName", folder_fg, folder_ctermfg)
+	    set_fg("NvimTreeEmptyFolderName", folder_fg, folder_ctermfg)
+	    set_fg("NvimTreeSymlinkFolderName", folder_fg, folder_ctermfg)
+	    set_fg("NvimTreeRootFolder", folder_fg, folder_ctermfg)
+
+	    -- Make folder names bold (keep icons/chevrons normal weight).
+	    set_bold("NvimTreeFolderName")
+	    set_bold("NvimTreeOpenedFolderName")
+	    set_bold("NvimTreeEmptyFolderName")
+	    set_bold("NvimTreeSymlinkFolderName")
+	    set_bold("NvimTreeRootFolder")
 
 	    -- Some themes set a background on these groups (often white), which makes
 	    -- CursorLine look like it "skips" over blue entries in the tree.

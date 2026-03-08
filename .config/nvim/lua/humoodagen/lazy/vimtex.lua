@@ -49,20 +49,17 @@ return {
                 end
             end
 
-            local ok, n = pcall(require, "notify")
-            if not ok then
-                local ok_lazy, lazy = pcall(require, "lazy")
-                if ok_lazy then
-                    pcall(lazy.load, { plugins = { "nvim-notify" } })
-                    ok, n = pcall(require, "notify")
-                end
-            end
-
-            if ok then
+            local ok_notify, n = pcall(require, "notify")
+            if ok_notify and type(n) == "function" then
                 return n(msg, level, opts)
             end
 
-            return vim.notify(msg, level, opts)
+            local ok_vim_notify = pcall(vim.notify, msg, level, opts)
+            if ok_vim_notify then
+                return
+            end
+
+            print(msg)
         end
 
         local function tex_main()

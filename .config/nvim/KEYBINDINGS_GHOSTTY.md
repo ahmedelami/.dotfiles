@@ -7,81 +7,47 @@ instead of re-running exploratory experiments.
 
 ## Verified behavior (Ghostty -> Neovim)
 
-Ghostty sends raw escape sequences, but Neovim often translates them into
-function keys (`<F55>`, etc). That translation is why mappings can "look right"
-but still not work if you only bind the raw escape sequence.
+### Cmd+J / Cmd+K (forwarded to Neovim)
 
-### Cmd+H/J/K/L (jump panes)
+Ghostty sends these directly as the existing Ctrl bindings used by Neovim:
 
-Neovim mappings:
-- Cmd+H => focus filetree (NvimTree)
-- Cmd+J => focus bottom terminal
-- Cmd+K => focus main file pane
-- Cmd+L => focus right terminal
+- Cmd+J => `^J` => Neovim sees `<C-j>`
+- Cmd+K => `^K` => Neovim sees `<C-k>`
 
-If you're already focused on that pane, pressing the same key again hides it:
-- Cmd+H (in tree) => hide tree
-- Cmd+J (in bottom terminal) => hide bottom terminal
-- Cmd+K (in main file pane) => toggle file-only mode (hide/restore tree + terminals)
-- Cmd+L (in right terminal) => hide right terminal
+That lets Ghostty drive the Neovim Ctrl-key mappings from the Command key:
 
-Ghostty (shell, `cat -v`):
-- Cmd+H => `^[[18;3~`
-- Cmd+J => `^[[19;3~`
-- Cmd+K => `^[[20;3~`
-- Cmd+L => `^[[21;3~`
+- Cmd+J => `fzf-lua` live grep (cwd)
+- Cmd+K => `fzf-lua` find/create files (cwd)
+- Press Cmd+K again inside the picker to close it (Ghostty sends another `<C-k>`)
+- Press Cmd+J again inside the picker to close it (Ghostty sends another `<C-j>`)
 
-Neovim (`:lua print(vim.fn.keytrans(vim.fn.getcharstr()))`):
-- Cmd+H => `<F55>`
-- Cmd+J => `<F56>`
-- Cmd+K => `<F57>`
-- Cmd+L => `<F58>`
+### Cmd+; / Cmd+E (raw escape sequence)
 
-Because Neovim translates the sequence, the working fix was to map **both**
-the raw sequence **and** the translated keycodes. See:
+Ghostty sends:
+
+- Cmd+E => `^[[19;3~`
+- Cmd+; => `^[[19;3~`
+
+Neovim often translates that to:
+
+- Cmd+E => `<F56>`
+- Cmd+; => `<F56>`
+
+Because Neovim may translate the sequence, the working fix is to map **both**
+the raw sequence **and** the translated keycode. `Cmd+E` and `Cmd+;` are
+intentional aliases for the same "file tree in place" action. See:
 `~/.dotfiles/.config/nvim/lua/humoodagen/remap.lua`.
 
 NvimTree undo behavior is documented in `~/.dotfiles/.config/nvim/NVIM_TREE_UNDO.md`.
 
-### Cmd+Shift+H/J/K/L (toggle panes)
+### Ghostty split navigation
 
-Neovim mappings:
-- Cmd+Shift+H => toggle filetree (no focus)
-- Cmd+Shift+J => toggle bottom terminal
-- Cmd+Shift+K => toggle file-only mode (hide/restore tree + terminals)
-- Cmd+Shift+L => toggle right terminal
+Ghostty keeps split movement on:
 
-Ghostty (shell, `cat -v`):
-- Cmd+Shift+H => `^[[18;2~`
-- Cmd+Shift+J => `^[[19;2~`
-- Cmd+Shift+K => `^[[20;2~`
-- Cmd+Shift+L => `^[[21;2~`
+- Cmd+H / Cmd+L => left / right
+- Cmd+Alt+H/J/K/L => left / down / up / right
 
-Neovim:
-- Cmd+Shift+H => `<F19>`
-- Cmd+Shift+J => `<F20>`
-- Cmd+Shift+K => `<F21>`
-- Cmd+Shift+L => `<F22>`
-
-### Cmd+Ctrl+H/J/K/L (resize splits)
-
-These resize the active split, directionally, from any pane (tree, file, bottom
-terminal, right terminal).
-
-Ghostty (shell, `cat -v`):
-- Cmd+Ctrl+H => `^[[18;5~`
-- Cmd+Ctrl+J => `^[[19;5~`
-- Cmd+Ctrl+K => `^[[20;5~`
-- Cmd+Ctrl+L => `^[[21;5~`
-
-Neovim:
-- Cmd+Ctrl+H => `<F31>`
-- Cmd+Ctrl+J => `<F32>`
-- Cmd+Ctrl+K => `<F33>`
-- Cmd+Ctrl+L => `<F34>`
-
-All of the above are mapped (raw + translated) in:
-`~/.config/nvim/lua/humoodagen/remap.lua`.
+This leaves Cmd+J/K free for Neovim-only actions.
 
 ### Cmd+T / Cmd+1..9 (toggleterm tabs)
 
@@ -102,10 +68,13 @@ foreground job in that tmux pane (see `~/.config/nvim/lua/humoodagen/init.lua`).
 
 ## Other keybindings (Neovim-only)
 
-### Ctrl+K (fzf file search)
+### Cmd+J / Cmd+K (`fzf-lua`, via Ghostty -> Ctrl+J / Ctrl+K)
 
-- Ctrl+K => `fzf-lua` find/create files (cwd)
-- Press Ctrl+K again inside the picker to close it (toggle behavior)
+- Cmd+J => `fzf-lua` live grep (cwd)
+- Press Cmd+J again inside the picker to close it (abort)
+
+- Cmd+K => `fzf-lua` find/create files (cwd)
+- Press Cmd+K again inside the picker to close it (toggle behavior)
 - Inside the picker:
   - Tab behaves like Enter (accept/open; creates the typed path if there are no matches)
   - Right arrow completes the query to the next path segment for the currently highlighted entry

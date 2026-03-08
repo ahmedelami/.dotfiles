@@ -8,6 +8,35 @@ local state = {
 
 local place
 
+local function default_normal_bg()
+    if vim.o.background == "dark" then
+        return 0x000000
+    end
+    return 0xFFFFFF
+end
+
+local function default_normal_fg()
+    if vim.o.background == "dark" then
+        return 0xFFFFFF
+    end
+    return 0x000000
+end
+
+local function set_cursor_highlights()
+    local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+    local normal_fg = normal.fg or default_normal_fg()
+    local normal_bg = normal.bg or default_normal_bg()
+
+    local cursor_hl = { fg = normal_bg, bg = normal_fg }
+    vim.api.nvim_set_hl(0, "Cursor", cursor_hl)
+    vim.api.nvim_set_hl(0, "CursorIM", cursor_hl)
+
+    vim.api.nvim_set_hl(0, "HumoodagenModeCursorNormal", cursor_hl)
+    vim.api.nvim_set_hl(0, "HumoodagenModeCursorInsert", cursor_hl)
+    vim.api.nvim_set_hl(0, "HumoodagenModeCursorReplace", cursor_hl)
+    vim.api.nvim_set_hl(0, "HumoodagenModeCursorVisual", cursor_hl)
+end
+
 local redraw_scheduled = false
 local function schedule_redraw()
     if redraw_scheduled then
@@ -182,6 +211,7 @@ end
 function M.setup()
     local group = vim.api.nvim_create_augroup("HumoodagenModeCursor", { clear = true })
 
+    set_cursor_highlights()
     vim.api.nvim_create_autocmd("ModeChanged", {
         group = group,
         callback = function()
@@ -226,13 +256,21 @@ function M.setup()
         "WinEnter",
         "BufEnter",
         "CmdlineLeave",
-        "ColorScheme",
     }, {
         group = group,
         callback = function()
             schedule_place()
         end,
         desc = "Draw a per-mode cursor block using buffer highlights (instant)",
+    })
+
+    vim.api.nvim_create_autocmd("ColorScheme", {
+        group = group,
+        callback = function()
+            set_cursor_highlights()
+            schedule_place()
+        end,
+        desc = "Keep cursor block highlights in sync with the colorscheme",
     })
 
     vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave", "CmdlineEnter" }, {

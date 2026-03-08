@@ -1,0 +1,59 @@
+[
+    // Merge into VS Code's keybindings.json.
+    // VSCodeVim cannot express the Neovim expr-mapping:
+    // v:count == 0 ? 'gj' : 'j'
+    // v:count == 0 ? 'gk' : 'k'
+    // This keeps wrapped-line motion but loses exact count-aware behavior.
+    {
+        "key": "j",
+        "command": "cursorDown",
+        "when": "editorTextFocus && vim.active && (vim.mode == 'Normal' || vim.mode == 'Visual' || vim.mode == 'VisualLine' || vim.mode == 'VisualBlock') && !inDebugRepl && !suggestWidgetMultipleSuggestions && !suggestWidgetVisible"
+    },
+    {
+        "key": "k",
+        "command": "cursorUp",
+        "when": "editorTextFocus && vim.active && (vim.mode == 'Normal' || vim.mode == 'Visual' || vim.mode == 'VisualLine' || vim.mode == 'VisualBlock') && !inDebugRepl && !suggestWidgetMultipleSuggestions && !suggestWidgetVisible"
+    },
+
+    // Mac aliases to mirror the Ghostty-driven Command-key habits from Neovim.
+    {
+        "key": "cmd+j",
+        "command": "vim.remap",
+        "when": "inputFocus && vim.active && (vim.mode == 'Normal' || vim.mode == 'Visual' || vim.mode == 'VisualLine' || vim.mode == 'VisualBlock')",
+        "args": {
+            "after": ["<C-j>"]
+        }
+    },
+    {
+        "key": "cmd+k",
+        "command": "vim.remap",
+        "when": "inputFocus && vim.active && (vim.mode == 'Normal' || vim.mode == 'Visual' || vim.mode == 'VisualLine' || vim.mode == 'VisualBlock')",
+        "args": {
+            "after": ["<C-k>"]
+        }
+    },
+    {
+        "key": "cmd+t",
+        "command": "vim.remap",
+        "when": "inputFocus && vim.active && vim.mode == 'Normal'",
+        "args": {
+            "after": ["<C-t>"]
+        }
+    },
+    {
+        "key": "cmd+;",
+        "command": "vim.remap",
+        "when": "inputFocus && vim.active && vim.mode == 'Normal'",
+        "args": {
+            "after": ["<C-t>"]
+        }
+    },
+    {
+        "key": "cmd+e",
+        "command": "vim.remap",
+        "when": "inputFocus && vim.active && vim.mode == 'Normal'",
+        "args": {
+            "after": ["<C-t>"]
+        }
+    }
+]

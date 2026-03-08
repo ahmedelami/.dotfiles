@@ -14,6 +14,7 @@ return {
     },
     dependencies = {
         "echasnovski/mini.nvim",
+        "MunifTanjim/nui.nvim",
         "nvim-tree/nvim-web-devicons",
     },
     config = function()
@@ -23,11 +24,13 @@ return {
             local Input
 
             local function require_input()
-                if Input then
-                    return Input
+                if Input ~= nil then
+                    return Input or nil
                 end
-                Input = require("nui.input")
-                return Input
+
+                local ok, loaded = pcall(require, "nui.input")
+                Input = ok and loaded or false
+                return ok and loaded or nil
             end
 
             local function opts(desc)
@@ -133,6 +136,14 @@ return {
 
                 vim.ui.input = function(input_opts, on_confirm)
                     local Input = require_input()
+                    if not Input then
+                        vim.ui.input = original
+                        return original(input_opts, function(value)
+                            vim.ui.input = original
+                            on_confirm(value)
+                        end)
+                    end
+
                     local prompt = (input_opts and input_opts.prompt) or "Rename to "
                     local default_value = ""
                     if input_opts then
@@ -199,7 +210,6 @@ return {
                 if not node then
                     return
                 end
-                local Input = require_input()
 
                 local base_dir = node.absolute_path
                 if node.type ~= "directory" then
@@ -217,45 +227,59 @@ return {
                     prompt = prompt .. path_sep
                 end
 
+                local function should_create_directory(target)
+                    if target:sub(-1) == path_sep then
+                        return true
+                    end
+                    return false
+                end
+
+                local function submit_create(value)
+                    if not value or vim.fn.trim(value) == "" then
+                        return
+                    end
+
+                    local target = value
+                    if target:sub(1, 1) ~= path_sep and not target:match("^%a:[/\\]") then
+                        target = base_dir .. path_sep .. target
+                    end
+
+                    local is_dir = should_create_directory(target)
+                    local dir_path = is_dir and target or vim.fn.fnamemodify(target, ":h")
+                    if dir_path ~= "" then
+                        vim.fn.mkdir(dir_path, "p")
+                    end
+                    if not is_dir then
+                        local ok, fd = pcall(vim.loop.fs_open, target, "w", 420)
+                        if ok and type(fd) == "number" then
+                            vim.loop.fs_close(fd)
+                        end
+                    end
+
+                    local record_path = target
+                    if record_path:sub(-1) == path_sep then
+                        record_path = record_path:sub(1, -2)
+                    end
+                    undo.record_create(record_path)
+
+                    api.tree.reload()
+                    api.tree.find_file({ buf = record_path, open = true, focus = true })
+                end
+
+                local Input = require_input()
+                if not Input then
+                    return vim.ui.input({ prompt = prompt }, submit_create)
+                end
+
                 local input = Input({
                     relative = "cursor",
                     position = { row = 1, col = 0 },
                     size = { width = math.min(80, math.max(24, #prompt + 10)) },
-                    border = { style = "rounded", text = { top = "New", top_align = "left" } },
+                    border = { style = "rounded", text = { top = "New (append / => dir)", top_align = "left" } },
                     win_options = { winblend = 0 },
                 }, {
                     prompt = prompt,
-                    on_submit = function(value)
-                        if not value or vim.fn.trim(value) == "" then
-                            return
-                        end
-
-                        local target = value
-                        if target:sub(1, 1) ~= path_sep and not target:match("^%a:[/\\]") then
-                            target = base_dir .. path_sep .. target
-                        end
-
-                        local is_dir = target:sub(-1) == path_sep
-                        local dir_path = is_dir and target or vim.fn.fnamemodify(target, ":h")
-                        if dir_path ~= "" then
-                            vim.fn.mkdir(dir_path, "p")
-                        end
-                        if not is_dir then
-                            local ok, fd = pcall(vim.loop.fs_open, target, "w", 420)
-                            if ok and type(fd) == "number" then
-                                vim.loop.fs_close(fd)
-                            end
-                        end
-
-                        local record_path = target
-                        if record_path:sub(-1) == path_sep then
-                            record_path = record_path:sub(1, -2)
-                        end
-                        undo.record_create(record_path)
-
-                        api.tree.reload()
-                        api.tree.find_file({ buf = target, open = true, focus = true })
-                    end,
+                    on_submit = submit_create,
                 })
 
                 input:mount()
@@ -309,10 +333,10 @@ return {
 		                add_trailing = false,
 		                group_empty = false,
 		                indent_width = 1,
-		                highlight_git = "name",
-                -- Show only the last folder segment (e.g. "/analytics-dash") in
-                -- the tree header instead of the full path, and truncate to
-                -- avoid wrapping in narrow tree widths.
+		                highlight_git = "none",
+                -- Keep the normal tree root label (e.g. "/hp-waitlist") in the
+                -- buffer itself. The extra label above line 1 was coming from the
+                -- sticky overlay, not from this root line.
                 root_folder_label = function(path)
                     if type(path) ~= "string" or path == "" then
                         return ""
@@ -339,9 +363,7 @@ return {
                         return label
                     end
 
-                    -- Keep the end of the folder name (right side), and always
-                    -- show a "/" prefix for readability.
-                    local keep = math.max(1, max - 2) -- "…/"
+                    local keep = math.max(1, max - 2)
                     local chars = vim.fn.strchars(name)
                     local tail = vim.fn.strcharpart(name, math.max(0, chars - keep), keep)
                     return "…/" .. tail
@@ -547,9 +569,21 @@ return {
 	        local nvim_tree_cache = {}
 
 	        local enable_open_pipes = true
+	        local enable_sticky_headers = false
 	        local sticky_overlay_state = {}
 
-        local function sticky_header_lnums(bufnr, top_lnum)
+	        local function close_all_sticky_header_windows()
+	            for _, win in ipairs(vim.api.nvim_list_wins()) do
+	                if win and vim.api.nvim_win_is_valid(win) then
+	                    local buf = vim.api.nvim_win_get_buf(win)
+	                    if buf and vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "NvimTreeStickyHeader" then
+	                        pcall(vim.api.nvim_win_close, win, true)
+	                    end
+	                end
+	            end
+	        end
+
+	        local function sticky_header_lnums(bufnr, top_lnum)
             local cache = nvim_tree_cache[bufnr]
             if type(cache) ~= "table" then
                 return nil, "no_cache"
@@ -627,11 +661,53 @@ return {
                 return nil, "no_dirs"
             end
 
-            table.sort(lnums)
-            return lnums, "ok"
-        end
+	            table.sort(lnums)
+	            return lnums, "ok"
+	        end
 
-        local function sticky_header_virt_lines(bufnr, lnums)
+	        local function sticky_node_highlights(cache, lnum, icon)
+	            local nodes_by_line = cache and cache.nodes_by_line or nil
+	            local node = (type(nodes_by_line) == "table") and nodes_by_line[lnum] or nil
+	            local icon_hl = "NvimTreeFileIcon"
+	            local name_hl = "NvimTreeNormal"
+
+	            if type(node) == "table" then
+	                local ok_icon, icon_node = pcall(function()
+	                    if type(node.highlighted_icon) == "function" then
+	                        return node:highlighted_icon()
+	                    end
+	                end)
+	                if ok_icon and type(icon_node) == "table" and type(icon_node.hl) == "table" and type(icon_node.hl[1]) == "string" and icon_node.hl[1] ~= "" then
+	                    icon_hl = icon_node.hl[1]
+	                elseif node.type == "directory" then
+	                    icon_hl = node.open and "NvimTreeOpenedFolderIcon" or "NvimTreeClosedFolderIcon"
+	                end
+
+	                local ok_name, name_node = pcall(function()
+	                    if type(node.highlighted_name) == "function" then
+	                        return node:highlighted_name()
+	                    end
+	                end)
+	                if ok_name and type(name_node) == "table" and type(name_node.hl) == "table" and type(name_node.hl[1]) == "string" and name_node.hl[1] ~= "" then
+	                    name_hl = name_node.hl[1]
+	                elseif node.type == "directory" then
+	                    name_hl = node.open and "NvimTreeOpenedFolderName" or "NvimTreeFolderName"
+	                end
+
+	                return icon_hl, name_hl
+	            end
+
+	            if icon == "" or icon == "" then
+	                return "NvimTreeOpenedFolderIcon", "NvimTreeOpenedFolderName"
+	            end
+	            if icon == "" or icon == "" then
+	                return "NvimTreeClosedFolderIcon", "NvimTreeFolderName"
+	            end
+
+	            return icon_hl, name_hl
+	        end
+
+	        local function sticky_header_virt_lines(bufnr, lnums)
             if type(lnums) ~= "table" or #lnums == 0 then
                 return nil
             end
@@ -665,19 +741,15 @@ return {
                     end
                 end
 
-                local icon_charidx = vim.str_utfindex(base, icon_col)
-                local icon = vim.fn.strcharpart(base, icon_charidx, 1)
-                local name = vim.fn.strcharpart(base, icon_charidx + 2)
-                if icon == "" then
-                    icon = blue_pipe
-                end
-	                local icon_hl = (icon == "" and "NvimTreeClosedFolderIcon")
-	                    or (icon == "" and "NvimTreeOpenedFolderIcon")
-	                    or (icon == "" and "NvimTreeFolderArrowClosed")
-	                    or (icon == "" and "NvimTreeFolderArrowOpen")
-	                    or "NvimTreeFolderIcon"
+	                local icon_charidx = vim.str_utfindex(base, icon_col)
+	                local icon = vim.fn.strcharpart(base, icon_charidx, 1)
+	                local name = vim.fn.strcharpart(base, icon_charidx + 2)
+	                if icon == "" then
+	                    icon = blue_pipe
+	                end
+	                local icon_hl, name_hl = sticky_node_highlights(cache, lnum, icon)
 
-                local segments = {}
+	                local segments = {}
                 for _, cell in ipairs(prefix_cells) do
                     if cell == blue_pipe then
                         segments[#segments + 1] = { blue_pipe, "NvimTreeFolderIcon" }
@@ -688,11 +760,11 @@ return {
                     end
                 end
 
-                segments[#segments + 1] = { icon, icon_hl }
-                segments[#segments + 1] = { " ", "NvimTreeNormal" }
-                if name ~= "" then
-                    segments[#segments + 1] = { name, "NvimTreeFolderName" }
-                end
+	                segments[#segments + 1] = { icon, icon_hl }
+	                segments[#segments + 1] = { " ", "NvimTreeNormal" }
+	                if name ~= "" then
+	                    segments[#segments + 1] = { name, name_hl }
+	                end
 
                 virt_lines[#virt_lines + 1] = segments
             end
@@ -849,11 +921,7 @@ return {
 	                if icon == "" then
 	                    icon = blue_pipe
 	                end
-	                local icon_hl = (icon == "" and "NvimTreeClosedFolderIcon")
-	                    or (icon == "" and "NvimTreeOpenedFolderIcon")
-	                    or (icon == "" and "NvimTreeFolderArrowClosed")
-	                    or (icon == "" and "NvimTreeFolderArrowOpen")
-	                    or "NvimTreeFolderIcon"
+	                local icon_hl, name_hl = sticky_node_highlights(cache, lnum, icon)
 
 	                local prefix = table.concat(prefix_cells)
 	                lines[#lines + 1] = gutter .. prefix .. icon .. " " .. name
@@ -877,7 +945,7 @@ return {
 
 	                local name_bytes = #name
 	                if name_bytes > 0 then
-	                    highlights[#highlights + 1] = { hl = "NvimTreeFolderName", line = line_idx, start_col = col, end_col = col + name_bytes }
+	                    highlights[#highlights + 1] = { hl = name_hl, line = line_idx, start_col = col, end_col = col + name_bytes }
 	                end
 	            end
 
@@ -924,6 +992,14 @@ return {
 	        end
 
 	        local function sticky_refresh(tree_win)
+	            if not enable_sticky_headers then
+	                close_all_sticky_header_windows()
+	                if tree_win and vim.api.nvim_win_is_valid(tree_win) then
+	                    overlay_close(tree_win)
+	                end
+	                return
+	            end
+
 	            local ok = pcall(function()
 	                if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
 	                    return
@@ -1022,27 +1098,29 @@ return {
             end
         end
 
-        local sticky_group = vim.api.nvim_create_augroup("HumoodagenNvimTreeStickyHeaders", { clear = true })
-        vim.api.nvim_create_autocmd({ "WinScrolled", "WinResized", "BufWinEnter" }, {
-            group = sticky_group,
-            callback = function()
-                local win = (vim.v.event and vim.v.event.winid) or vim.api.nvim_get_current_win()
-                sticky_refresh(win)
-            end,
-        })
+        if enable_sticky_headers then
+            local sticky_group = vim.api.nvim_create_augroup("HumoodagenNvimTreeStickyHeaders", { clear = true })
+            vim.api.nvim_create_autocmd({ "WinScrolled", "WinResized", "BufWinEnter" }, {
+                group = sticky_group,
+                callback = function()
+                    local win = (vim.v.event and vim.v.event.winid) or vim.api.nvim_get_current_win()
+                    sticky_refresh(win)
+                end,
+            })
 
-        -- Fallback: some setups don't reliably fire WinScrolled for the tree (e.g. certain
-        -- mouse/scroll mappings). The decoration provider runs on redraw, so it keeps the
-        -- sticky header in sync even in those cases.
-        vim.api.nvim_set_decoration_provider(sticky_header_ns, {
-            on_win = function(_, tree_win, bufnr, topline, botline)
-                if vim.bo[bufnr].filetype ~= "NvimTree" then
+            -- Fallback: some setups don't reliably fire WinScrolled for the tree (e.g. certain
+            -- mouse/scroll mappings). The decoration provider runs on redraw, so it keeps the
+            -- sticky header in sync even in those cases.
+            vim.api.nvim_set_decoration_provider(sticky_header_ns, {
+                on_win = function(_, tree_win, bufnr, topline, botline)
+                    if vim.bo[bufnr].filetype ~= "NvimTree" then
+                        return false
+                    end
+                    sticky_refresh(tree_win)
                     return false
-                end
-                sticky_refresh(tree_win)
-                return false
-            end,
-        })
+                end,
+            })
+        end
 
         local function apply_open_pipes(bufnr)
             if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
@@ -1497,6 +1575,7 @@ return {
         vim.api.nvim_create_autocmd("FileType", {
             pattern = "NvimTree",
             callback = function()
+                close_all_sticky_header_windows()
                 vim.schedule(ensure_nvim_tree_normal_mode)
                 vim.opt_local.numberwidth = 1
                 vim.opt_local.signcolumn = "no"

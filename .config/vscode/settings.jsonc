@@ -1,0 +1,257 @@
+{
+    // Merge into VS Code's settings.json.
+    // Source mappings:
+    // - .config/nvim/lua/humoodagen/remap.lua
+    // - .config/nvim/lua/humoodagen/set.lua
+    // - .config/nvim/lua/humoodagen/lazy/fzf-lua.lua
+    // - .config/nvim/lua/humoodagen/lazy/lsp.lua
+    // - .config/nvim/lua/humoodagen/lazy/oil.lua
+    // - .config/nvim/lua/humoodagen/lazy/neogit.lua
+    // - .config/nvim/lua/humoodagen/lazy/mini.lua
+    // - .config/nvim/lua/humoodagen/lazy/trouble.lua
+
+    "vim.leader": "<space>",
+    "vim.useCtrlKeys": true,
+    "vim.useSystemClipboard": false,
+    "vim.hlsearch": false,
+    "vim.incsearch": true,
+    "vim.autoindent": true,
+    "vim.surround": true,
+    "vim.easymotion": true,
+    "vim.highlightedyank.enable": true,
+    "vim.highlightedyank.duration": 40,
+    "vim.handleKeys": {
+        "<C-c>": true,
+        "<C-d>": true,
+        "<C-f>": true,
+        "<C-g>": true,
+        "<C-j>": true,
+        "<C-k>": true,
+        "<C-p>": true,
+        "<C-t>": true,
+        "<C-u>": true
+    },
+
+    // Keep VSCodeVim on its own extension host for better responsiveness.
+    "extensions.experimental.affinity": {
+        "vscodevim.vim": 1
+    },
+
+    "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": ["<C-c>"],
+            "commands": ["workbench.action.closeWindow"],
+            "silent": true
+        },
+        {
+            "before": ["<C-d>"],
+            "after": ["<C-d>", "z", "z"]
+        },
+        {
+            "before": ["<C-u>"],
+            "after": ["<C-u>", "z", "z"]
+        },
+        {
+            "before": ["n"],
+            "after": ["n", "z", "z", "z", "v"]
+        },
+        {
+            "before": ["N"],
+            "after": ["N", "z", "z", "z", "v"]
+        },
+        {
+            "before": ["<leader>", "y"],
+            "after": ["\"", "+", "y"]
+        },
+        {
+            "before": ["<leader>", "Y"],
+            "after": ["\"", "+", "Y"]
+        },
+        {
+            "before": ["<leader>", "f"],
+            "commands": ["editor.action.formatDocument"],
+            "silent": true
+        },
+        {
+            "before": ["<C-p>"],
+            "commands": ["workbench.action.quickOpen"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "p", "v"],
+            "commands": ["workbench.action.quickOpen"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "p", "f"],
+            "commands": ["workbench.action.quickOpen"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "p", "s"],
+            "commands": ["workbench.action.findInFiles"],
+            "silent": true
+        },
+        {
+            "before": ["<C-j>"],
+            "commands": ["workbench.action.findInFiles"],
+            "silent": true
+        },
+        {
+            "before": ["<C-k>"],
+            "commands": ["workbench.action.quickOpen"],
+            "silent": true
+        },
+        {
+            "before": ["<C-g>"],
+            "commands": ["workbench.view.scm"],
+            "silent": true
+        },
+        {
+            "before": ["<C-t>"],
+            "commands": [
+                "workbench.view.explorer",
+                "workbench.files.action.showActiveFileInExplorer"
+            ],
+            "silent": true
+        },
+        {
+            "before": ["-"],
+            "commands": [
+                "workbench.view.explorer",
+                "workbench.files.action.showActiveFileInExplorer"
+            ],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "o"],
+            "commands": [
+                "workbench.view.explorer",
+                "workbench.files.action.showActiveFileInExplorer"
+            ],
+            "silent": true
+        },
+        {
+            "before": ["g", "d"],
+            "commands": ["editor.action.revealDefinition"],
+            "silent": true
+        },
+        {
+            "before": ["g", "D"],
+            "commands": ["editor.action.revealDeclaration"],
+            "silent": true
+        },
+        {
+            "before": ["K"],
+            "commands": ["editor.action.showHover"],
+            "silent": true
+        },
+        {
+            "before": ["g", "i"],
+            "commands": ["editor.action.goToImplementation"],
+            "silent": true
+        },
+        {
+            "before": ["g", "r"],
+            "commands": ["editor.action.referenceSearch.trigger"],
+            "silent": true
+        },
+        {
+            "before": ["g", "f"],
+            "commands": ["editor.action.openLink"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "s", "h"],
+            "commands": ["editor.action.triggerParameterHints"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "r", "n"],
+            "commands": ["editor.action.rename"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "c", "a"],
+            "commands": ["editor.action.quickFix"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "d"],
+            "commands": ["editor.action.showHover"],
+            "silent": true
+        },
+        {
+            "before": ["[", "d"],
+            "commands": ["editor.action.marker.prev"],
+            "silent": true
+        },
+        {
+            "before": ["]", "d"],
+            "commands": ["editor.action.marker.next"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "t", "t"],
+            "commands": ["workbench.actions.view.problems"],
+            "silent": true
+        },
+        {
+            "before": ["[", "t"],
+            "commands": ["editor.action.marker.prevInFiles"],
+            "silent": true
+        },
+        {
+            "before": ["]", "t"],
+            "commands": ["editor.action.marker.nextInFiles"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "g", "s"],
+            "commands": ["workbench.view.scm"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "g", "r"],
+            "commands": ["workbench.view.scm"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "n", "l"],
+            "commands": ["notifications.showList"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "n", "h"],
+            "commands": ["notifications.showList"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "n", "d"],
+            "commands": ["notifications.clearAll"],
+            "silent": true
+        }
+    ],
+
+    "vim.visualModeKeyBindingsNonRecursive": [
+        {
+            "before": ["J"],
+            "commands": ["editor.action.moveLinesDownAction"],
+            "silent": true
+        },
+        {
+            "before": ["K"],
+            "commands": ["editor.action.moveLinesUpAction"],
+            "silent": true
+        },
+        {
+            "before": ["<leader>", "y"],
+            "after": ["\"", "+", "y"]
+        },
+        {
+            "before": ["<C-j>"],
+            "commands": ["workbench.action.findInFiles"],
+            "silent": true
+        }
+    ]
+}
