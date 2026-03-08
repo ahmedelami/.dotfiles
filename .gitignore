@@ -17,3 +17,8 @@ secrets.zsh
 
 # History exports: allow the sanitized snapshot, but ignore any backups.
 history/*.bak-*
+.config/nvim/.toggleterm-zdotdir/
+bin/__pycache__/
+zsh/.zshrc.pre_ohmyzsh_removal_*
+bin/codex-ghostty-proxy
+codex-ghostty-proxy/target/
