@@ -334,6 +334,17 @@ return {
 		                group_empty = false,
 		                indent_width = 1,
 		                highlight_git = "none",
+                decorators = {
+                    "Git",
+                    "Open",
+                    "Hidden",
+                    "Modified",
+                    "Bookmark",
+                    "Diagnostics",
+                    "Copied",
+                    require("humoodagen.nvim_tree_file_icon_pad"),
+                    "Cut",
+                },
                 -- Keep the normal tree root label (e.g. "/hp-waitlist") in the
                 -- buffer itself. The extra label above line 1 was coming from the
                 -- sticky overlay, not from this root line.
@@ -386,7 +397,7 @@ return {
 		                        folder = { enable = false },
 		                    },
                     padding = {
-                        icon = " ",
+                        icon = "",
                     },
 		                    show = {
 		                        file = true,
@@ -398,12 +409,12 @@ return {
 			                        folder = {
 			                            arrow_closed = "",
 			                            arrow_open = "",
-			                            default = "",
-			                            open = "",
-			                            empty = "",
-			                            empty_open = "",
-			                            symlink = "",
-			                            symlink_open = "",
+			                            default = "",
+			                            open = "",
+			                            empty = "",
+			                            empty_open = "",
+			                            symlink = "",
+			                            symlink_open = "",
 			                        },
 			                        git = {
 			                            unstaged = "",
