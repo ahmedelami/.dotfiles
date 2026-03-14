@@ -9,10 +9,25 @@ vim.keymap.set("n", "<C-c>", "<cmd>qa<CR>")
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv")
 vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv")
 
-vim.keymap.set("n", "<C-d>", "<C-d>zz")
-vim.keymap.set("n", "<C-u>", "<C-u>zz")
+local immediate_scroll_opts = { nowait = true, silent = true }
+
+vim.keymap.set("n", "<C-d>", "<C-d>zz", immediate_scroll_opts)
+vim.keymap.set("n", "<C-u>", "<C-u>zz", immediate_scroll_opts)
 vim.keymap.set("n", "n", "nzzzv")
 vim.keymap.set("n", "N", "Nzzzv")
+
+local function quarter_page_scroll(motion)
+    local step = math.max(1, math.floor(vim.api.nvim_win_get_height(0) / 4))
+    vim.cmd(("normal! %d%szz"):format(step, motion))
+end
+
+vim.keymap.set("n", "<C-w>", function()
+    quarter_page_scroll("gk")
+end, { desc = "Scroll quarter page up", nowait = true, silent = true })
+
+vim.keymap.set("n", "<C-s>", function()
+    quarter_page_scroll("gj")
+end, { desc = "Scroll quarter page down", nowait = true, silent = true })
 
 -- next greatest remap ever : asbjornHaland
 vim.keymap.set({"n", "v"}, "<leader>y", [["+y]])
@@ -77,8 +92,8 @@ local function file_tree_in_place()
     end
 end
 
--- Ghostty is configured to send Cmd+; and Cmd+E as `^[[19;3~`, and Neovim often translates it to `<F56>`.
-for _, lhs in ipairs({ "<D-;>", "<F56>", "<Esc>[19;3~" }) do
+-- Ghostty is configured to send Cmd+E as `^[[19;3~`, and Neovim often translates it to `<F56>`.
+for _, lhs in ipairs({ "<F56>", "<Esc>[19;3~" }) do
     vim.keymap.set("n", lhs, file_tree_in_place, { desc = "File tree (in place)" })
 end
 

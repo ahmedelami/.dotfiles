@@ -32,6 +32,8 @@ font-size = 12.525
 # Shell
 command = "direct:/opt/homebrew/bin/nu -l"
 
+# Forward Cmd+E into Neovim as CSI 19;3~ for the file tree binding.
+keybind = super+e=csi:19;3~
 # Disable Ghostty's Nushell auto-injection for now. The bundled `use ghostty *`
 # path is currently breaking launch on this machine.
 shell-integration = none
