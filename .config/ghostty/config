@@ -26,8 +26,12 @@ palette = 14=#14f0f0
 palette = 15=#e9ebeb
 
 # Font
+font-family = ""
+font-family = Menlo
 font-family = JetBrainsMono Nerd Font Mono
-font-size = 12.525
+font-size = 11.875
+font-thicken = true
+font-thicken-strength = 0
 
 # Shell
 command = "direct:/opt/homebrew/bin/nu -l"
