@@ -4,6 +4,9 @@
 foreground = #000000
 background = #ffffff
 cursor-color = #000000
+cursor-style = block
+cursor-style-blink = false
+shell-integration-features = no-cursor
 selection-background = #d6d6d6
 selection-foreground = #000000
 
@@ -34,23 +37,28 @@ font-thicken = true
 font-thicken-strength = 0
 
 # Shell
-command = "direct:/opt/homebrew/bin/nu -l"
+command = "direct:/bin/zsh -l"
 
+# Keep the native shortcuts explicit so new tabs/windows always take Ghostty's
+# built-in path even if upstream defaults shift between builds.
+keybind = super+t=new_tab
+keybind = super+n=new_window
 # Forward Cmd+E into Neovim as CSI 19;3~ for the file tree binding.
 keybind = super+e=csi:19;3~
-# Disable Ghostty's Nushell auto-injection for now. The bundled `use ghostty *`
-# path is currently breaking launch on this machine.
-shell-integration = none
 
 # Working directory
-# Always start new windows/tabs in home (don't inherit the current tab's cwd).
-working-directory = home
+# Always start new windows/tabs in the repos root instead of inheriting the
+# focused surface's cwd.
+working-directory = /Users/ahmedelamin/repos
 window-inherit-working-directory = false
 
 # Window (macOS defaults: traffic lights + native tabs)
+# Leave maximize off so AeroSpace can size Cmd+N windows into the tile tree
+# instead of Ghostty asking macOS for a full-display frame first.
 window-decoration = auto
 macos-titlebar-style = transparent
-maximize = true
+maximize = false
+window-padding-y = 0
 
 # Mouse
 mouse-hide-while-typing = true
@@ -84,6 +92,18 @@ keybind = super+shift+key_h=new_split:left
 keybind = super+shift+key_j=new_split:down
 keybind = super+shift+key_k=new_split:up
 keybind = super+shift+key_l=new_split:right
+
+# Resize the focused split by pushing its boundary in the pressed direction.
+# Leave plain Ctrl+H/J/K/L untouched; Ctrl+Shift is the custom coarse jump.
+keybind = ctrl+shift+h=resize_split:left,50
+keybind = ctrl+shift+j=resize_split:down,50
+keybind = ctrl+shift+k=resize_split:up,50
+keybind = ctrl+shift+l=resize_split:right,50
+keybind = ctrl+shift+key_h=resize_split:left,50
+keybind = ctrl+shift+key_j=resize_split:down,50
+keybind = ctrl+shift+key_k=resize_split:up,50
+keybind = ctrl+shift+key_l=resize_split:right,50
+keybind = ctrl+shift+==equalize_splits
 
 # Alternate bindings (Cmd+Opt) in case Cmd+Shift letter combos are grabbed by the OS/app.
 keybind = super+alt+h=goto_split:left

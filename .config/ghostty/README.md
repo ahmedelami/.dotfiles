@@ -16,19 +16,6 @@ This setup is optimized for extreme performance and true isolation. Every Ghostt
 4.  **Automatic Cleanup (Default Mode):** Closing a Ghostty pane automatically kills the associated Tmux session to prevent background resource leaks.
 5.  **B&W Theme:** High-contrast black text on a pure white background. Active tabs/panes are highlighted in blue.
 
-## Optional: Persistent Session Mode (Faster Opens)
-
-If you want the “instant attach” experience after boot, you can keep a tmux server + the Neovim session running in the background, and have new Ghostty windows/panes attach to it.
-
-- Enable: `~/.dotfiles/ghostty_persist_enable.sh`
-- Disable: `~/.dotfiles/ghostty_persist_disable.sh`
-- Under the hood this is a flag file: `~/.local/state/humoodagen/ghostty-persist-session`
-
-Tradeoffs:
-
-- You lose “isolated panes”: all panes/windows attach to the same tmux session (`ghostty`).
-- There is no auto-cleanup in this mode: closing Ghostty just detaches from tmux; the session stays alive until disabled/killed.
-
 ## Optional: Prewarm Ghostty at Login (Faster “Cold” Opens)
 
 On macOS, most of the “cold start” you feel is the app process launch. Prewarming starts Ghostty in the background with no initial window, so opening the first window later is measurably faster.
@@ -84,15 +71,6 @@ Some macOS Cmd shortcuts never reach terminal apps. This setup forces `CMD + R` 
 - **Isolation:** Ghostty handles the splits; Tmux handles the tabs *within* those splits.
 - **Cold start:** Ghostty sessions skip tmux TPM (`TMUX_SKIP_TPM=1`) for faster startup.
 - **Neovim cold start:** Ghostty sets `HUMOODAGEN_FAST_START=1` so heavy plugins load on-demand.
-
-## Performance Profiling (Verified Timing)
-
-This setup includes optional perf logs to measure where time is going (Ghostty → tmux → Neovim → toggleterm prompt).
-
-- Enable perf logging: `touch ~/.local/state/humoodagen/ghostty-perf-on`
-- Optional UI trace (more spammy; can impact smoothness during window resize): `touch ~/.local/state/humoodagen/ghostty-perf-ui-on`
-- Launch Ghostty with an “open timestamp” marker: `~/.dotfiles/ghostty_open_perf.sh`
-- Print latest report: `~/.dotfiles/ghostty_perf_report.py`
 
 ## AI Guidelines (AGENTS)
 
