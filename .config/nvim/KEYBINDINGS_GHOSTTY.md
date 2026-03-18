@@ -1,9 +1,10 @@
 # KEYBINDINGS_GHOSTTY.md
 
-This file exists to prevent re-doing hours of testing. The mappings and behaviors
-below were verified repeatedly with `cat -v` in Ghostty and `vim.fn.keytrans` in
-Neovim. They are not guesses. If something breaks, follow the procedure here
-instead of re-running exploratory experiments.
+This file exists to prevent re-doing hours of testing. The Ghostty transport
+details below were verified repeatedly with `cat -v` in Ghostty and
+`vim.fn.keytrans` in Neovim. The Neovim-side actions listed here describe the
+current config. If something breaks, follow the procedure here instead of
+re-running exploratory experiments.
 
 ## Verified behavior (Ghostty -> Neovim)
 
@@ -16,29 +17,47 @@ Ghostty sends these directly as the existing Ctrl bindings used by Neovim:
 
 That lets Ghostty drive the Neovim Ctrl-key mappings from the Command key:
 
-- Cmd+J => `fzf-lua` live grep (cwd)
-- Cmd+K => `fzf-lua` find/create files (cwd)
+- Cmd+J => `fff.nvim` live grep (cwd)
+- Cmd+K => `fff.nvim` find/create files (cwd)
 - Press Cmd+K again inside the picker to close it (Ghostty sends another `<C-k>`)
 - Press Cmd+J again inside the picker to close it (Ghostty sends another `<C-j>`)
 
-### Cmd+; / Cmd+E (raw escape sequence)
+### Cmd+E (file tree)
 
 Ghostty sends:
 
 - Cmd+E => `^[[19;3~`
-- Cmd+; => `^[[19;3~`
 
 Neovim often translates that to:
 
 - Cmd+E => `<F56>`
-- Cmd+; => `<F56>`
 
 Because Neovim may translate the sequence, the working fix is to map **both**
-the raw sequence **and** the translated keycode. `Cmd+E` and `Cmd+;` are
-intentional aliases for the same "file tree in place" action. See:
+the raw sequence **and** the translated keycode. `Cmd+E` is the file tree
+mapping. See:
 `~/.dotfiles/.config/nvim/lua/humoodagen/remap.lua`.
 
 NvimTree undo behavior is documented in `~/.dotfiles/.config/nvim/NVIM_TREE_UNDO.md`.
+
+### Cmd+R (git UI)
+
+Ghostty sends:
+
+- Cmd+R => `^[[28~`
+
+Neovim often translates that to:
+
+- Cmd+R => `<F15>`
+
+Because Neovim may translate the sequence, the working fix is to map **both**
+the raw sequence **and** the translated keycode. `Cmd+R` is context-aware:
+it toggles the git review sidecar from a real file buffer, opens or retargets a
+3-pane review layout from NvimTree for the selected file, opens Diffview's
+repo-wide changed-file panel from terminal buffers or non-file tree nodes, and
+closes the git review sidecar when pressed inside that diff buffer. The Neovim
+mapping works from normal, insert, visual, and terminal mode. In Neovide, the
+same action is also mapped directly on `<D-r>`. See:
+`~/.dotfiles/.config/nvim/lua/humoodagen/remap.lua`.
 
 ### Ghostty split navigation
 
@@ -68,16 +87,35 @@ foreground job in that tmux pane (see `~/.config/nvim/lua/humoodagen/init.lua`).
 
 ## Other keybindings (Neovim-only)
 
-### Cmd+J / Cmd+K (`fzf-lua`, via Ghostty -> Ctrl+J / Ctrl+K)
+### Ctrl+W / Ctrl+S (quarter-page scroll)
 
-- Cmd+J => `fzf-lua` live grep (cwd)
+- Ctrl+W => scroll up by about a quarter screen, then center
+- Ctrl+S => scroll down by about a quarter screen, then center
+
+This intentionally overrides Neovim's default normal-mode `Ctrl+W` window
+prefix.
+
+### Cmd+J / Cmd+K (`fff.nvim`, via Ghostty -> Ctrl+J / Ctrl+K)
+
+- Cmd+J => `fff.nvim` live grep (cwd)
 - Press Cmd+J again inside the picker to close it (abort)
 
-- Cmd+K => `fzf-lua` find/create files (cwd)
+- Cmd+K => `fff.nvim` find/create files (cwd)
 - Press Cmd+K again inside the picker to close it (toggle behavior)
 - Inside the picker:
-  - Tab behaves like Enter (accept/open; creates the typed path if there are no matches)
+  - Enter and Tab accept the current file (or create the typed path if there are no matches)
   - Right arrow completes the query to the next path segment for the currently highlighted entry
+
+### Cmd+R (git UI)
+
+- Cmd+R on a real file => toggle the synchronized git review sidecar for that file
+- Cmd+R in NvimTree on a file => keep the tree open, open that file beside it, and show the unified diff sidecar on the right
+- Cmd+R in NvimTree on the file already under review => close the sidecar
+- Cmd+R in NvimTree on a directory/non-file node => open Diffview's changed-file panel
+- Cmd+R in terminal => open Diffview's changed-file panel
+- Cmd+R in the git review diff sidecar => close the sidecar
+- Works from normal, insert, visual, and terminal mode
+- In Neovide, `Cmd+R` arrives as `<D-r>` instead of Ghostty's escape sequence
 
 ### Tab (completion)
 

@@ -7,7 +7,6 @@
 
     <key>ProgramArguments</key>
     <array>
-      <string>/opt/homebrew/bin/nu</string>
       <string>/Users/ahmedelamin/.dotfiles/ghostty_prewarm.sh</string>
     </array>
 

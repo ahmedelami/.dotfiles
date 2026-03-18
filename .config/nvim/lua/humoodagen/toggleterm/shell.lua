@@ -50,8 +50,12 @@ function M.resolve()
     return override
   end
 
-  if vim.fn.executable("nu") == 1 then
-    return "nu"
+  if is_executable(vim.o.shell) and cmd_kind(vim.o.shell) == "zsh" then
+    return vim.o.shell
+  end
+
+  if vim.fn.executable("zsh") == 1 then
+    return "/bin/zsh"
   end
 
   return vim.o.shell
@@ -70,4 +74,3 @@ function M.kind(cmd)
 end
 
 return M
-

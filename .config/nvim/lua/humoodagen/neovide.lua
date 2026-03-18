@@ -8,13 +8,11 @@ vim.g.neovide_padding_bottom = 0
 vim.g.neovide_padding_left = 0
 vim.g.neovide_padding_right = 0
 
--- Cursor animation (smear/trail) to improve tracking.
-vim.g.neovide_cursor_animation_length = 0.08
-vim.g.neovide_cursor_short_animation_length = 0.04
--- Cursor trail (smear). This is safe now that we keep the fake cursor highlight
--- in sync with terminal redraws (prevents "ghost blocks" in prompts).
-vim.g.neovide_cursor_trail_size = 1.0
-vim.g.neovide_cursor_animate_in_insert_mode = true
+-- Keep the Neovim cursor as a steady block in every mode.
+vim.g.neovide_cursor_animation_length = 0
+vim.g.neovide_cursor_short_animation_length = 0
+vim.g.neovide_cursor_trail_size = 0.0
+vim.g.neovide_cursor_animate_in_insert_mode = false
 -- Cmdline/search cursor animation can look like the cursor "jumps" between panes
 -- in split-heavy layouts; keep it instant.
 vim.g.neovide_cursor_animate_command_line = false

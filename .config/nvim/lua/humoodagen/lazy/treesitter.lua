@@ -9,7 +9,7 @@ return {
                 "vimdoc", "javascript", "typescript", "c", "lua", "rust",
                 "jsdoc", "bash", "html", "css", "htmldjango", "python", "latex",
                 "json", "xml", "asm", "csv", "dockerfile", "disassembly", "gitignore",
-                "java", "http", "llvm", "make", "markdown", "php",
+                "java", "http", "llvm", "make", "markdown", "php", "swift",
                 "markdown_inline",
             },
 

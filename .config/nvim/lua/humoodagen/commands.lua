@@ -45,6 +45,30 @@ end, { nargs = 1, complete = "file" })
 
 M.create_path = create_path
 
+local function with_git_review(action)
+    return function()
+        local ok, git_review = pcall(require, "humoodagen.git_review")
+        if not ok then
+            vim.notify("Git review module unavailable.", vim.log.levels.ERROR)
+            return
+        end
+
+        action(git_review)
+    end
+end
+
+vim.api.nvim_create_user_command("GitReviewOpen", with_git_review(function(git_review)
+    git_review.open()
+end), { desc = "Open synchronized unified diff sidecar for the current file" })
+
+vim.api.nvim_create_user_command("GitReviewClose", with_git_review(function(git_review)
+    git_review.close()
+end), { desc = "Close the synchronized unified diff sidecar" })
+
+vim.api.nvim_create_user_command("GitReviewToggle", with_git_review(function(git_review)
+    git_review.toggle()
+end), { desc = "Toggle the synchronized unified diff sidecar" })
+
 local function termcodes(str)
     return vim.api.nvim_replace_termcodes(str, true, false, true)
 end

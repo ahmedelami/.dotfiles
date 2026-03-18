@@ -1110,11 +1110,10 @@ function M.setup(state, mode, termset)
       end
 
       if bottom and vim.env.HUMOODAGEN_FAST_START == "1" and vim.env.HUMOODAGEN_TOGGLETERM_STARTUP_FAST_SHELL ~= "0" then
-        bottom.cmd = "/opt/homebrew/bin/nu -l"
+        bottom.cmd = "/bin/zsh -i"
         if type(bottom.env) == "table" then
           bottom.env.HUMOODAGEN_TOGGLETERM_FAST_INIT = "1"
           bottom.env.HUMOODAGEN_TOGGLETERM_FAST_SHELL = "1"
-          bottom.env.INSIDE_NU = "1"
         end
         perf_mark("toggleterm:startup:shell", bottom.cmd)
       end

@@ -21,4 +21,5 @@ history/*.bak-*
 bin/__pycache__/
 zsh/.zshrc.pre_ohmyzsh_removal_*
 bin/codex-ghostty-proxy
+bin/codex-ghostty-proxy.backup-*
 codex-ghostty-proxy/target/

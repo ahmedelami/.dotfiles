@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import platform
 import re
 import shutil
 import sys
@@ -11,11 +10,8 @@ import time
 from pathlib import Path
 
 
-def _default_nushell_history_path() -> Path:
-    home = Path.home()
-    if platform.system() == "Darwin":
-        return home / "Library" / "Application Support" / "nushell" / "history.txt"
-    return home / ".local" / "share" / "nushell" / "history.txt"
+def _default_shell_history_path() -> Path:
+    return Path.home() / ".zsh_history"
 
 
 def _default_export_path() -> Path:
@@ -52,11 +48,41 @@ def _looks_sensitive(command: str, sensitive_patterns: list[re.Pattern[str]]) ->
     return False
 
 
-def _read_history_lines(path: Path) -> list[str]:
+def _parse_history_lines(lines: list[str]) -> list[str]:
+    commands: list[str] = []
+
+    buffer = ""
+    for raw in lines:
+        line = raw.rstrip("\n").rstrip("\r").replace("\0", "")
+
+        if line.startswith(": ") and ";" in line:
+            cmd = line.split(";", 1)[1]
+            if buffer:
+                commands.append(buffer)
+                buffer = ""
+        else:
+            cmd = line
+
+        buffer = f"{buffer}{cmd}" if buffer else cmd
+        if buffer.endswith("\\"):
+            buffer = buffer[:-1]
+            continue
+
+        if buffer.strip():
+            commands.append(buffer)
+        buffer = ""
+
+    if buffer.strip():
+        commands.append(buffer)
+
+    return commands
+
+
+def _read_commands(path: Path) -> list[str]:
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8", errors="replace")
-    return [line.rstrip("\n").rstrip("\r") for line in text.splitlines()]
+    return [line.strip() for line in _parse_history_lines(text.splitlines(keepends=True)) if line.strip()]
 
 
 def _recent_unique(commands: list[str], max_unique: int) -> list[str]:
@@ -88,7 +114,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Export a sanitized, git-trackable shell history snapshot.\n\n"
-            "Reads the shared Nushell plaintext history (which may also be used by zsh),\n"
+            "Reads zsh history,\n"
             "filters out lines that look like they contain secrets, de-duplicates, and\n"
             "writes a bounded-size snapshot into ~/.dotfiles/history/.\n\n"
             "NOTE: Always review before committing."
@@ -99,8 +125,8 @@ def main(argv: list[str]) -> int:
         "--in",
         dest="in_path",
         type=Path,
-        default=_default_nushell_history_path(),
-        help="Input history path (default: shared Nushell history.txt).",
+        default=_default_shell_history_path(),
+        help="Input history path (default: ~/.zsh_history).",
     )
     parser.add_argument(
         "--out",
@@ -130,8 +156,7 @@ def main(argv: list[str]) -> int:
     in_path: Path = args.in_path.expanduser()
     out_path: Path = args.out_path.expanduser()
 
-    raw = _read_history_lines(in_path)
-    normalized = [c.strip() for c in raw if c.strip()]
+    normalized = _read_commands(in_path)
 
     sensitive_patterns = _compile_sensitive_patterns()
     safe = [c for c in normalized if not _looks_sensitive(c, sensitive_patterns)]

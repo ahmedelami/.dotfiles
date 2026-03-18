@@ -4,3 +4,8 @@ email = "elaminahmed03@gmail.com"
 
 [ui]
 editor = "nvim"
+pager = "less -FRX --mouse"
+
+[colors]
+"diff removed token" = { fg = "red", underline = false }
+"diff added token" = { fg = "green", underline = false }

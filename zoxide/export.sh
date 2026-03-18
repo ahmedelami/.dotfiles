@@ -1,25 +1,18 @@
-#!/opt/homebrew/bin/nu
+#!/bin/zsh
 
-def main [out_file?: string] {
-    let repo_dir = ($env.FILE_PWD)
-    let target = ($out_file | default ($repo_dir | path join 'entries.tsv'))
+set -euo pipefail
 
-    if ((which zoxide | length) == 0) {
-        print --stderr 'error: zoxide not found on PATH'
-        exit 1
-    }
+repo_dir=${0:A:h}
+target=${1:-"$repo_dir/entries.tsv"}
 
-    let lines = (^zoxide query -ls | complete).stdout | lines
-    let body = ($lines | where {|line| ($line | str trim | is-not-empty) } | each {|line|
-        let parsed = ($line | parse --regex '^(?P<score>\S+)\s+(?P<path>.+)$')
-        if ($parsed | is-empty) {
-            null
-        } else {
-            let row = ($parsed | get 0)
-            $"($row.score)\t($row.path)"
-        }
-    } | compact)
+if ! command -v zoxide >/dev/null 2>&1; then
+  print -u2 'error: zoxide not found on PATH'
+  exit 1
+fi
 
-    (['# score\tpath'] | append $body | str join (char nl) | $"($in)(char nl)") | save -f $target
-    print $"wrote: ($target)"
-}
+{
+  print '# score\tpath'
+  zoxide query -ls | awk 'NF { score=$1; sub(/^[^[:space:]]+[[:space:]]+/, ""); print score "\t" $0 }'
+} >"$target"
+
+print "wrote: $target"

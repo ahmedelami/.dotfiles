@@ -20,9 +20,6 @@ return {
                     goto_last = '',
                 },
             })
-
-            local git_review = require("humoodagen.git_review")
-            vim.keymap.set('n', '<leader>gr', function() git_review.toggle() end, { desc = 'Git review (code + unified diff)' })
         end,
     },
 }

@@ -6,7 +6,6 @@
 - Managed XDG config directories live under `.config/`:
   - `.config/nvim`
   - `.config/ghostty`
-  - `.config/nushell`
   - `.config/jj`
   - `.config/git`
   - `.config/starship.toml`

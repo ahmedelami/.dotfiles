@@ -1,0 +1,53 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+lock_dir="${TMPDIR:-/tmp}/aerospace-normalize-ghostty-focus.lock"
+if ! /bin/mkdir "$lock_dir" 2>/dev/null; then
+  exit 0
+fi
+trap '/bin/rmdir "$lock_dir"' EXIT
+
+focused_meta() {
+  /opt/homebrew/bin/aerospace list-windows --focused --format '%{app-bundle-id}|%{workspace}' 2>/dev/null | /usr/bin/head -n 1
+}
+
+meta="$(focused_meta)"
+bundle_id="${meta%%|*}"
+workspace="${meta#*|}"
+
+if [[ "$bundle_id" != "com.mitchellh.ghostty" ]]; then
+  exit 0
+fi
+
+# Let Ghostty finish creating/closing the surface before normalizing the tile tree.
+/bin/sleep 0.05
+
+meta="$(focused_meta)"
+bundle_id="${meta%%|*}"
+workspace="${meta#*|}"
+
+if [[ "$bundle_id" != "com.mitchellh.ghostty" ]]; then
+  exit 0
+fi
+
+/bin/mkdir -p "${TMPDIR:-/tmp}/aerospace-normalize-ghostty-focus.state"
+safe_workspace="$(/bin/echo -n "$workspace" | /usr/bin/tr -c 'A-Za-z0-9._-' '_')"
+state_file="${TMPDIR:-/tmp}/aerospace-normalize-ghostty-focus.state/${safe_workspace}.count"
+current_count="$(
+  /opt/homebrew/bin/aerospace list-windows --workspace "$workspace" --count 2>/dev/null | /usr/bin/head -n 1
+)"
+previous_count=""
+if [[ -f "$state_file" ]]; then
+  previous_count="$(<"$state_file")"
+fi
+print -r -- "$current_count" > "$state_file"
+
+if [[ -z "$previous_count" ]]; then
+  [[ "$current_count" -gt 1 ]] || exit 0
+elif [[ "$current_count" == "$previous_count" ]]; then
+  exit 0
+fi
+
+/opt/homebrew/bin/aerospace flatten-workspace-tree
+/opt/homebrew/bin/aerospace balance-sizes

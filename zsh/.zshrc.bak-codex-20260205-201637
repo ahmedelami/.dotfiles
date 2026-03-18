@@ -112,7 +112,8 @@ if [[ -n "${PS1:-}" ]] \
   fi
 fi
 
-if command -v tmux &> /dev/null && [ -z "$DISABLE_TMUX_AUTO" ] && [ -z "$WEZTERM_PANE" ] && [ -n "$PS1" ] && [[ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
+# Opt in explicitly if you want new interactive shells to auto-enter tmux.
+if command -v tmux &> /dev/null && [ "${ENABLE_TMUX_AUTO:-0}" = "1" ] && [ -z "$DISABLE_TMUX_AUTO" ] && [ -z "$WEZTERM_PANE" ] && [ -n "$PS1" ] && [[ "${TERM_PROGRAM:-}" != "Apple_Terminal" ]] && [[ ! "$TERM" =~ screen ]] && [[ ! "$TERM" =~ tmux ]] && [ -z "$TMUX" ]; then
   # Load the safety wrapper first so manual calls are also protected
   source "$HOME/.tmux_safety_wrapper.zsh"
 
@@ -148,7 +149,7 @@ export ZSH="$HOME/.oh-my-zsh"
 # load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="robbyrussell-light"
+ZSH_THEME="robbyrussell"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load

@@ -1,16 +1,14 @@
-#!/opt/homebrew/bin/nu
+#!/bin/zsh
 
-def main [] {
-    let app = '/Applications/Ghostty.app'
-    let existing = (^/usr/bin/pgrep -x ghostty | complete)
-    if $existing.exit_code == 0 {
-        exit 0
-    }
+app="/Applications/Ghostty.app"
 
-    if not ($app | path exists) {
-        print --stderr $"ghostty_prewarm: not found: ($app)"
-        exit 1
-    }
+if /usr/bin/pgrep -x ghostty >/dev/null 2>&1; then
+  exit 0
+fi
 
-    ^/usr/bin/open -gj -a $app --args --initial-window=false --quit-after-last-window-closed=false
-}
+if [[ ! -d "$app" ]]; then
+  print -u2 "ghostty_prewarm: not found: $app"
+  exit 1
+fi
+
+exec /usr/bin/open -gj -a "$app" --args --initial-window=false --quit-after-last-window-closed=false

@@ -221,6 +221,15 @@ return {
             },
         })
 
+        -- Use Apple's SourceKit-LSP directly for Swift so semantic tokens and
+        -- project understanding come from the same toolchain Xcode uses.
+        if vim.fn.executable("sourcekit-lsp") == 1 then
+            require("lspconfig").sourcekit.setup({
+                capabilities = capabilities,
+                on_attach = on_attach,
+            })
+        end
+
         -- Manual config for djlsp since mason-lspconfig doesn't support it.
         if vim.fn.executable("djlsp") == 1 then
             if vim.lsp.config then

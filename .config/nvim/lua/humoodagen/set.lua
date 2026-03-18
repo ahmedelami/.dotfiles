@@ -1,4 +1,4 @@
-vim.opt.guicursor = ""
+vim.opt.guicursor = "a:block-blinkwait0-blinkon0-blinkoff0"
 
 -- Keep the bottom line consistent (statusline/ruler) and avoid mode text like
 -- "-- TERMINAL --" stealing space.

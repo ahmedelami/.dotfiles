@@ -8,6 +8,7 @@ require("humoodagen.tabline").setup()
 require("humoodagen.commands")
 require("humoodagen.lazy_init")
 local debug = require("humoodagen.debug")
+local vscode_theme = require("humoodagen.vscode_theme")
 
 require("humoodagen.mode_cursor").setup()
 
@@ -172,9 +173,12 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedHL", { link = "NvimTreeNormal" })
 
 	    local opened_bg = resolve_cursorline_bg()
+	    local theme = vscode_theme.current()
+	    local colors = type(theme) == "table" and theme.colors or nil
 
 	    local folder_fg = "#2f67d8"
 	    local folder_ctermfg = 68
+	    local tree_indent_fg = vscode_theme.to_int(colors and colors["editorIndentGuide.background1"])
 
 	    set_fg("NvimTreeFolderArrowClosed", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
 	    set_fg("NvimTreeFolderArrowOpen", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
@@ -194,6 +198,10 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    set_bold("NvimTreeEmptyFolderName")
 	    set_bold("NvimTreeSymlinkFolderName")
 	    set_bold("NvimTreeRootFolder")
+
+	    if type(tree_indent_fg) == "number" then
+	        pcall(vim.api.nvim_set_hl, 0, "NvimTreeIndentMarker", { fg = tree_indent_fg, nocombine = true })
+	    end
 
 	    -- Some themes set a background on these groups (often white), which makes
 	    -- CursorLine look like it "skips" over blue entries in the tree.
@@ -280,9 +288,15 @@ end
 	        pcall(vim.api.nvim_set_hl, 0, group, hl)
 	    end
 
-	    -- Current line + column guide background.
-	    -- Keep it a subtle neutral grey derived from Normal fg/bg (not almost-white).
-	    local cursor_bg = (type(normal_fg) == "number") and guide_mix_towards(normal_fg, normal_bg, 16) or nil
+	    local theme = vscode_theme.current()
+	    local ui = type(theme) == "table" and theme.ui or nil
+
+	    -- Prefer the exact VS Code UI colors when available, then fall back to a
+	    -- derived neutral shade for setups without a resolvable VS Code theme.
+	    local cursor_bg = vscode_theme.to_int(ui and (ui.line_highlight or ui.tab_inactive_background or ui.widget_background))
+	    if type(cursor_bg) ~= "number" then
+	        cursor_bg = (type(normal_fg) == "number") and guide_mix_towards(normal_fg, normal_bg, 16) or nil
+	    end
 	    set_bg("CursorLine", cursor_bg)
 	    set_bg("NvimTreeCursorLine", cursor_bg)
 	    set_bg("ColorColumn", cursor_bg)
@@ -290,17 +304,21 @@ end
 	    set_bg("NvimTreeOpenedFolderIcon", cursor_bg)
 	    set_bg("NvimTreeFolderArrowOpen", cursor_bg)
 
-	    -- Make the gutter line numbers a neutral light grey (theme defaults them
-	    -- to green-ish in vscode light).
-	    if type(normal_fg) == "number" then
-	        local line_nr_fg = guide_mix_towards(normal_fg, normal_bg, 4)
-	        if type(line_nr_fg) == "number" then
-	            local line_nr_hl = { fg = line_nr_fg, bg = normal_bg }
-	            pcall(vim.api.nvim_set_hl, 0, "LineNr", line_nr_hl)
-	            pcall(vim.api.nvim_set_hl, 0, "LineNrAbove", line_nr_hl)
-	            pcall(vim.api.nvim_set_hl, 0, "LineNrBelow", line_nr_hl)
-	            pcall(vim.api.nvim_set_hl, 0, "FoldColumn", line_nr_hl)
-	        end
+	    local line_nr_fg = vscode_theme.to_int(ui and ui.line_number)
+	    if type(line_nr_fg) ~= "number" and type(normal_fg) == "number" then
+	        line_nr_fg = guide_mix_towards(normal_fg, normal_bg, 4)
+	    end
+	    if type(line_nr_fg) == "number" then
+	        local line_nr_hl = { fg = line_nr_fg, bg = normal_bg }
+	        pcall(vim.api.nvim_set_hl, 0, "LineNr", line_nr_hl)
+	        pcall(vim.api.nvim_set_hl, 0, "LineNrAbove", line_nr_hl)
+	        pcall(vim.api.nvim_set_hl, 0, "LineNrBelow", line_nr_hl)
+	        pcall(vim.api.nvim_set_hl, 0, "FoldColumn", line_nr_hl)
+	    end
+
+	    local active_line_nr_fg = vscode_theme.to_int(ui and ui.line_number_active)
+	    if type(active_line_nr_fg) == "number" then
+	        pcall(vim.api.nvim_set_hl, 0, "CursorLineNr", { fg = active_line_nr_fg, bg = normal_bg, bold = true })
 	    end
 
 	end

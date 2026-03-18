@@ -3425,7 +3425,6 @@ z hub
 gemini --yolo
 gr/Volumes/t7/repos/projects/zig-whiteboard/src-tauri/target/debug/zig-whiteboard-tauri ; exit;
 /Volumes/t7/repos/projects/zig-whiteboard/src-tauri/target/debug/zig-whiteboard-tauri ; exit;
-n switch-shell-to-nushell-macos.md
 mkdir slack-terminal
 z proj
 z chromeium
@@ -3446,7 +3445,6 @@ pwd
 z work
 vi .
 ./scripts/macos-open-app.sh
-z switch-shell-to-nushell-macos.md
 z work/
 z reposls
 mv work/switchb/ .
@@ -3456,18 +3454,12 @@ lls
 z canvas/
 z switvhb
 lpserve
-source scripts/dev-aliases.nu
 lpglogin
-sexc nu
-execu nu
 sl
 z switchb
 lightpanda-google-login-one
 make lightpanda-google-login-one
 vim .env
-z switch-shell-to-nushell-macos.mdls
-vim switch-shell-to-nushell-macos.md
-rm switch-shell-to-nushell-macos.md
 z src/
 vim .
 z switchb/
@@ -3475,7 +3467,6 @@ git branch
 cd repos/projects/slack-terminal/
 make lightpanda-google-login-one-debug
 cd ..
-source ~/.zoxide.nu
 z down
 open preclass3.6-3.7_done.pdf
 nvim courses.txt
@@ -3484,14 +3475,12 @@ nvim .
 z projects
 z slack-terminal/
 make tui
-nushell
 ls -a
 z repso
 z pages-web/
 z uva
 z ..
 zed .
-source $nu.config-path
 z
 brew install codex
 brew uninstall codex

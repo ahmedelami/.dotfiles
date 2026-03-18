@@ -45,6 +45,8 @@ keybind = super+t=new_tab
 keybind = super+n=new_window
 # Forward Cmd+E into Neovim as CSI 19;3~ for the file tree binding.
 keybind = super+e=csi:19;3~
+# Forward Cmd+R into Neovim as CSI 28~ / F15 for the git review sidecar.
+keybind = super+r=csi:28~
 
 # Working directory
 # Always start new windows/tabs in the repos root instead of inheriting the
