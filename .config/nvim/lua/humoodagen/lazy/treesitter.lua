@@ -3,6 +3,31 @@ return {
     event = { "BufReadPost", "BufNewFile" },
     build = ":TSUpdate",
     config = function()
+        local install = require("nvim-treesitter.install")
+
+        local function get_ts_generate_args()
+            if vim.fn.executable("tree-sitter") ~= 1 then
+                return { "generate" }
+            end
+
+            local result = vim.system({ "tree-sitter", "generate", "--help" }, { text = true }):wait()
+            local help = result.code == 0 and result.stdout or ""
+            local args = { "generate" }
+
+            if help:find("--no-bindings", 1, true) then
+                table.insert(args, "--no-bindings")
+            end
+
+            if help:find("--abi", 1, true) then
+                table.insert(args, "--abi")
+                table.insert(args, tostring(vim.treesitter.language_version))
+            end
+
+            return args
+        end
+
+        install.ts_generate_args = get_ts_generate_args()
+
         require("nvim-treesitter.configs").setup({
             -- A list of parser names, or "all"
             ensure_installed = {

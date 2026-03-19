@@ -580,6 +580,10 @@ local function clear_state(tabpage)
         return
     end
 
+    if is_valid_buf(state.file_buf) then
+        vim.b[state.file_buf].humoodagen_git_review_plain = nil
+    end
+
     local file_win = state.file_win
     if is_valid_win(file_win) and type(state.file_win_opts) == "table" then
         for opt, value in pairs(state.file_win_opts) do
@@ -703,6 +707,11 @@ local function refresh_for_current_buffer(state)
         return
     end
 
+    if is_valid_buf(state.file_buf) and state.file_buf ~= file_buf then
+        vim.b[state.file_buf].humoodagen_git_review_plain = nil
+    end
+
+    vim.b[file_buf].humoodagen_git_review_plain = true
     detach_gitsigns(state, file_buf)
 
     local path = normalize_path(vim.api.nvim_buf_get_name(file_buf))

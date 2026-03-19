@@ -13,6 +13,10 @@ return {
       },
       numhl = false,
       on_attach = function(bufnr)
+        if vim.b[bufnr].humoodagen_git_review_plain then
+          return false
+        end
+
         local gs = package.loaded.gitsigns
 
         local function map(mode, l, r, opts)

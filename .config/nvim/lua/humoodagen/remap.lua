@@ -108,13 +108,43 @@ local function toggle_git_review()
 end
 
 local function open_repo_diffview()
+    local ok_review, diffview_review = pcall(require, "humoodagen.diffview_review")
+    local ok_lib, lib = pcall(require, "diffview.lib")
+    if ok_lib and lib.get_current_view() then
+        if vim.bo[vim.api.nvim_get_current_buf()].filetype == "DiffviewFiles" then
+            local ok_close = ok_review and diffview_review.close_current_diffview_and_return_origin()
+            if not ok_close then
+                vim.notify("Diffview close failed.", vim.log.levels.ERROR)
+            end
+            return
+        end
+
+        local ok_focus = pcall(vim.cmd, "DiffviewFocusFiles")
+        if not ok_focus then
+            vim.notify("Diffview file panel focus failed.", vim.log.levels.ERROR)
+        end
+        if ok_review then
+            diffview_review.enter_panel_only_for_current_diffview()
+        end
+        return
+    end
+
+    local origin_tab = vim.api.nvim_get_current_tabpage()
     local ok = pcall(vim.cmd, "DiffviewOpen")
     if not ok then
         vim.notify("Diffview unavailable.", vim.log.levels.ERROR)
         return
     end
 
+    if ok_review then
+        diffview_review.set_origin_for_current_diffview(origin_tab)
+        diffview_review.enter_panel_only_for_current_diffview()
+    end
+
     vim.defer_fn(function()
+        if ok_review then
+            pcall(diffview_review.enter_panel_only_for_current_diffview)
+        end
         pcall(vim.cmd, "redraw!")
     end, 350)
 end
@@ -140,6 +170,11 @@ end
 
 local function in_git_review_sidecar()
     return is_git_review_buf(current_buf())
+end
+
+local function in_repo_diffview()
+    local ok, lib = pcall(require, "diffview.lib")
+    return ok and lib.get_current_view() ~= nil
 end
 
 local function is_main_edit_win(win)
@@ -313,13 +348,23 @@ local function handle_tree_cmd_r()
 end
 
 local function cmd_r_action()
+    local ok_review, diffview_review = pcall(require, "humoodagen.diffview_review")
+    if ok_review and diffview_review.return_to_panel_from_review() then
+        return
+    end
+
     if in_git_review_sidecar() then
         toggle_git_review()
         return
     end
 
+    if in_repo_diffview() then
+        open_repo_diffview()
+        return
+    end
+
     if vim.bo[current_buf()].filetype == "NvimTree" then
-        handle_tree_cmd_r()
+        open_repo_diffview()
         return
     end
 

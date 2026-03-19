@@ -91,6 +91,37 @@ return {
         require("fidget").setup({})
         require("mason").setup()
 
+        local function configure_server(server_name, config)
+            if vim.lsp.config then
+                vim.lsp.config(server_name, config)
+            else
+                require("lspconfig")[server_name].setup(config)
+            end
+        end
+
+        local ensured_servers = {
+            "lua_ls",
+            "rust_analyzer",
+            "gopls",
+            "ts_ls",
+            "pylsp",
+            "clangd",
+            "html",
+            "cssls",
+            "cssmodules_ls",
+            "sqls",
+            "tailwindcss",
+            "jsonls",
+            "texlab",
+            "ocamllsp",
+            "svelte",
+        }
+
+        local default_server_config = {
+            capabilities = capabilities,
+            on_attach = on_attach,
+        }
+
         -- Prevent eslint-lsp from attaching in projects without an ESLint config.
         -- This avoids noisy "Could not find config file" diagnostic errors.
         if vim.lsp.config then
@@ -147,103 +178,56 @@ return {
         end
 
         require("mason-lspconfig").setup({
-            ensure_installed = {
-                "lua_ls",
-                "rust_analyzer",
-                "gopls",
-                "ts_ls",
-                "pylsp",
-                "clangd",
-                "html",
-                "cssls",         -- added cssls so plain .css files have a server
-                "cssmodules_ls",
-                "sqls",
-                "tailwindcss",
-                -- "eslint",
-                "jsonls",
-                "texlab",
-                "ocamllsp",
-                "svelte",
-            },
-            handlers = {
-                -- default handler for all servers: apply capabilities + on_attach
-                function(server_name)
-                    if vim.lsp.config then
-                        vim.lsp.config(server_name, {
-                            capabilities = capabilities,
-                            on_attach = on_attach,
-                        })
-                    else
-                        require("lspconfig")[server_name].setup {
-                            capabilities = capabilities,
-                            on_attach = on_attach,
-                        }
-                    end
-                end,
+            ensure_installed = ensured_servers,
+        })
 
-                zls = function()
-                    -- your zls config
-                end,
+        for _, server_name in ipairs(ensured_servers) do
+            local server_config = vim.deepcopy(default_server_config)
 
-                ["lua_ls"] = function()
-                    -- your lua_ls config
-                end,
-
-                ["pylsp"] = function()
-                    local lspconfig = require("lspconfig")
-                    lspconfig.pylsp.setup({
-                        capabilities = capabilities,
-                        on_attach = on_attach,
-                        settings = {
-                            pylsp = {
-                                plugins = {
-                                    pycodestyle = {
-                                        ignore = { "E501", "E302" },
-                                        -- maxLineLength = 120,
-                                    },
-                                },
+            if server_name == "pylsp" then
+                server_config.settings = {
+                    pylsp = {
+                        plugins = {
+                            pycodestyle = {
+                                ignore = { "E501", "E302" },
                             },
                         },
-                    })
-                end,
+                    },
+                }
+            elseif server_name == "html" then
+                server_config.settings = {
+                    html = {
+                        validate = { scripts = true, styles = false },
+                    },
+                }
+            end
 
-                ["html"] = function()
-                    require("lspconfig").html.setup({
-                        capabilities = capabilities,
-                        on_attach = on_attach,
-                        settings = {
-                            html = {
-                                validate = { scripts = true, styles = false },
-                            }
-                        }
-                    })
-                end,
-            },
-        })
+            configure_server(server_name, server_config)
+        end
 
         -- Use Apple's SourceKit-LSP directly for Swift so semantic tokens and
         -- project understanding come from the same toolchain Xcode uses.
         if vim.fn.executable("sourcekit-lsp") == 1 then
-            require("lspconfig").sourcekit.setup({
+            configure_server("sourcekit", {
                 capabilities = capabilities,
                 on_attach = on_attach,
             })
+
+            if vim.lsp.enable then
+                vim.lsp.enable("sourcekit")
+            end
         end
 
         -- Manual config for djlsp since mason-lspconfig doesn't support it.
         if vim.fn.executable("djlsp") == 1 then
-            if vim.lsp.config then
-                vim.lsp.config("djlsp", {
-                    cmd = { "djlsp" },
-                    capabilities = capabilities,
-                    on_attach = on_attach,
-                })
-            else
-                require("lspconfig").djlsp.setup({
-                    cmd = { "djlsp" },
-                    capabilities = capabilities,
-                    on_attach = on_attach,
-                })
+            configure_server("djlsp", {
+                cmd = { "djlsp" },
+                capabilities = capabilities,
+                on_attach = on_attach,
+            })
+
+            if vim.lsp.enable then
+                vim.lsp.enable("djlsp")
             end
         end
 

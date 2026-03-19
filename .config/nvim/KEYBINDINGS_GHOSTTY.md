@@ -109,10 +109,12 @@ prefix.
 ### Cmd+R (git UI)
 
 - Cmd+R on a real file => toggle the synchronized git review sidecar for that file
-- Cmd+R in NvimTree on a file => keep the tree open, open that file beside it, and show the unified diff sidecar on the right
-- Cmd+R in NvimTree on the file already under review => close the sidecar
+- Cmd+R in NvimTree => open Diffview's changed-file panel for the repo
 - Cmd+R in NvimTree on a directory/non-file node => open Diffview's changed-file panel
 - Cmd+R in terminal => open Diffview's changed-file panel
+- Open a file from the Diffview changed-file panel => open a separate review tab with current file on the left and unified diff on the right
+- Cmd+R in that review tab => return to the Diffview changed-file panel
+- Cmd+R on the Diffview changed-file panel => close Diffview and return to the normal NvimTree tab
 - Cmd+R in the git review diff sidecar => close the sidecar
 - Works from normal, insert, visual, and terminal mode
 - In Neovide, `Cmd+R` arrives as `<D-r>` instead of Ghostty's escape sequence
