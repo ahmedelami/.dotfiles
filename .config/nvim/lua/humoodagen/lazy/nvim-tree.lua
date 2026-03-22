@@ -720,6 +720,7 @@ return {
 	        local enable_open_pipes = true
 	        local enable_sticky_headers = true
 	        local sticky_overlay_state = {}
+	        local sticky_runtime = {}
 
 	        local function close_all_sticky_header_windows()
 	            for _, win in ipairs(vim.api.nvim_list_wins()) do
@@ -942,6 +943,42 @@ return {
 	            state.win = nil
 	        end
 
+	        local function reset_overlay_state(tree_win)
+	            if type(tree_win) ~= "number" then
+	                return
+	            end
+	            overlay_close(tree_win)
+	            sticky_overlay_state[tree_win] = nil
+	            sticky_runtime[tree_win] = nil
+	        end
+
+	        local function reset_all_sticky_overlays()
+	            close_all_sticky_header_windows()
+	            sticky_overlay_state = {}
+	            sticky_runtime = {}
+	        end
+
+	        local function is_live_tree_window(tree_win, bufnr)
+	            if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+	                return false
+	            end
+
+	            local cfg = vim.api.nvim_win_get_config(tree_win)
+	            if cfg.relative ~= "" then
+	                return false
+	            end
+
+	            local live_buf = vim.api.nvim_win_get_buf(tree_win)
+	            if not (live_buf and vim.api.nvim_buf_is_valid(live_buf)) then
+	                return false
+	            end
+	            if type(bufnr) == "number" and live_buf ~= bufnr then
+	                return false
+	            end
+
+	            return vim.bo[live_buf].filetype == "NvimTree"
+	        end
+
 	        local function overlay_ensure_buf(state)
 	            if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
 	                return state.buf
@@ -1001,19 +1038,12 @@ return {
 	        end
 
 	        local function overlay_render(tree_win, bufnr, topline, lnums, width, textoff)
-	            if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
-	                overlay_close(tree_win)
-	                sticky_overlay_state[tree_win] = nil
-	                return
-	            end
 	            if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-	                overlay_close(tree_win)
-	                sticky_overlay_state[tree_win] = nil
+	                reset_overlay_state(tree_win)
 	                return
 	            end
-	            if vim.bo[bufnr].filetype ~= "NvimTree" then
-	                overlay_close(tree_win)
-	                sticky_overlay_state[tree_win] = nil
+	            if not is_live_tree_window(tree_win, bufnr) then
+	                reset_overlay_state(tree_win)
 	                return
 	            end
 
@@ -1123,14 +1153,13 @@ return {
 	            vim.schedule(function()
 	                state.scheduled = false
 	                if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
-	                    sticky_overlay_state[tree_win] = nil
+	                    reset_overlay_state(tree_win)
 	                    return
 	                end
 	                overlay_render(tree_win, state.bufnr, state.topline, state.lnums, state.width, state.textoff)
 	            end)
 	        end
 
-	        local sticky_runtime = {}
 	        local sticky_log_path = vim.fn.stdpath("cache") .. "/humoodagen_nvim_tree_sticky.log"
 
 	        local function sticky_log(line)
@@ -1143,26 +1172,17 @@ return {
 
 	        local function sticky_refresh(tree_win)
 	            if not enable_sticky_headers then
-	                close_all_sticky_header_windows()
-	                if tree_win and vim.api.nvim_win_is_valid(tree_win) then
-	                    overlay_close(tree_win)
-	                end
+	                reset_all_sticky_overlays()
 	                return
 	            end
 
 	            local ok = pcall(function()
-	                if not (tree_win and vim.api.nvim_win_is_valid(tree_win)) then
+	                if not is_live_tree_window(tree_win) then
+	                    reset_overlay_state(tree_win)
 	                    return
-                end
+	                end
 
-                local bufnr = vim.api.nvim_win_get_buf(tree_win)
-                if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-                    return
-                end
-                if vim.bo[bufnr].filetype ~= "NvimTree" then
-                    overlay_close(tree_win)
-                    return
-                end
+	                local bufnr = vim.api.nvim_win_get_buf(tree_win)
 
                 local window_w0 = vim.api.nvim_win_call(tree_win, function()
                     return vim.fn.line("w0")
@@ -1240,26 +1260,30 @@ return {
 	                end
 	            end)
 
-            if not ok then
-                -- Best effort: avoid sticky artifacts if something goes wrong.
-                if tree_win and vim.api.nvim_win_is_valid(tree_win) then
-                    overlay_close(tree_win)
-                end
-            end
-        end
+	            if not ok then
+	                -- Best effort: avoid sticky artifacts if something goes wrong.
+	                reset_overlay_state(tree_win)
+	            end
+	        end
 
-        if enable_sticky_headers then
-            local sticky_group = vim.api.nvim_create_augroup("HumoodagenNvimTreeStickyHeaders", { clear = true })
+	        if enable_sticky_headers then
+	            local sticky_group = vim.api.nvim_create_augroup("HumoodagenNvimTreeStickyHeaders", { clear = true })
             vim.api.nvim_create_autocmd({ "WinScrolled", "WinResized", "BufWinEnter" }, {
                 group = sticky_group,
                 callback = function()
-                    local win = (vim.v.event and vim.v.event.winid) or vim.api.nvim_get_current_win()
-                    sticky_refresh(win)
-                end,
-            })
+	                    local win = (vim.v.event and vim.v.event.winid) or vim.api.nvim_get_current_win()
+	                    sticky_refresh(win)
+	                end,
+	            })
+	            vim.api.nvim_create_autocmd("WinClosed", {
+	                group = sticky_group,
+	                callback = function(args)
+	                    reset_overlay_state(tonumber(args.match))
+	                end,
+	            })
 
-            -- Fallback: some setups don't reliably fire WinScrolled for the tree (e.g. certain
-            -- mouse/scroll mappings). The decoration provider runs on redraw, so it keeps the
+	            -- Fallback: some setups don't reliably fire WinScrolled for the tree (e.g. certain
+	            -- mouse/scroll mappings). The decoration provider runs on redraw, so it keeps the
             -- sticky header in sync even in those cases.
             vim.api.nvim_set_decoration_provider(sticky_header_ns, {
                 on_win = function(_, tree_win, bufnr, topline, botline)
@@ -1268,9 +1292,9 @@ return {
                     end
                     sticky_refresh(tree_win)
                     return false
-                end,
-            })
-        end
+	                end,
+	            })
+	        end
 
         local function apply_open_pipes(bufnr)
             if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
@@ -1431,6 +1455,9 @@ return {
 	                    end
 	                end
 	            end)
+	        end)
+	        events.subscribe(events.Event.TreeClose, function()
+	            reset_all_sticky_overlays()
 	        end)
 
         local function is_main_edit_win(win)
