@@ -1,6 +1,7 @@
 -- lua/plugins/supermaven.lua
 return {
   "supermaven-inc/supermaven-nvim",
+  enabled = false,
   event = "InsertEnter",         -- or: lazy = false
   cmd = { "SupermavenStart","SupermavenStop","SupermavenRestart","SupermavenToggle",
           "SupermavenStatus","SupermavenUseFree","SupermavenUsePro",
@@ -12,4 +13,3 @@ return {
     })
   end,
 }
-

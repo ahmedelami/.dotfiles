@@ -18,6 +18,24 @@ return {
         "nvim-tree/nvim-web-devicons",
     },
     config = function()
+        local change_tree_depth
+        local toggle_tree_depth
+        -- Directories skipped by tree-depth expansion shortcuts like Ctrl-[ / Ctrl-].
+        -- Edit these lists directly to tune what auto-expands.
+        local tree_depth_excluded_dir_rules = {
+            names = {
+                bin = true,
+                dist = true,
+                node_modules = true,
+                public = true,
+                scripts = true,
+            },
+            prefixes = {
+                ".",
+                -- "_",
+            },
+        }
+
         local function on_attach(bufnr)
             local api = require('nvim-tree.api')
             local undo = require("humoodagen.nvim_tree_undo")
@@ -35,6 +53,17 @@ return {
 
             local function opts(desc)
                 return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+            end
+
+            local function mouse_toggle_directory()
+                local node = api.tree.get_node_under_cursor()
+                if not node then
+                    return
+                end
+
+                if node.type == "directory" or node.name == ".." then
+                    api.node.open.edit(node)
+                end
             end
 
             -- [View] Group
@@ -64,8 +93,24 @@ return {
             vim.keymap.set('n', '<C-b>o', api.tree.change_root_to_node, opts('[Nav] Root to node (Ctrl+B o)'))
             vim.keymap.set('n', '<C-b>O', api.tree.change_root_to_parent, opts('[Nav] Root up (Ctrl+B O)'))
             vim.keymap.set('n', '<CR>', api.node.open.edit, opts('[Nav] Open'))
+            vim.keymap.set('n', '<LeftRelease>', mouse_toggle_directory, opts('[Mouse] Toggle Directory'))
+            vim.keymap.set('n', '<2-LeftMouse>', api.node.open.edit, opts('[Mouse] Open'))
             vim.keymap.set('n', 'W', api.tree.collapse_all, opts('[Nav] Collapse All'))
             vim.keymap.set('n', 'E', api.tree.expand_all, opts('[Nav] Expand All'))
+            vim.keymap.set('n', '<Esc>', function()
+                change_tree_depth(-1)
+            end, opts('[Depth] Shallower (Esc / Ctrl-[)'))
+            vim.keymap.set('n', '<C-]>', function()
+                change_tree_depth(1)
+            end, opts('[Depth] Deeper (Ctrl-])'))
+            for depth = 1, 9 do
+                vim.keymap.set('n', ('z%d'):format(depth), function()
+                    toggle_tree_depth(depth)
+                end, opts(('[Depth] Toggle %d (z%d)'):format(depth, depth)))
+            end
+            vim.keymap.set('n', 'z0', function()
+                toggle_tree_depth(0)
+            end, opts('[Depth] Reset (z0)'))
 
             -- [File] Management Group
             vim.keymap.set('n', 'a', api.fs.create, opts('[File] Create'))
@@ -471,73 +516,166 @@ return {
             return depth
         end
 
-	        local function expand_tree_levels(levels)
-	            local ok_api, api = pcall(require, "nvim-tree.api")
-	            if not ok_api then
-	                return
-	            end
+        local function normalize_tree_depth(depth)
+            local n = math.floor(tonumber(depth) or 0)
+            if n < 0 then
+                return 0
+            end
+            if n > 9 then
+                return 9
+            end
+            return n
+        end
 
-	            local n = tonumber(levels) or 0
-	            if n <= 1 then
-	                return
-	            end
+        local function current_tree_depth()
+            local depth = vim.g.humoodagen_nvim_tree_depth
+            if depth ~= nil then
+                return normalize_tree_depth(depth)
+            end
 
-	            local function contains(tbl, value)
-	                if type(tbl) ~= "table" then
-	                    return false
-	                end
-	                for _, v in ipairs(tbl) do
-	                    if v == value then
-	                        return true
-	                    end
-	                end
-	                return false
-	            end
+            local levels = vim.env.HUMOODAGEN_NVIM_TREE_EXPAND_LEVELS
+            if levels == nil or levels == "" then
+                return 0
+            end
 
-	            local function is_git_ignored_or_untracked_dir(node)
-	                if type(node) ~= "table" or node.type ~= "directory" then
-	                    return false
-	                end
+            return normalize_tree_depth((tonumber(levels) or 1) - 1)
+        end
 
-	                local status = node.git_status
-	                if type(status) ~= "table" then
-	                    return false
-	                end
+        local function expand_tree_depth(depth)
+            local ok_api, api = pcall(require, "nvim-tree.api")
+            local ok_core, core = pcall(require, "nvim-tree.core")
+            if not ok_api or not ok_core then
+                return
+            end
 
-	                if status.file == "!!" or status.file == "??" then
-	                    return true
-	                end
+            local n = normalize_tree_depth(depth)
+            if n <= 0 then
+                return
+            end
 
-	                local dir = status.dir
-	                if type(dir) ~= "table" then
-	                    return false
-	                end
+            local function is_tree_depth_excluded_dir(node)
+                if type(node) ~= "table" or node.type ~= "directory" then
+                    return false
+                end
 
-	                return contains(dir.direct, "??") or contains(dir.indirect, "??")
-	            end
+                local name = type(node.name) == "string" and node.name or ""
+                if name == "" then
+                    return false
+                end
 
-	            local expand_depth = n - 1
-	            api.tree.expand_all(nil, {
-	                expand_until = function(_, node)
-	                    if not node or node.type ~= "directory" then
-	                        return false
-	                    end
+                for _, prefix in ipairs(tree_depth_excluded_dir_rules.prefixes) do
+                    if type(prefix) == "string" and prefix ~= "" and name:sub(1, #prefix) == prefix then
+                        return true
+                    end
+                end
 
-	                    local name = type(node.name) == "string" and node.name or ""
-	                    if name == "node_modules" then
-	                        return false
-	                    end
-	                    if name:sub(1, 1) == "." then
-	                        return false
-	                    end
-	                    if is_git_ignored_or_untracked_dir(node) then
-	                        return false
-	                    end
+                if name:match("^%d%d%d%d%-%d%d%-%d%d$") then
+                    return true
+                end
 
-	                    return node_depth(node) < expand_depth
-	                end,
-	            })
-	        end
+                return tree_depth_excluded_dir_rules.names[name] == true
+            end
+
+            local expand_depth = n
+            local root = core.get_explorer()
+            if not root then
+                return
+            end
+
+            api.tree.expand_all(root, {
+                expand_until = function(_, node)
+                    if not node or node.type ~= "directory" then
+                        return false
+                    end
+
+                    if is_tree_depth_excluded_dir(node) then
+                        return false
+                    end
+
+                    return node_depth(node) < expand_depth
+                end,
+            })
+        end
+
+        local function effective_tree_depth()
+            local ok_core, core = pcall(require, "nvim-tree.core")
+            if not ok_core then
+                return nil
+            end
+
+            local explorer = core.get_explorer()
+            if not explorer or type(explorer.nodes) ~= "table" then
+                return nil
+            end
+
+            local max_open_dir_depth = -1
+
+            local function visit(node)
+                if type(node) ~= "table" then
+                    return
+                end
+
+                if node.type == "directory" and node.parent and node.open then
+                    max_open_dir_depth = math.max(max_open_dir_depth, node_depth(node))
+                end
+
+                if node.group_next then
+                    visit(node.group_next)
+                end
+
+                if node.open and type(node.nodes) == "table" then
+                    for _, child in ipairs(node.nodes) do
+                        visit(child)
+                    end
+                end
+            end
+
+            for _, node in ipairs(explorer.nodes) do
+                visit(node)
+            end
+
+            if max_open_dir_depth < 0 then
+                return 0
+            end
+
+            return max_open_dir_depth + 1
+        end
+
+        local function apply_tree_depth(depth)
+            local ok_api, api = pcall(require, "nvim-tree.api")
+            local ok_view, view = pcall(require, "nvim-tree.view")
+            if not ok_api or not ok_view or not view.is_visible() then
+                return false
+            end
+
+            local normalized = normalize_tree_depth(depth)
+            api.tree.collapse_all()
+            if normalized > 0 then
+                expand_tree_depth(normalized)
+            end
+            return true
+        end
+
+        local function set_tree_depth(depth)
+            local normalized = normalize_tree_depth(depth)
+            if apply_tree_depth(normalized) then
+                normalized = effective_tree_depth() or normalized
+            end
+            vim.g.humoodagen_nvim_tree_depth = normalized
+            return normalized
+        end
+
+        change_tree_depth = function(delta)
+            return set_tree_depth(current_tree_depth() + (tonumber(delta) or 0))
+        end
+
+        toggle_tree_depth = function(depth)
+            local target = normalize_tree_depth(depth)
+            if current_tree_depth() == target then
+                target = 0
+            end
+            return set_tree_depth(target)
+        end
 
 	        events.subscribe(events.Event.TreeOpen, function()
 	            local ok_view, view = pcall(require, "nvim-tree.view")
@@ -562,15 +700,7 @@ return {
 	            end
 	
 	            vim.schedule(function()
-	                local levels = vim.g.humoodagen_nvim_tree_expand_levels
-	                if levels == nil then
-	                    levels = vim.env.HUMOODAGEN_NVIM_TREE_EXPAND_LEVELS
-	                end
-	                if levels == nil or levels == "" then
-	                    levels = 1
-	                end
-
-	                expand_tree_levels(levels)
+	                apply_tree_depth(current_tree_depth())
 	            end)
         end)
 
@@ -580,7 +710,7 @@ return {
 	        local nvim_tree_cache = {}
 
 	        local enable_open_pipes = true
-	        local enable_sticky_headers = false
+	        local enable_sticky_headers = true
 	        local sticky_overlay_state = {}
 
 	        local function close_all_sticky_header_windows()
@@ -772,7 +902,7 @@ return {
                 end
 
 	                segments[#segments + 1] = { icon, icon_hl }
-	                segments[#segments + 1] = { " ", "NvimTreeNormal" }
+	                segments[#segments + 1] = { " ", name_hl }
 	                if name ~= "" then
 	                    segments[#segments + 1] = { name, name_hl }
 	                end
@@ -952,6 +1082,7 @@ return {
 	                local icon_bytes = #icon
 	                highlights[#highlights + 1] = { hl = icon_hl, line = line_idx, start_col = col, end_col = col + icon_bytes }
 	                col = col + icon_bytes
+	                highlights[#highlights + 1] = { hl = name_hl, line = line_idx, start_col = col, end_col = col + 1 }
 	                col = col + 1
 
 	                local name_bytes = #name

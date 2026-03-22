@@ -47,11 +47,10 @@ keybind = super+n=new_window
 keybind = super+e=csi:19;3~
 # Forward Cmd+R into Neovim as CSI 28~ / F15 for the git review sidecar.
 keybind = super+r=csi:28~
-
 # Working directory
-# Always start new windows/tabs in the repos root instead of inheriting the
-# focused surface's cwd.
-working-directory = /Users/ahmedelamin/repos
+# Start new windows/tabs in the home directory instead of inheriting the
+# focused surface's cwd or falling back to /.
+working-directory = /Users/ahmedelamin
 window-inherit-working-directory = false
 
 # Window (macOS defaults: traffic lights + native tabs)
@@ -60,6 +59,11 @@ window-inherit-working-directory = false
 window-decoration = auto
 macos-titlebar-style = transparent
 maximize = false
+# Ghostty 1.2 keeps recently closed terminals around for undo on macOS.
+# Disable that retention so closed windows disappear immediately and
+# AeroSpace can let the surviving window fill the space without the long
+# nearly-invisible linger.
+undo-timeout = 0
 window-padding-y = 0
 
 # Mouse

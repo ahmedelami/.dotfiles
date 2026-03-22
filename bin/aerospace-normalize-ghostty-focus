@@ -12,6 +12,77 @@ focused_meta() {
   /opt/homebrew/bin/aerospace list-windows --focused --format '%{app-bundle-id}|%{workspace}' 2>/dev/null | /usr/bin/head -n 1
 }
 
+workspace_snapshot() {
+  local target_workspace="$1"
+  /opt/homebrew/bin/aerospace list-windows --workspace "$target_workspace" --format '%{window-id}|%{app-bundle-id}|%{window-title}' 2>/dev/null
+}
+
+snapshot_is_stable() {
+  local snapshot="$1"
+  [[ -n "$snapshot" ]] || return 1
+
+  # Ghostty tab creation can briefly surface a placeholder window before the
+  # tab reattaches. Ignore blank/ghost-title snapshots until the workspace
+  # settles so Cmd+T doesn't trigger a resize flash.
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    local title="${line##*|}"
+    if [[ -z "$title" || "$title" == "👻" ]]; then
+      return 1
+    fi
+  done <<< "$snapshot"
+
+  return 0
+}
+
+settled_workspace_snapshot() {
+  local target_workspace="$1"
+  local previous_snapshot=""
+  local stable_samples=0
+  local required_stable_samples=4
+
+  for _ in {1..12}; do
+    local snapshot
+    snapshot="$(workspace_snapshot "$target_workspace")"
+
+    if snapshot_is_stable "$snapshot"; then
+      if [[ "$snapshot" == "$previous_snapshot" ]]; then
+        stable_samples=$((stable_samples + 1))
+      else
+        stable_samples=1
+        previous_snapshot="$snapshot"
+      fi
+
+      if [[ $stable_samples -ge $required_stable_samples ]]; then
+        /bin/echo "$snapshot"
+        return 0
+      fi
+    else
+      stable_samples=0
+      previous_snapshot=""
+    fi
+
+    /bin/sleep 0.05
+  done
+
+  return 1
+}
+
+confirmed_workspace_snapshot() {
+  local target_workspace="$1"
+
+  # Ghostty Cmd+T can create a pseudo-window state that survives long enough to
+  # look stable once. Require the same settled snapshot again after a short
+  # delay before treating it as a real workspace-size change.
+  /bin/sleep 0.25
+  settled_workspace_snapshot "$target_workspace"
+}
+
+snapshot_window_ids() {
+  local snapshot="$1"
+  /bin/echo "$snapshot" | /usr/bin/cut -d'|' -f1 | /usr/bin/sort
+}
+
 meta="$(focused_meta)"
 bundle_id="${meta%%|*}"
 workspace="${meta#*|}"
@@ -20,9 +91,6 @@ if [[ "$bundle_id" != "com.mitchellh.ghostty" ]]; then
   exit 0
 fi
 
-# Let Ghostty finish creating/closing the surface before normalizing the tile tree.
-/bin/sleep 0.05
-
 meta="$(focused_meta)"
 bundle_id="${meta%%|*}"
 workspace="${meta#*|}"
@@ -30,18 +98,19 @@ workspace="${meta#*|}"
 if [[ "$bundle_id" != "com.mitchellh.ghostty" ]]; then
   exit 0
 fi
+
+snapshot="$(settled_workspace_snapshot "$workspace")" || exit 0
 
 /bin/mkdir -p "${TMPDIR:-/tmp}/aerospace-normalize-ghostty-focus.state"
 safe_workspace="$(/bin/echo -n "$workspace" | /usr/bin/tr -c 'A-Za-z0-9._-' '_')"
 state_file="${TMPDIR:-/tmp}/aerospace-normalize-ghostty-focus.state/${safe_workspace}.count"
 current_count="$(
-  /opt/homebrew/bin/aerospace list-windows --workspace "$workspace" --count 2>/dev/null | /usr/bin/head -n 1
+  /bin/echo "$snapshot" | /usr/bin/grep -c .
 )"
 previous_count=""
 if [[ -f "$state_file" ]]; then
   previous_count="$(<"$state_file")"
 fi
-print -r -- "$current_count" > "$state_file"
 
 if [[ -z "$previous_count" ]]; then
   [[ "$current_count" -gt 1 ]] || exit 0
@@ -49,5 +118,22 @@ elif [[ "$current_count" == "$previous_count" ]]; then
   exit 0
 fi
 
-/opt/homebrew/bin/aerospace flatten-workspace-tree
-/opt/homebrew/bin/aerospace balance-sizes
+confirmed_snapshot="$(confirmed_workspace_snapshot "$workspace")" || exit 0
+confirmed_count="$(
+  /bin/echo "$confirmed_snapshot" | /usr/bin/grep -c .
+)"
+current_ids="$(snapshot_window_ids "$snapshot")"
+confirmed_ids="$(snapshot_window_ids "$confirmed_snapshot")"
+
+if [[ "$confirmed_count" != "$current_count" || "$confirmed_ids" != "$current_ids" ]]; then
+  exit 0
+fi
+
+# Only persist state when the normalized window count actually changed.
+# Ghostty Cmd+T can cause transient workspace churn even when the settled
+# workspace is still the same two-window layout, and rewriting this file on
+# every no-op invocation just adds noise to the trace.
+print -r -- "$current_count" > "$state_file"
+
+/opt/homebrew/bin/aerospace flatten-workspace-tree --workspace "$workspace"
+/opt/homebrew/bin/aerospace balance-sizes --workspace "$workspace"

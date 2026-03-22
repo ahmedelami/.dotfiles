@@ -29,6 +29,7 @@ vim.opt.undofile = true
 
 vim.opt.hlsearch = false
 vim.opt.incsearch = true
+vim.opt.ttimeoutlen = 0
 
 vim.opt.shortmess:append("I")
 

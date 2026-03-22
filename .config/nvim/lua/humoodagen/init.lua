@@ -29,6 +29,10 @@ local ThePrimeagenGroup = augroup('ThePrimeagen', {})
 local autocmd = vim.api.nvim_create_autocmd
 local yank_group = augroup('HighlightYank', {})
 
+local nvim_tree_opened_folder_bg = 0x000000
+local nvim_tree_opened_folder_fg = "#FFFFFF"
+local nvim_tree_opened_folder_ctermfg = 15
+
 function R(name)
     require("plenary.reload").reload_module(name)
 end
@@ -130,39 +134,6 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	        pcall(vim.api.nvim_set_hl, 0, group, patched)
 	    end
 
-	    local function resolve_cursorline_bg()
-	        for _, group in ipairs({ "NvimTreeCursorLine", "CursorLine" }) do
-	            local ok_hl, hl = pcall(vim.api.nvim_get_hl, 0, { name = group, link = false })
-	            if ok_hl and type(hl) == "table" and type(hl.bg) == "number" then
-	                return hl.bg
-	            end
-	        end
-
-	        local ok_normal, normal = pcall(vim.api.nvim_get_hl, 0, { name = "Normal", link = false })
-	        local normal_bg = ok_normal and type(normal) == "table" and normal.bg or nil
-	        local normal_fg = ok_normal and type(normal) == "table" and normal.fg or nil
-	        if type(normal_bg) ~= "number" or type(normal_fg) ~= "number" then
-	            return nil
-	        end
-
-	        local function chan(c, shift)
-	            return math.floor(c / shift) % 256
-	        end
-
-	        local function mix(base, target)
-	            return math.min(255, math.max(0, math.floor(target + (base - target) / 16 + 0.5)))
-	        end
-
-	        local br = chan(normal_fg, 0x10000)
-	        local bg = chan(normal_fg, 0x100)
-	        local bb = chan(normal_fg, 0x1)
-	        local tr = chan(normal_bg, 0x10000)
-	        local tg = chan(normal_bg, 0x100)
-	        local tb = chan(normal_bg, 0x1)
-
-	        return (mix(br, tr) * 0x10000) + (mix(bg, tg) * 0x100) + mix(bb, tb)
-	    end
-
 	    -- Treat "new/untracked" nodes as dim (same as ignored) to keep the tree calm.
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitFileNewHL", { link = "NvimTreeGitFileIgnoredHL" })
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeGitFolderNewHL", { link = "NvimTreeGitFolderIgnoredHL" })
@@ -172,14 +143,11 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeImageFile", { link = "NvimTreeNormal" })
 	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeOpenedHL", { link = "NvimTreeNormal" })
 
-	    local opened_bg = resolve_cursorline_bg()
 	    local theme = vscode_theme.current()
 	    local colors = type(theme) == "table" and theme.colors or nil
 
 	    local folder_fg = "#2f67d8"
 	    local folder_ctermfg = 68
-	    local tree_indent_fg = vscode_theme.to_int(colors and colors["editorIndentGuide.background1"])
-
 	    set_fg("NvimTreeFolderArrowClosed", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
 	    set_fg("NvimTreeFolderArrowOpen", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
 	    -- We render chevrons as folder icons, so also update those groups.
@@ -199,9 +167,7 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    set_bold("NvimTreeSymlinkFolderName")
 	    set_bold("NvimTreeRootFolder")
 
-	    if type(tree_indent_fg) == "number" then
-	        pcall(vim.api.nvim_set_hl, 0, "NvimTreeIndentMarker", { fg = tree_indent_fg, nocombine = true })
-	    end
+	    pcall(vim.api.nvim_set_hl, 0, "NvimTreeIndentMarker", { fg = "#000000", ctermfg = 0, nocombine = true })
 
 	    -- Some themes set a background on these groups (often white), which makes
 	    -- CursorLine look like it "skips" over blue entries in the tree.
@@ -210,11 +176,9 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    strip_bg("NvimTreeExecFile")
 	    strip_bg("NvimTreeSymlinkFolderName")
 
-	    if type(opened_bg) == "number" then
-	        set_fg("NvimTreeFolderArrowOpen", folder_fg, folder_ctermfg, { bold = false, nocombine = true, bg = opened_bg })
-	        set_fg("NvimTreeOpenedFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true, bg = opened_bg })
-	        set_fg("NvimTreeOpenedFolderName", folder_fg, folder_ctermfg, { bg = opened_bg })
-	    end
+	    set_fg("NvimTreeFolderArrowOpen", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bold = false, nocombine = true, bg = nvim_tree_opened_folder_bg })
+	    set_fg("NvimTreeOpenedFolderIcon", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bold = false, nocombine = true, bg = nvim_tree_opened_folder_bg })
+	    set_fg("NvimTreeOpenedFolderName", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bg = nvim_tree_opened_folder_bg })
 	end
 
 	autocmd("ColorScheme", {
@@ -300,9 +264,9 @@ end
 	    set_bg("CursorLine", cursor_bg)
 	    set_bg("NvimTreeCursorLine", cursor_bg)
 	    set_bg("ColorColumn", cursor_bg)
-	    set_bg("NvimTreeOpenedFolderName", cursor_bg)
-	    set_bg("NvimTreeOpenedFolderIcon", cursor_bg)
-	    set_bg("NvimTreeFolderArrowOpen", cursor_bg)
+	    set_bg("NvimTreeOpenedFolderName", nvim_tree_opened_folder_bg)
+	    set_bg("NvimTreeOpenedFolderIcon", nvim_tree_opened_folder_bg)
+	    set_bg("NvimTreeFolderArrowOpen", nvim_tree_opened_folder_bg)
 
 	    local line_nr_fg = vscode_theme.to_int(ui and ui.line_number)
 	    if type(line_nr_fg) ~= "number" and type(normal_fg) == "number" then
