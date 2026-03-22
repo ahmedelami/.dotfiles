@@ -99,6 +99,17 @@ return {
             end
         end
 
+        local function opam_is_ready()
+            if vim.fn.executable("opam") ~= 1 then
+                return false
+            end
+
+            vim.fn.system({ "opam", "var", "root" })
+            return vim.v.shell_error == 0
+        end
+
+        local ocamllsp_managed_by_mason = opam_is_ready()
+
         local ensured_servers = {
             "lua_ls",
             "rust_analyzer",
@@ -113,9 +124,12 @@ return {
             "tailwindcss",
             "jsonls",
             "texlab",
-            "ocamllsp",
             "svelte",
         }
+
+        if ocamllsp_managed_by_mason then
+            table.insert(ensured_servers, "ocamllsp")
+        end
 
         local default_server_config = {
             capabilities = capabilities,
@@ -228,6 +242,19 @@ return {
 
             if vim.lsp.enable then
                 vim.lsp.enable("djlsp")
+            end
+        end
+
+        -- Only let Mason manage ocamllsp when opam is initialized. Otherwise
+        -- Mason retries and throws a blocking install failure on startup.
+        if not ocamllsp_managed_by_mason and vim.fn.executable("ocamllsp") == 1 then
+            configure_server("ocamllsp", {
+                capabilities = capabilities,
+                on_attach = on_attach,
+            })
+
+            if vim.lsp.enable then
+                vim.lsp.enable("ocamllsp")
             end
         end
 
