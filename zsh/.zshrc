@@ -1,3 +1,5 @@
+export DISABLE_AUTO_TITLE="true"
+
 # Restore the last full pre-strip shell config so Oh My Zsh, zoxide, aliases,
 # tmux helpers, and the rest of the interactive shell stack come back.
 if [[ -r "$HOME/.dotfiles/zsh/.zshrc.bak-codex-20260205-201637" ]]; then
@@ -32,3 +34,18 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+if [[ -o interactive ]] && [[ "${TERM_PROGRAM:-}" == "ghostty" || -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
+  autoload -Uz add-zsh-hook
+
+  __ghostty_set_path_title() {
+    emulate -L zsh
+    # Match the title to the current directory, abbreviated from $HOME as ~.
+    print -Pn "\e]2;%~\a"
+    print -Pn "\e]1;%~\a"
+  }
+
+  (( ${precmd_functions[(Ie)__ghostty_set_path_title]} )) || add-zsh-hook precmd __ghostty_set_path_title
+  (( ${chpwd_functions[(Ie)__ghostty_set_path_title]} )) || add-zsh-hook chpwd __ghostty_set_path_title
+  __ghostty_set_path_title
+fi

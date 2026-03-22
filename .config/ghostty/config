@@ -6,7 +6,9 @@ background = #ffffff
 cursor-color = #000000
 cursor-style = block
 cursor-style-blink = false
-shell-integration-features = no-cursor
+# Keep shell integration for cwd inheritance/PATH, but don't let Ghostty
+# replace the title with the running command.
+shell-integration-features = no-cursor,no-sudo,no-title,no-ssh-env,no-ssh-terminfo,path
 selection-background = #d6d6d6
 selection-foreground = #000000
 
