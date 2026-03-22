@@ -97,12 +97,12 @@ return {
             vim.keymap.set('n', '<2-LeftMouse>', api.node.open.edit, opts('[Mouse] Open'))
             vim.keymap.set('n', 'W', api.tree.collapse_all, opts('[Nav] Collapse All'))
             vim.keymap.set('n', 'E', api.tree.expand_all, opts('[Nav] Expand All'))
-            vim.keymap.set('n', '<Esc>', function()
+            vim.keymap.set('n', '<C-h>', function()
                 change_tree_depth(-1)
-            end, opts('[Depth] Shallower (Esc / Ctrl-[)'))
-            vim.keymap.set('n', '<C-]>', function()
+            end, opts('[Depth] Shallower (Ctrl-H)'))
+            vim.keymap.set('n', '<C-l>', function()
                 change_tree_depth(1)
-            end, opts('[Depth] Deeper (Ctrl-])'))
+            end, opts('[Depth] Deeper (Ctrl-L)'))
             for depth = 1, 9 do
                 vim.keymap.set('n', ('z%d'):format(depth), function()
                     toggle_tree_depth(depth)
@@ -328,6 +328,14 @@ return {
                 })
 
                 input:mount()
+
+                local function cancel()
+                    pcall(function()
+                        input:unmount()
+                    end)
+                end
+                vim.keymap.set({ "n", "i" }, "<Esc>", cancel, { buffer = input.bufnr, noremap = true, silent = true, nowait = true })
+                vim.keymap.set({ "n", "i" }, "<C-c>", cancel, { buffer = input.bufnr, noremap = true, silent = true, nowait = true })
             end
 
             vim.keymap.set('n', 'i', inline_create, opts('[File] Inline Create'))
@@ -450,17 +458,17 @@ return {
 		                        folder_arrow = false,
 		                        git = false,
 		                    },
-			                    glyphs = {
-			                        folder = {
-			                            arrow_closed = "",
-			                            arrow_open = "",
-			                            default = "",
-			                            open = "",
-			                            empty = "",
-			                            empty_open = "",
-			                            symlink = "",
-			                            symlink_open = "",
-			                        },
+				                    glyphs = {
+				                        folder = {
+				                            arrow_closed = "",
+				                            arrow_open = "",
+				                            default = "",
+				                            open = "",
+				                            empty = "",
+				                            empty_open = "",
+				                            symlink = "",
+				                            symlink_open = "",
+				                        },
 			                        git = {
 			                            unstaged = "",
 	                            staged = "",

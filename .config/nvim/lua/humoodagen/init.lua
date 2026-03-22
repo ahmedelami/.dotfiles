@@ -28,7 +28,6 @@ local ThePrimeagenGroup = augroup('ThePrimeagen', {})
 
 local autocmd = vim.api.nvim_create_autocmd
 local yank_group = augroup('HighlightYank', {})
-
 local nvim_tree_opened_folder_bg = 0x000000
 local nvim_tree_opened_folder_fg = "#FFFFFF"
 local nvim_tree_opened_folder_ctermfg = 15
@@ -146,16 +145,16 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    local theme = vscode_theme.current()
 	    local colors = type(theme) == "table" and theme.colors or nil
 
-	    local folder_fg = "#2f67d8"
-	    local folder_ctermfg = 68
+	    local folder_fg = "#000000"
+	    local folder_ctermfg = 0
 	    set_fg("NvimTreeFolderArrowClosed", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
-	    set_fg("NvimTreeFolderArrowOpen", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
+	    set_fg("NvimTreeFolderArrowOpen", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bold = false, nocombine = true, bg = nvim_tree_opened_folder_bg })
 	    -- We render chevrons as folder icons, so also update those groups.
 	    set_fg("NvimTreeFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
-	    set_fg("NvimTreeOpenedFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
+	    set_fg("NvimTreeOpenedFolderIcon", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bold = false, nocombine = true, bg = nvim_tree_opened_folder_bg })
 	    set_fg("NvimTreeClosedFolderIcon", folder_fg, folder_ctermfg, { bold = false, nocombine = true })
 	    set_fg("NvimTreeFolderName", folder_fg, folder_ctermfg)
-	    set_fg("NvimTreeOpenedFolderName", folder_fg, folder_ctermfg)
+	    set_fg("NvimTreeOpenedFolderName", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bg = nvim_tree_opened_folder_bg })
 	    set_fg("NvimTreeEmptyFolderName", folder_fg, folder_ctermfg)
 	    set_fg("NvimTreeSymlinkFolderName", folder_fg, folder_ctermfg)
 	    set_fg("NvimTreeRootFolder", folder_fg, folder_ctermfg)
@@ -176,9 +175,6 @@ local nvim_tree_hl_group = augroup("HumoodagenNvimTreeHighlights", { clear = tru
 	    strip_bg("NvimTreeExecFile")
 	    strip_bg("NvimTreeSymlinkFolderName")
 
-	    set_fg("NvimTreeFolderArrowOpen", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bold = false, nocombine = true, bg = nvim_tree_opened_folder_bg })
-	    set_fg("NvimTreeOpenedFolderIcon", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bold = false, nocombine = true, bg = nvim_tree_opened_folder_bg })
-	    set_fg("NvimTreeOpenedFolderName", nvim_tree_opened_folder_fg, nvim_tree_opened_folder_ctermfg, { bg = nvim_tree_opened_folder_bg })
 	end
 
 	autocmd("ColorScheme", {
@@ -264,10 +260,6 @@ end
 	    set_bg("CursorLine", cursor_bg)
 	    set_bg("NvimTreeCursorLine", cursor_bg)
 	    set_bg("ColorColumn", cursor_bg)
-	    set_bg("NvimTreeOpenedFolderName", nvim_tree_opened_folder_bg)
-	    set_bg("NvimTreeOpenedFolderIcon", nvim_tree_opened_folder_bg)
-	    set_bg("NvimTreeFolderArrowOpen", nvim_tree_opened_folder_bg)
-
 	    local line_nr_fg = vscode_theme.to_int(ui and ui.line_number)
 	    if type(line_nr_fg) ~= "number" and type(normal_fg) == "number" then
 	        line_nr_fg = guide_mix_towards(normal_fg, normal_bg, 4)
